@@ -33,12 +33,12 @@ val localProps = Properties().apply {
 
 android {
     namespace = "com.hermes.agent"
-    compileSdk = 34
+    compileSdk = 36
 
     defaultConfig {
         applicationId = "com.jeeves.app"   // fresh identity so Jeeves installs alongside standalone Hermes; code namespace stays com.hermes.agent
-        minSdk = 29          // Android 10 — covers ~95% of active devices
-        targetSdk = 34       // Android 14 — matches the plan's target
+        minSdk = 29          // Android 10 — covers ~95% of active devices; highest of the three merged apps (29/24/26)
+        targetSdk = 36       // Android 16 — matches Octo Jotter and Sassy Butler
         versionCode = 59
         versionName = "0.8.9"
 
