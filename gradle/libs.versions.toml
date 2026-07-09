@@ -33,6 +33,12 @@ securityCrypto = "1.1.0-alpha06"
 moshi = "1.15.2"
 rhino = "1.7.14"             # pure-JVM JS engine for the community-plugin scripting runtime
 
+# Sassy Butler (:feature:butler) — View-based UI + on-device ONNX TTS
+appcompat = "1.7.0"          # AlarmActivity / MainAlarmSetupActivity are AppCompatActivity
+material = "1.12.0"          # Theme.SassyButler parents on Theme.MaterialComponents
+constraintlayout = "2.2.1"
+onnxruntime = "1.20.0"
+
 # Networking
 retrofit = "2.12.0"   # raised from 2.11.0 to match Octo Jotter (converter-moshi shares this ref)
 okhttp = "4.12.0"
@@ -104,6 +110,14 @@ converter-moshi = { group = "com.squareup.retrofit2", name = "converter-moshi", 
 moshi-kotlin = { group = "com.squareup.moshi", name = "moshi-kotlin", version.ref = "moshi" }
 moshi-kotlin-codegen = { group = "com.squareup.moshi", name = "moshi-kotlin-codegen", version.ref = "moshi" }
 rhino = { group = "org.mozilla", name = "rhino", version.ref = "rhino" }
+
+# Sassy Butler (:feature:butler)
+androidx-appcompat = { group = "androidx.appcompat", name = "appcompat", version.ref = "appcompat" }
+androidx-constraintlayout = { group = "androidx.constraintlayout", name = "constraintlayout", version.ref = "constraintlayout" }
+# AlarmForegroundService extends LifecycleService; shares the catalog's lifecycle version.
+androidx-lifecycle-service = { group = "androidx.lifecycle", name = "lifecycle-service", version.ref = "lifecycle" }
+material = { group = "com.google.android.material", name = "material", version.ref = "material" }
+onnxruntime-android = { group = "com.microsoft.onnxruntime", name = "onnxruntime-android", version.ref = "onnxruntime" }
 
 # Networking
 retrofit = { group = "com.squareup.retrofit2", name = "retrofit", version.ref = "retrofit" }

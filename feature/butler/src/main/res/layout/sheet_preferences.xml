@@ -1,0 +1,306 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- "Refining the Service" preferences sheet (design: PreferencesSheet.tsx) -->
+<androidx.core.widget.NestedScrollView
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:background="@color/card">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:paddingBottom="48dp">
+
+        <!-- Drag handle -->
+        <View
+            android:layout_width="36dp"
+            android:layout_height="4dp"
+            android:layout_gravity="center_horizontal"
+            android:layout_marginTop="12dp"
+            android:background="@drawable/bg_handle" />
+
+        <!-- Header -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:paddingStart="24dp"
+            android:paddingEnd="24dp"
+            android:paddingTop="20dp">
+
+            <LinearLayout
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:gravity="center_vertical">
+
+                <ImageView
+                    android:layout_width="18dp"
+                    android:layout_height="18dp"
+                    android:src="@drawable/ic_bowler_hat"
+                    app:tint="@color/ink"
+                    android:contentDescription="@null" />
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="8dp"
+                    android:text="BUTLER PREFERENCES"
+                    android:textSize="11sp"
+                    android:letterSpacing="0.12"
+                    android:fontFamily="@font/dm_sans"
+                    android:textColor="@color/warm_grey" />
+            </LinearLayout>
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="3dp"
+                android:text="Refining the Service"
+                android:textSize="22sp"
+                android:textStyle="italic"
+                android:fontFamily="@font/playfair_display"
+                android:textColor="@color/ink" />
+        </LinearLayout>
+
+        <View style="@style/PrefsDivider" />
+
+        <!-- Address me as -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:paddingStart="24dp"
+            android:paddingEnd="24dp">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginBottom="12dp"
+                android:text="ADDRESS ME AS"
+                android:textSize="11sp"
+                android:letterSpacing="0.16"
+                android:fontFamily="@font/cinzel"
+                android:textColor="@color/warm_grey" />
+
+            <LinearLayout
+                android:id="@+id/honorificChips"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal" />
+
+            <TextView
+                android:id="@+id/tvHonorificQuip"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="10dp"
+                android:gravity="center"
+                android:text='"As you wish, Sir. A fine choice."'
+                android:textSize="12sp"
+                android:textStyle="italic"
+                android:fontFamily="@font/dm_sans"
+                android:textColor="@color/faded_grey" />
+        </LinearLayout>
+
+        <View style="@style/PrefsDivider" />
+
+        <!-- Sass level -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:paddingStart="24dp"
+            android:paddingEnd="24dp">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal">
+
+                <TextView
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:text="SASS LEVEL"
+                    android:textSize="11sp"
+                    android:letterSpacing="0.12"
+                    android:fontFamily="@font/dm_sans"
+                    android:textColor="@color/warm_grey" />
+
+                <TextView
+                    android:id="@+id/tvSassLabel"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Mildly Condescending"
+                    android:textSize="12sp"
+                    android:fontFamily="@font/dm_sans"
+                    android:textColor="@color/powder_blue" />
+            </LinearLayout>
+
+            <SeekBar
+                android:id="@+id/seekSass"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:max="100"
+                android:maxHeight="6dp"
+                android:progressDrawable="@drawable/sass_slider_track"
+                android:thumbTint="@color/ink" />
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal">
+
+                <TextView
+                    android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1"
+                    android:text="Polite" android:textSize="10sp"
+                    android:fontFamily="@font/dm_sans" android:textColor="@color/faded_grey" />
+
+                <TextView
+                    android:layout_width="wrap_content" android:layout_height="wrap_content"
+                    android:text="Frightful" android:textSize="10sp"
+                    android:fontFamily="@font/dm_sans" android:textColor="@color/faded_grey" />
+            </LinearLayout>
+
+            <!-- Sample line -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="14dp"
+                android:orientation="vertical"
+                android:padding="14dp"
+                android:background="@drawable/bg_input">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginBottom="6dp"
+                    android:text="BUTLER PREVIEW"
+                    android:textSize="10sp"
+                    android:letterSpacing="0.12"
+                    android:fontFamily="@font/cinzel"
+                    android:textColor="@color/faded_grey" />
+
+                <TextView
+                    android:id="@+id/tvSassSample"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text='"I have woken you. The rest, I am afraid, is up to you."'
+                    android:textSize="14sp"
+                    android:textStyle="italic"
+                    android:fontFamily="@font/playfair_display"
+                    android:textColor="@color/ink"
+                    android:lineSpacingMultiplier="1.4" />
+            </LinearLayout>
+        </LinearLayout>
+
+        <View style="@style/PrefsDivider" />
+
+        <!-- Voice -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:paddingStart="24dp"
+            android:paddingEnd="24dp">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginBottom="8dp"
+                android:text="BUTLER'S VOICE"
+                android:textSize="11sp"
+                android:letterSpacing="0.16"
+                android:fontFamily="@font/cinzel"
+                android:textColor="@color/warm_grey" />
+
+            <Spinner
+                android:id="@+id/spinnerVoice"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:backgroundTint="@color/ink" />
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:gravity="center_vertical">
+
+                <TextView
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:text="Non-English voices insult you in English, with an accent."
+                    android:textSize="11sp"
+                    android:textStyle="italic"
+                    android:fontFamily="@font/dm_sans"
+                    android:textColor="@color/faded_grey" />
+
+                <TextView
+                    android:id="@+id/btnPreviewVoice"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:padding="8dp"
+                    android:text="▶ PREVIEW"
+                    android:textSize="12sp"
+                    android:letterSpacing="0.1"
+                    android:fontFamily="@font/cinzel"
+                    android:textColor="@color/powder_blue"
+                    android:background="?attr/selectableItemBackground" />
+            </LinearLayout>
+        </LinearLayout>
+
+        <View style="@style/PrefsDivider" />
+
+        <!-- Snooze duration -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:paddingStart="24dp"
+            android:paddingEnd="24dp">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginBottom="12dp"
+                android:text="SNOOZE DURATION"
+                android:textSize="11sp"
+                android:letterSpacing="0.16"
+                android:fontFamily="@font/cinzel"
+                android:textColor="@color/warm_grey" />
+
+            <LinearLayout
+                android:id="@+id/snoozeChips"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal" />
+        </LinearLayout>
+
+        <View style="@style/PrefsDivider" />
+
+        <!-- Toggles -->
+        <LinearLayout
+            android:id="@+id/toggleRows"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:paddingStart="24dp"
+            android:paddingEnd="24dp" />
+
+        <TextView
+            android:id="@+id/tvFooterQuip"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="28dp"
+            android:gravity="center"
+            android:text='"Your preferences have been noted, Sir."'
+            android:textSize="13sp"
+            android:textStyle="italic"
+            android:fontFamily="@font/playfair_display"
+            android:textColor="@color/faded_grey" />
+    </LinearLayout>
+</androidx.core.widget.NestedScrollView>

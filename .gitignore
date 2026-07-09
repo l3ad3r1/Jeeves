@@ -30,3 +30,10 @@ secrets.properties
 hermes.local.properties
 KEYSTORE_CREDENTIALS.txt
 graphify-out/
+
+# --- Sassy Butler TTS models (~120 MB, re-downloadable) ---
+# Mirrors the standalone Sassy Butler repo, which also keeps these untracked.
+# The build REQUIRES them at feature/butler/src/main/assets/tts/. Restore with:
+#   cp "<Butler Alarm>/app/src/main/assets/tts/"*.{onnx,bin} feature/butler/src/main/assets/tts/
+feature/butler/src/main/assets/tts/*.onnx
+feature/butler/src/main/assets/tts/*.bin

@@ -1,23 +1,20 @@
 /*
  * :feature:butler — Sassy Butler as an Android library module.
  *
- * Phase 2 scaffold: the module is empty. Sources (AlarmReceiver,
- * AlarmForegroundService, lock-screen AlarmActivity, AudioEngine, ONNX TTS) and
- * the ~115 MB of TTS model assets land here in Phase 3.
- *
- * Butler is View-based, NOT Compose — compose stays off here on purpose.
- *
  * The namespace deliberately matches the standalone app's package
- * (com.sassybutler.alarm) so Phase 3 can move sources across without renaming
- * packages and without R-class collisions against :app.
+ * (com.sassybutler.alarm) so sources moved across keep their package declarations
+ * and their R class does not collide with :app.
  *
- * Deferred to Phase 3 (needed only once the assets/deps exist):
- *   - androidResources { noCompress += listOf("onnx", "bin") }
- *   - packaging { jniLibs { pickFirsts += "**\/libonnxruntime.so" } }
- *   - dependencies: appcompat, material, constraintlayout, splashscreen,
- *     lifecycle-service, onnxruntime-android
+ * Butler is View-based (AppCompatActivity + viewBinding), NOT Compose.
  *
  * AGP 9 supplies Kotlin support built-in; do NOT apply org.jetbrains.kotlin.android.
+ *
+ * The ~120 MB of ONNX TTS models live at src/main/assets/tts/ and are gitignored,
+ * mirroring the standalone repo. The build needs them present; see .gitignore.
+ *
+ * `androidResources { noCompress }` and `packaging { jniLibs { pickFirsts } }` are NOT
+ * set here: both are packaging concerns applied when the APK is built, so they live in
+ * :app/build.gradle.kts. A library's assets are merged into the app before packaging.
  */
 
 plugins {
@@ -43,5 +40,17 @@ android {
 }
 
 dependencies {
-    // Intentionally empty. Butler's dependencies arrive with its sources in Phase 3.
+    implementation(libs.androidx.core.ktx)
+    implementation(libs.androidx.core.splashscreen)
+    implementation(libs.androidx.appcompat)
+    implementation(libs.material)
+    implementation(libs.androidx.constraintlayout)
+    implementation(libs.androidx.lifecycle.runtime.ktx)
+    // AlarmForegroundService extends LifecycleService.
+    implementation(libs.androidx.lifecycle.service)
+
+    implementation(libs.kotlinx.coroutines.android)
+
+    // On-device TTS inference (Kokoro/KittenTTS ONNX models in src/main/assets/tts).
+    implementation(libs.onnxruntime.android)
 }

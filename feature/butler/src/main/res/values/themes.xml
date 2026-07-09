@@ -1,0 +1,68 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- The Parlour — light Magritte-butler theme -->
+    <style name="Theme.SassyButler" parent="Theme.MaterialComponents.Light.NoActionBar">
+        <item name="colorPrimary">@color/ink</item>
+        <item name="colorPrimaryVariant">@color/ink</item>
+        <item name="colorOnPrimary">@color/cream</item>
+        <item name="colorSecondary">@color/powder_blue</item>
+        <item name="colorOnSecondary">@color/ink</item>
+        <item name="android:windowBackground">@color/cream</item>
+        <item name="android:statusBarColor">@color/cream</item>
+        <item name="android:windowLightStatusBar">true</item>
+        <item name="android:navigationBarColor">@color/cream</item>
+    </style>
+
+    <!-- Splash — tuxedo icon on cream, hands off to the main theme -->
+    <style name="Theme.SassyButler.Splash" parent="Theme.SplashScreen">
+        <item name="windowSplashScreenBackground">@color/cream</item>
+        <item name="windowSplashScreenAnimatedIcon">@drawable/ic_launcher_foreground</item>
+        <item name="postSplashScreenTheme">@style/Theme.SassyButler</item>
+    </style>
+
+    <!-- Wake-up screen — deep night gradient -->
+    <style name="Theme.SassyButler.Wake">
+        <item name="android:windowBackground">@drawable/bg_wake_gradient</item>
+        <item name="android:statusBarColor">@color/wake_top</item>
+        <item name="android:windowLightStatusBar">false</item>
+        <item name="android:navigationBarColor">@color/wake_bottom</item>
+    </style>
+
+    <!-- NumberPicker styling (light parlour version) -->
+    <style name="NumberPickerTheme" parent="Theme.MaterialComponents.Light">
+        <item name="colorControlNormal">@color/ink</item>
+        <item name="colorControlActivated">@color/ink</item>
+        <item name="android:textColorPrimary">@color/ink</item>
+        <item name="android:textSize">26sp</item>
+    </style>
+
+    <!-- Bottom sheets keep the card colour and 24dp top radius -->
+    <style name="ParlourBottomSheet" parent="Theme.MaterialComponents.Light.BottomSheetDialog">
+        <item name="android:windowIsFloating">false</item>
+        <item name="android:statusBarColor">@android:color/transparent</item>
+        <item name="bottomSheetStyle">@style/ParlourBottomSheetStyle</item>
+    </style>
+
+    <style name="ParlourBottomSheetStyle" parent="Widget.MaterialComponents.BottomSheet.Modal">
+        <item name="backgroundTint">@color/card</item>
+        <item name="shapeAppearanceOverlay">@style/ParlourSheetShape</item>
+    </style>
+
+    <style name="PrefsDivider">
+        <item name="android:layout_width">match_parent</item>
+        <item name="android:layout_height">1dp</item>
+        <item name="android:layout_marginLeft">24dp</item>
+        <item name="android:layout_marginRight">24dp</item>
+        <item name="android:layout_marginTop">20dp</item>
+        <item name="android:layout_marginBottom">20dp</item>
+        <item name="android:background">@color/parchment</item>
+    </style>
+
+    <style name="ParlourSheetShape">
+        <item name="cornerFamily">rounded</item>
+        <item name="cornerSizeTopLeft">24dp</item>
+        <item name="cornerSizeTopRight">24dp</item>
+        <item name="cornerSizeBottomLeft">0dp</item>
+        <item name="cornerSizeBottomRight">0dp</item>
+    </style>
+</resources>

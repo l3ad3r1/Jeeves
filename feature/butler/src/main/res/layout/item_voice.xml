@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Spinner selected-item view (voice picker, dark card theme) -->
+<TextView xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:textSize="15sp"
+    android:fontFamily="@font/dm_sans"
+    android:textColor="@color/ink"
+    android:ellipsize="end"
+    android:maxLines="1"
+    android:paddingTop="10dp"
+    android:paddingBottom="10dp" />

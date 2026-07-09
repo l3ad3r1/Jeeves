@@ -73,16 +73,47 @@ extra ~12.9 MB was pure zip gap: AGP's incremental packager (zipflinger) rewrite
 build of the current tree produces 73,617,900 bytes — 12 KB SMALLER than the Phase 1
 exit APK. **Always measure APK size from a clean build.** No regression; nothing to fix.
 
-### Phase 3 — Feature port + manifest merge (booting merged shell) — NOT STARTED
-Port Jotter and Butler sources into their modules, merge the manifests, reach both
-from the Hermes launcher.
+### Phase 3 — Feature port + manifest merge (booting merged shell) — IN PROGRESS
+- [x] **3a. Octo Jotter -> `:feature:jotter`** (commit `4ca4f69`). 32 sources moved verbatim.
+      Dropped Firebase + google-services + secrets plugin (all unused — 0 grep hits).
+      Kept Jotter's own `MainActivity` (a `FragmentActivity`, required by BiometricPrompt;
+      the host's is a `ComponentActivity`), minus its LAUNCHER filter, keeping ACTION_SEND.
+      Jotter's FileProvider roots merged into the host's `file_paths.xml` (its own copy
+      would have been overridden -> `getUriForFile` would throw at runtime).
+- [x] **3b. Sassy Butler -> `:feature:butler`.** 15 sources + res (no mipmaps) + the
+      ~120 MB TTS models. Models are **gitignored** (mirroring the standalone repo) but
+      are REQUIRED at `feature/butler/src/main/assets/tts/` for the build.
+      `noCompress(onnx,bin)` and jniLibs `pickFirsts` live in `:app`, not the library,
+      because both are applied when the APK is packaged.
+- [x] Manifest union verified by parsing the merged manifest (see below).
+- [ ] **3c. Host navigation** — neither feature is reachable from the launcher yet.
+
+**Exit gate so far (clean build):** `:app:assembleDebug` + `:app:testDebugUnitTest`
+-> BUILD SUCCESSFUL, 219 tests, 0 failures. Merged manifest verified with an XML parser:
+- exactly **1** launcher activity (`com.hermes.agent.MainActivity`);
+- all 4 activities present (Hermes, Jotter, Butler setup, Butler lock-screen alarm);
+- **both** boot receivers survive — `com.hermes.agent.service.BootReceiver` and
+  `com.sassybutler.alarm.AlarmReceiver` (which keeps BOOT_COMPLETED *and* ACTION_ALARM_FIRE);
+- foreground service types coexist: `dataSync` (Hermes x2) + `mediaPlayback` (Butler);
+- all 6 Butler permissions merged (SCHEDULE_EXACT_ALARM, USE_EXACT_ALARM,
+  FOREGROUND_SERVICE_MEDIA_PLAYBACK, USE_FULL_SCREEN_INTENT, VIBRATE, DISABLE_KEYGUARD).
+- TTS models packaged **Stored/uncompressed** as intended; clean APK 282,977,250 bytes.
+
+Runtime behaviour is NOT yet verified (no device run, no host entry point).
 
 ## Next steps
-1. Port Octo Jotter sources into `:feature:jotter` + its dependencies into the catalog.
-2. Port Sassy Butler sources + ~115 MB TTS assets into `:feature:butler`; re-add its
-   `androidResources { noCompress += ("onnx","bin") }` and jniLibs `pickFirsts` config.
-3. Merge the three manifests (permission/service/receiver union per the roadmap).
-4. Add host navigation entries so Jotter and Butler are reachable from the launcher.
+1. Phase 3c: add host hub entries — start `com.l3ad3r1.octojotter.MainActivity` and
+   `com.sassybutler.alarm.MainAlarmSetupActivity` by Intent from the Hermes UI.
+   That completes the "booting merged shell" milestone; then smoke-test on a device.
+2. Phase 4: unify the Hilt graph (Butler's service/activities -> `@AndroidEntryPoint`).
+
+## Deferred / noted (not done)
+- Jotter's 4 roborazzi screenshot tests were not ported (would need the roborazzi plugin).
+- Butler's `androidTest`/`test` sources not ported.
+- Butler pins newer core/lifecycle/activity (1.18.0 / 2.10.0 / 1.13.0); `:feature:butler`
+  deliberately consumes the shared catalog's existing versions instead, so no forced
+  bump was pushed onto Hermes. Revisit only if Butler needs a newer API.
+- Jotter's in-app updater and Hermes's OTA both exist; only one should ship (Phase 7).
 
 ## Deferred / noted (not done)
 - Butler's toolchain (AGP 9.0.1 / Gradle 9.1.0) is close but not identical; it will inherit

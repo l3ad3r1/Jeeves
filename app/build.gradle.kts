@@ -105,6 +105,18 @@ android {
         // uncompressed and page-aligned, which AGP aligns to 16 KB for Android
         // 15+ devices. (The legacy-packaging override existed only to extract
         // the now-removed BusyBox executable.)
+        jniLibs {
+            // ONNX Runtime ships libonnxruntime.so in more than one AAR entry.
+            // Carried over from Sassy Butler's app module (:feature:butler consumes it).
+            pickFirsts += "**/libonnxruntime.so"
+        }
+    }
+    androidResources {
+        // :feature:butler's Kokoro/KittenTTS models are memory-loaded whole at startup.
+        // Compressing ~120 MB of already-quantized weights slows packaging and install
+        // for negligible size gain. Declared here, not in the library: noCompress is
+        // applied when the APK is packaged, and library assets are merged in first.
+        noCompress.addAll(listOf("onnx", "bin"))
     }
     testOptions {
         unitTests {

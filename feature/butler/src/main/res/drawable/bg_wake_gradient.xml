@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Wake screen night gradient (design: 175deg #1C2127 → #1e3a4a → #0f2030) -->
+<shape xmlns:android="http://schemas.android.com/apk/res/android">
+    <gradient
+        android:type="linear"
+        android:angle="270"
+        android:startColor="@color/wake_top"
+        android:centerColor="@color/wake_mid"
+        android:endColor="@color/wake_bottom" />
+</shape>

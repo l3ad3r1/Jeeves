@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  preloaded_fonts.xml — Declares fonts to be preloaded at app install time
+  so they're available even on the lock screen without network access.
+-->
+<resources>
+    <array name="preloaded_fonts" translatable="false">
+        <item>@font/playfair_display</item>
+        <item>@font/dm_sans</item>
+    </array>
+</resources>

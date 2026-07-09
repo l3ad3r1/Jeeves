@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Circular Hush button: translucent blue fill, blue border -->
+<shape xmlns:android="http://schemas.android.com/apk/res/android" android:shape="oval">
+    <solid android:color="#1F87BDD4" />
+    <stroke android:width="2dp" android:color="#8087BDD4" />
+</shape>
