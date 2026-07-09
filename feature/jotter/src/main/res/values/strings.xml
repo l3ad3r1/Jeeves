@@ -1,0 +1,6 @@
+<resources>
+    <!-- Renamed from `app_name`: in the merged app the host owns `app_name` ("Jeeves"),
+         and an app-module resource always overrides a library one of the same name.
+         Used as the label of Jotter's own activity. -->
+    <string name="jotter_app_name">Octo Jotter</string>
+</resources>

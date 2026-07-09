@@ -26,6 +26,13 @@ room = "2.7.0"
 # SQLite with FTS5
 sqliteAndroid = "3.45.0"
 
+# Octo Jotter (:feature:jotter)
+coreSplashscreen = "1.0.1"
+biometric = "1.1.0"          # BiometricPrompt requires a FragmentActivity host
+securityCrypto = "1.1.0-alpha06"
+moshi = "1.15.2"
+rhino = "1.7.14"             # pure-JVM JS engine for the community-plugin scripting runtime
+
 # Networking
 retrofit = "2.12.0"   # raised from 2.11.0 to match Octo Jotter (converter-moshi shares this ref)
 okhttp = "4.12.0"
@@ -87,6 +94,16 @@ androidx-room-compiler = { group = "androidx.room", name = "room-compiler", vers
 
 # SQLite with FTS5 (ReQuery)
 sqlite-android = { group = "io.github.requery", name = "sqlite-android", version.ref = "sqliteAndroid" }
+
+# Octo Jotter (:feature:jotter)
+androidx-core-splashscreen = { group = "androidx.core", name = "core-splashscreen", version.ref = "coreSplashscreen" }
+androidx-biometric = { group = "androidx.biometric", name = "biometric", version.ref = "biometric" }
+androidx-security-crypto = { group = "androidx.security", name = "security-crypto", version.ref = "securityCrypto" }
+androidx-compose-material-icons-core = { group = "androidx.compose.material", name = "material-icons-core" }
+converter-moshi = { group = "com.squareup.retrofit2", name = "converter-moshi", version.ref = "retrofit" }
+moshi-kotlin = { group = "com.squareup.moshi", name = "moshi-kotlin", version.ref = "moshi" }
+moshi-kotlin-codegen = { group = "com.squareup.moshi", name = "moshi-kotlin-codegen", version.ref = "moshi" }
+rhino = { group = "org.mozilla", name = "rhino", version.ref = "rhino" }
 
 # Networking
 retrofit = { group = "com.squareup.retrofit2", name = "retrofit", version.ref = "retrofit" }

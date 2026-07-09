@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <!-- INTERNET and REQUEST_INSTALL_PACKAGES are already declared by the host :app. -->
+    <uses-permission android:name="android.permission.USE_BIOMETRIC" />
+    <uses-permission android:name="android.permission.USE_FINGERPRINT" />
+
+    <application>
+        <!--
+          Jotter keeps its own Activity rather than being embedded as a composable in the
+          host nav graph: it is a FragmentActivity because BiometricPrompt (the app lock)
+          requires one, while the host MainActivity is a ComponentActivity.
+
+          Differences from the standalone manifest:
+            - the MAIN/LAUNCHER intent-filter is removed (the host owns the sole launcher
+              entry); this Activity is started from the host's hub.
+            - the ACTION_SEND filter is kept, so the merged app still appears as a
+              share target for text/markdown. That requires android:exported="true".
+            - no <application> attributes (icon/label/theme/backup rules): the host owns them.
+            - no FileProvider: the host already declares one with the identical
+              "${applicationId}.fileprovider" authority, which is exactly what Jotter's
+              FileProvider.getUriForFile(context, "${context.packageName}.fileprovider", ...)
+              calls resolve to. The host's file_paths.xml carries Jotter's roots.
+        -->
+        <activity
+            android:name=".MainActivity"
+            android:exported="true"
+            android:label="@string/jotter_app_name"
+            android:theme="@style/Theme.OctoJotter.Starting">
+            <intent-filter>
+                <action android:name="android.intent.action.SEND" />
+
+                <category android:name="android.intent.category.DEFAULT" />
+
+                <data android:mimeType="text/plain" />
+                <data android:mimeType="text/markdown" />
+            </intent-filter>
+        </activity>
+    </application>
+
+</manifest>
