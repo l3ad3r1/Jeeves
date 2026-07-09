@@ -17,8 +17,8 @@
 import java.util.Properties
 
 plugins {
+    // AGP 9 provides built-in Kotlin support; the kotlin-android plugin must NOT be applied.
     alias(libs.plugins.android.application)
-    alias(libs.plugins.kotlin.android)
     alias(libs.plugins.kotlin.compose)
     alias(libs.plugins.kotlin.serialization)
     alias(libs.plugins.ksp)
@@ -91,13 +91,6 @@ android {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
     }
-    kotlinOptions {
-        jvmTarget = "17"
-        freeCompilerArgs += listOf(
-            "-Xjvm-default=all",
-            "-opt-in=kotlin.RequiresOptIn",
-        )
-    }
     buildFeatures {
         compose = true
         buildConfig = true
@@ -118,6 +111,17 @@ android {
             isIncludeAndroidResources = true
             isReturnDefaultValues = true
         }
+    }
+}
+
+// AGP 9 built-in Kotlin: replaces the old android { kotlinOptions { ... } } block.
+// jvmTarget is omitted on purpose — it defaults to android.compileOptions.targetCompatibility (17).
+kotlin {
+    compilerOptions {
+        freeCompilerArgs.addAll(
+            "-Xjvm-default=all",
+            "-opt-in=kotlin.RequiresOptIn",
+        )
     }
 }
 

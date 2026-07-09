@@ -1,8 +1,10 @@
 [versions]
 # Build tooling
-agp = "8.13.2"
-kotlin = "2.0.21"
-ksp = "2.0.21-1.0.27"
+agp = "9.1.1"
+kotlin = "2.2.10"
+# KSP 2.3.x is the AGP-9-compatible line (registers generated sources via android.sourceSets).
+# Matches Octo Jotter, which already ships this exact AGP/Kotlin/KSP combination.
+ksp = "2.3.5"
 
 # AndroidX core
 coreKtx = "1.13.1"
@@ -15,8 +17,8 @@ datastorePreferences = "1.1.1"
 workRuntimeKtx = "2.9.1"
 hiltWork = "1.2.0"
 
-# Hilt
-hilt = "2.52"
+# Hilt (2.52 fails on AGP 9: "Android BaseExtension not found")
+hilt = "2.60.1"
 
 # Room
 room = "2.7.0-alpha11"
@@ -118,7 +120,7 @@ androidx-compose-ui-test-manifest = { group = "androidx.compose.ui", name = "ui-
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }
-kotlin-android = { id = "org.jetbrains.kotlin.android", version.ref = "kotlin" }
+# kotlin-android removed: AGP 9 has built-in Kotlin support and rejects that plugin.
 kotlin-compose = { id = "org.jetbrains.kotlin.plugin.compose", version.ref = "kotlin" }
 kotlin-serialization = { id = "org.jetbrains.kotlin.plugin.serialization", version.ref = "kotlin" }
 ksp = { id = "com.google.devtools.ksp", version.ref = "ksp" }
