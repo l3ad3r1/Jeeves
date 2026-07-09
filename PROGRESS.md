@@ -49,14 +49,40 @@ Now on Gradle 9.6.1 / AGP 9.1.1 / Kotlin 2.2.10 / KSP 2.3.5 / Hilt 2.60.1 / comp
    which built-in Kotlin forbids.
 5. `ksp.useKSP2=false` had to be dropped (KSP2-only now).
 
-### Phase 2 — Multi-module scaffold — NOT STARTED
-Add empty `:feature:jotter` and `:feature:butler` Android library modules; `:app` depends on both.
+### Phase 2 — Multi-module scaffold — DONE
+- [x] `:feature:jotter` (android-library, Compose on) and `:feature:butler`
+      (android-library, viewBinding, Compose off) created empty. Commit `870afb8`.
+- [x] `:app` depends on both; `settings.gradle.kts` includes both.
+- [x] Version catalog consolidation (skew resolved to highest, matching Octo Jotter):
+      Room `2.7.0-alpha11` -> `2.7.0` (stable), coroutines `1.9.0` -> `1.10.2`.
+
+**Design decision:** each feature module's `namespace` is the ORIGINAL standalone
+package (`com.l3ad3r1.octojotter`, `com.sassybutler.alarm`), not a new one. Phase 3
+can therefore move sources across verbatim — no package renames, no R-class collisions.
+
+**Exit gate verified:** `./gradlew projects` lists `:app`, `:feature:jotter`,
+`:feature:butler`; `:app:assembleDebug` -> BUILD SUCCESSFUL; `:app:testDebugUnitTest`
+-> 219 tests, 0 failures.
+
+**Investigated and dismissed — apparent +12.8 MB APK growth.** After adding the two
+empty modules the debug APK read 86.4 MB vs 73.6 MB. Entry-by-entry diff of the two
+APKs showed the payloads are byte-identical (dex 65,339,312 stored; native libs
+6,686,864 stored; the only new entry is a 5-byte viewBinding version marker). The
+extra ~12.9 MB was pure zip gap: AGP's incremental packager (zipflinger) rewrites
+`app-debug.apk` in place and leaves freed space instead of compacting it. A clean
+build of the current tree produces 73,617,900 bytes — 12 KB SMALLER than the Phase 1
+exit APK. **Always measure APK size from a clean build.** No regression; nothing to fix.
+
+### Phase 3 — Feature port + manifest merge (booting merged shell) — NOT STARTED
+Port Jotter and Butler sources into their modules, merge the manifests, reach both
+from the Hermes launcher.
 
 ## Next steps
-1. Phase 2: `include(":feature:jotter", ":feature:butler")` in settings.gradle.kts;
-   create the two library module build files; wire `:app` to depend on them (still empty).
-2. Verify `:app:assembleDebug` still succeeds with both empty modules on the classpath.
-3. Then Phase 3: port Jotter + Butler sources and merge the manifests.
+1. Port Octo Jotter sources into `:feature:jotter` + its dependencies into the catalog.
+2. Port Sassy Butler sources + ~115 MB TTS assets into `:feature:butler`; re-add its
+   `androidResources { noCompress += ("onnx","bin") }` and jniLibs `pickFirsts` config.
+3. Merge the three manifests (permission/service/receiver union per the roadmap).
+4. Add host navigation entries so Jotter and Butler are reachable from the launcher.
 
 ## Deferred / noted (not done)
 - Butler's toolchain (AGP 9.0.1 / Gradle 9.1.0) is close but not identical; it will inherit
