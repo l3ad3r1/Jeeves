@@ -36,7 +36,7 @@ android {
     compileSdk = 34
 
     defaultConfig {
-        applicationId = "com.hermes.agent"
+        applicationId = "com.jeeves.app"   // fresh identity so Jeeves installs alongside standalone Hermes; code namespace stays com.hermes.agent
         minSdk = 29          // Android 10 — covers ~95% of active devices
         targetSdk = 34       // Android 14 — matches the plan's target
         versionCode = 59

@@ -34,5 +34,5 @@ dependencyResolutionManagement {
     }
 }
 
-rootProject.name = "Hermes Agent"
+rootProject.name = "Jeeves"
 include(":app")
