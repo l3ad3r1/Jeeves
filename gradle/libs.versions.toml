@@ -14,7 +14,7 @@ navigationCompose = "2.8.1"
 composeBom = "2024.09.02"
 hiltNavigationCompose = "1.2.0"
 datastorePreferences = "1.1.1"
-workRuntimeKtx = "2.9.1"
+workRuntimeKtx = "2.10.0"   # raised from 2.9.1 to match Octo Jotter
 hiltWork = "1.2.0"
 
 # Hilt (2.52 fails on AGP 9: "Android BaseExtension not found")
@@ -27,7 +27,7 @@ room = "2.7.0"
 sqliteAndroid = "3.45.0"
 
 # Networking
-retrofit = "2.11.0"
+retrofit = "2.12.0"   # raised from 2.11.0 to match Octo Jotter (converter-moshi shares this ref)
 okhttp = "4.12.0"
 retrofitKotlinxSerialization = "1.0.0"
 nanohttpd = "2.3.1"
