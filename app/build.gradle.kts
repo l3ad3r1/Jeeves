@@ -126,6 +126,10 @@ kotlin {
 }
 
 dependencies {
+    // --- Feature modules (empty scaffolds until Phase 3) ---
+    implementation(project(":feature:jotter"))
+    implementation(project(":feature:butler"))
+
     // --- AndroidX core ---
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.lifecycle.runtime.ktx)

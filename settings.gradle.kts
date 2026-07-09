@@ -1,12 +1,14 @@
 /*
- * Hermes Agent — Android App
- * Root settings file. Phase 1 (Foundation) of the technical plan.
+ * Jeeves — merged super app (Hermes Agent + Octo Jotter + Sassy Butler).
+ * Root settings file. See docs/SUPER_APP_ROADMAP.md.
  *
  * Module layout:
- *   :app   — single Android application module (Kotlin + Jetpack Compose + Hilt)
+ *   :app             — host: launcher, navigation, single Hilt graph (the Hermes Agent base)
+ *   :feature:jotter  — Octo Jotter as an Android library (Compose)
+ *   :feature:butler  — Sassy Butler as an Android library (View-based, no Compose)
  *
- * Multi-module split (data / domain / ui / inference) is deferred to Phase 2
- * per the development roadmap.
+ * The two feature modules are empty scaffolds as of Phase 2; sources are ported
+ * into them in Phase 3.
  */
 
 pluginManagement {
@@ -36,3 +38,5 @@ dependencyResolutionManagement {
 
 rootProject.name = "Jeeves"
 include(":app")
+include(":feature:jotter")
+include(":feature:butler")
