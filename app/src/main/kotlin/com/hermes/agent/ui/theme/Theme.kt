@@ -10,9 +10,13 @@ import com.jeeves.core.theme.HermesTypography
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.SideEffect
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.blur
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalView
+import androidx.compose.ui.unit.dp
 import androidx.core.view.WindowCompat
 import androidx.compose.foundation.background
 
@@ -101,10 +105,7 @@ fun HermesTheme(
  * Premium glassmorphism modifier that applies a translucent background 
  * and blur effect (on supported API levels), creating depth.
  */
-import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.blur
-import androidx.compose.ui.graphics.Brush
-import androidx.compose.ui.unit.dp
+
 
 fun Modifier.glassBackground(
     color: Color,
