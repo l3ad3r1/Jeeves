@@ -1,178 +1,219 @@
 package com.sassybutler.alarm
 
-import android.graphics.Bitmap
-import android.graphics.Canvas
-import android.graphics.LinearGradient
-import android.graphics.Paint
-import android.graphics.Shader
-import android.graphics.drawable.BitmapDrawable
 import android.media.AudioAttributes
 import android.media.AudioFormat
 import android.media.AudioTrack
 import android.os.Bundle
-import android.view.Gravity
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
-import android.widget.AdapterView
-import android.widget.ArrayAdapter
-import android.widget.LinearLayout
-import android.widget.SeekBar
-import android.widget.TextView
 import android.widget.Toast
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.platform.ComposeView
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.unit.dp
 import androidx.lifecycle.lifecycleScope
 import com.google.android.material.bottomsheet.BottomSheetDialogFragment
-import com.sassybutler.alarm.databinding.RowToggleBinding
-import com.sassybutler.alarm.databinding.SheetPreferencesBinding
+import com.sassybutler.alarm.ui.ButlerTheme
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
-/**
- * "Refining the Service" — butler preferences bottom sheet
- * (design: PreferencesSheet.tsx).
- *
- * Honorific · sass level · voice + preview · snooze duration · toggles.
- */
 class PreferencesSheet(private val onChanged: () -> Unit = {}) : BottomSheetDialogFragment() {
 
-    private var _binding: SheetPreferencesBinding? = null
-    private val binding get() = _binding!!
-
-    // Lazily created for voice preview only; the alarm service owns its own.
     private var previewEngine: TtsEngine? = null
     @Volatile private var previewTrack: AudioTrack? = null
 
-    private val honorificChips = mutableMapOf<String, TextView>()
-    private val snoozeChips = mutableMapOf<Int, TextView>()
-
-    override fun getTheme() = R.style.ParlourBottomSheet
-
-    override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?,
-                              savedInstanceState: Bundle?): View {
-        _binding = SheetPreferencesBinding.inflate(inflater, container, false)
-        return binding.root
-    }
-
-    override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
-        setupHonorifics()
-        setupSass()
-        setupVoicePicker()
-        setupSnoozeChips()
-        setupToggles()
-        refreshQuips()
-    }
-
-    override fun onDestroyView() {
-        previewTrack?.runCatching { stop(); release() }
-        previewTrack = null
-        previewEngine?.close()
-        previewEngine = null
-        _binding = null
-        super.onDestroyView()
-    }
-
-    override fun onDismiss(dialog: android.content.DialogInterface) {
-        super.onDismiss(dialog)
-        onChanged()
-    }
-
-    // ─── Honorific ───────────────────────────────────────────────────────
-
-    private fun setupHonorifics() {
-        listOf("Sir", "Madam", "Boss").forEach { hon ->
-            val chip = TextView(requireContext()).apply {
-                text = hon
-                gravity = Gravity.CENTER
-                textSize = 16f
-                // Downloadable font: getFont throws when not yet fetched —
-                // fall back to the default face rather than crash.
-                runCatching {
-                    androidx.core.content.res.ResourcesCompat.getFont(
-                        requireContext(), R.font.playfair_display)
-                }.getOrNull()?.let { typeface = it }
-                setTextColor(requireContext().getColorStateList(R.color.chip_text))
-                background = requireContext().getDrawable(R.drawable.chip_bg)
-                isSelected = ButlerPrefs.honorific(requireContext()) == hon
-                setPadding(0, dp(14), 0, dp(14))
-                layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
-                    .apply { marginEnd = dp(10) }
-                setOnClickListener {
-                    ButlerPrefs.setHonorific(requireContext(), hon)
-                    honorificChips.values.forEach { it.isSelected = false }
-                    isSelected = true
-                    refreshQuips()
+    override fun onCreateView(
+        inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?
+    ): View {
+        return ComposeView(requireContext()).apply {
+            setContent {
+                ButlerTheme {
+                    Surface(
+                        modifier = Modifier.fillMaxWidth(),
+                        color = MaterialTheme.colorScheme.surface
+                    ) {
+                        PreferencesContent()
+                    }
                 }
             }
-            honorificChips[hon] = chip
-            binding.honorificChips.addView(chip)
         }
     }
 
-    // ─── Sass level ──────────────────────────────────────────────────────
+    @OptIn(ExperimentalMaterial3Api::class)
+    @Composable
+    private fun PreferencesContent() {
+        val context = LocalContext.current
+        var honorific by remember { mutableStateOf(ButlerPrefs.honorific(context)) }
+        var sassLevel by remember { mutableStateOf(ButlerPrefs.sassLevel(context).toFloat()) }
+        var voice by remember { mutableStateOf(VoiceCatalog.selected(context)) }
+        var snoozeMins by remember { mutableStateOf(ButlerPrefs.snoozeMinutes(context)) }
+        var isPreviewing by remember { mutableStateOf(false) }
 
-    private fun setupSass() {
-        val initial = ButlerPrefs.sassLevel(requireContext())
-        binding.seekSass.progress = initial
-        updateSassLabels(initial)
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(24.dp)
+                .verticalScroll(rememberScrollState())
+        ) {
+            Text("Refining the Service", style = MaterialTheme.typography.titleLarge)
+            Text(
+                "\"As you wish, $honorific. A fine choice.\"",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(bottom = 24.dp)
+            )
 
-        // Track width is 0 until the first layout pass; draw once it's known.
-        binding.seekSass.post { drawSassGradient(initial) }
-
-        binding.seekSass.setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
-            override fun onProgressChanged(sb: SeekBar?, value: Int, fromUser: Boolean) {
-                if (fromUser) {
-                    ButlerPrefs.setSassLevel(requireContext(), value)
-                    updateSassLabels(value)
+            // Honorific
+            Text("Address me as", style = MaterialTheme.typography.titleMedium, modifier = Modifier.padding(bottom = 8.dp))
+            Row(modifier = Modifier.fillMaxWidth().padding(bottom = 24.dp)) {
+                listOf("Sir", "Madam", "Boss").forEach { hon ->
+                    val isSelected = honorific == hon
+                    Button(
+                        onClick = { 
+                            honorific = hon
+                            ButlerPrefs.setHonorific(context, hon)
+                        },
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceVariant,
+                            contentColor = if (isSelected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant
+                        ),
+                        modifier = Modifier.padding(end = 8.dp)
+                    ) {
+                        Text(hon)
+                    }
                 }
-                drawSassGradient(value)
             }
-            override fun onStartTrackingTouch(sb: SeekBar?) = Unit
-            override fun onStopTrackingTouch(sb: SeekBar?) = Unit
-        })
-    }
 
-    /**
-     * Paints the track so the green→blue transition always spans exactly
-     * the filled portion (design: `linear-gradient(to right, green 0%,
-     * blue pct%, grey pct%)`), rather than a fixed 0–100 gradient that only
-     * shows a hint of blue near the high end. Regenerated on every change
-     * since Android has no live-recalculated CSS-gradient equivalent.
-     */
-    private fun drawSassGradient(progress: Int) {
-        val seekBar = _binding?.seekSass ?: return
-        val w = seekBar.width
-        if (w <= 0) return
-        val h = dp(6)
-        val radius = h / 2f
-        val fillWidth = (w * progress / 100f).coerceAtLeast(1f)
+            // Sass Level
+            Text("Sass Level", style = MaterialTheme.typography.titleMedium, modifier = Modifier.padding(bottom = 4.dp))
+            Text(
+                ButlerScript.sassTierName(sassLevel.toInt()), 
+                color = MaterialTheme.colorScheme.primary,
+                style = MaterialTheme.typography.labelLarge
+            )
+            Slider(
+                value = sassLevel,
+                onValueChange = { sassLevel = it },
+                onValueChangeFinished = { ButlerPrefs.setSassLevel(context, sassLevel.toInt()) },
+                valueRange = 0f..100f,
+                modifier = Modifier.padding(vertical = 8.dp)
+            )
+            Text(
+                "\"${sassSample(sassLevel.toInt())}\"",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(bottom = 24.dp)
+            )
 
-        val bmp = Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888)
-        val canvas = Canvas(bmp)
-        val ctx = requireContext()
+            // Voice
+            Text("Voice", style = MaterialTheme.typography.titleMedium, modifier = Modifier.padding(bottom = 8.dp))
+            var expanded by remember { mutableStateOf(false) }
+            ExposedDropdownMenuBox(
+                expanded = expanded,
+                onExpandedChange = { expanded = !expanded },
+                modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp)
+            ) {
+                OutlinedTextField(
+                    value = VoiceCatalog.VOICES.find { it.name == voice }?.label ?: voice,
+                    onValueChange = {},
+                    readOnly = true,
+                    trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
+                    modifier = Modifier.menuAnchor().fillMaxWidth()
+                )
+                ExposedDropdownMenu(
+                    expanded = expanded,
+                    onDismissRequest = { expanded = false }
+                ) {
+                    VoiceCatalog.VOICES.forEach { v ->
+                        DropdownMenuItem(
+                            text = { Text(v.label) },
+                            onClick = {
+                                voice = v.name
+                                VoiceCatalog.select(context, v.name)
+                                expanded = false
+                                if (v.name != "bm_daniel" && !VoiceDownloader.isDownloaded(context)) {
+                                    VoiceDownloader.downloadVoices(context) {
+                                        Toast.makeText(context, "Voice ready!", Toast.LENGTH_SHORT).show()
+                                    }
+                                }
+                            }
+                        )
+                    }
+                }
+            }
+            Button(
+                onClick = {
+                    isPreviewing = true
+                    previewVoice { isPreviewing = false }
+                },
+                enabled = !isPreviewing,
+                modifier = Modifier.fillMaxWidth().padding(bottom = 24.dp)
+            ) {
+                Text(if (isPreviewing) "SYNTHESIZING..." else "PREVIEW VOICE")
+            }
 
-        canvas.drawRoundRect(0f, 0f, w.toFloat(), h.toFloat(), radius, radius,
-            Paint(Paint.ANTI_ALIAS_FLAG).apply { color = ctx.getColor(R.color.parchment) })
+            // Snooze Duration
+            Text("Snooze Duration", style = MaterialTheme.typography.titleMedium, modifier = Modifier.padding(bottom = 8.dp))
+            Row(modifier = Modifier.fillMaxWidth().padding(bottom = 24.dp)) {
+                listOf(5, 10, 15, 20).forEach { mins ->
+                    val isSelected = snoozeMins == mins
+                    Button(
+                        onClick = { 
+                            snoozeMins = mins
+                            ButlerPrefs.setSnoozeMinutes(context, mins)
+                        },
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceVariant,
+                            contentColor = if (isSelected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant
+                        ),
+                        modifier = Modifier.padding(end = 8.dp).weight(1f),
+                        contentPadding = PaddingValues(0.dp)
+                    ) {
+                        Text("$mins min")
+                    }
+                }
+            }
 
-        if (progress > 0) {
-            canvas.save()
-            canvas.clipRect(0f, 0f, fillWidth, h.toFloat())
-            canvas.drawRoundRect(0f, 0f, w.toFloat(), h.toFloat(), radius, radius,
-                Paint(Paint.ANTI_ALIAS_FLAG).apply {
-                    shader = LinearGradient(0f, 0f, fillWidth, 0f,
-                        ctx.getColor(R.color.apple_green), ctx.getColor(R.color.powder_blue),
-                        Shader.TileMode.CLAMP)
-                })
-            canvas.restore()
+            // Toggles
+            Text("Settings", style = MaterialTheme.typography.titleMedium, modifier = Modifier.padding(bottom = 8.dp))
+            ToggleRow("Voice wake-up monologue", "The butler speaks upon alarm", ButlerPrefs.voiceEnabled(context)) { ButlerPrefs.setVoiceEnabled(context, it) }
+            ToggleRow("Birdsong overture", "Birds chirp before the butler speaks", ButlerPrefs.birdsIntro(context)) { ButlerPrefs.setBirdsIntro(context, it) }
+            ToggleRow("Haptic accompaniment", "A refined vibration pattern", ButlerPrefs.haptics(context)) { ButlerPrefs.setHaptics(context, it) }
+            ToggleRow("Snooze commentary", "He will note your indecision", ButlerPrefs.snoozeCommentary(context)) { ButlerPrefs.setSnoozeCommentary(context, it) }
         }
-        seekBar.progressDrawable = BitmapDrawable(resources, bmp)
     }
 
-    private fun updateSassLabels(level: Int) {
-        binding.tvSassLabel.text = ButlerScript.sassTierName(level)
-        binding.tvSassLabel.setTextColor(requireContext().getColor(
-            if (level > 60) R.color.apple_green else R.color.powder_blue))
-        binding.tvSassSample.text = "\"${sassSample(level)}\""
+    @Composable
+    private fun ToggleRow(title: String, subtitle: String, initial: Boolean, onCheckedChange: (Boolean) -> Unit) {
+        var checked by remember { mutableStateOf(initial) }
+        Row(
+            modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Column(modifier = Modifier.weight(1f)) {
+                Text(title, style = MaterialTheme.typography.bodyLarge)
+                Text(subtitle, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+            Switch(
+                checked = checked,
+                onCheckedChange = { 
+                    checked = it
+                    onCheckedChange(it) 
+                }
+            )
+        }
     }
 
     private fun sassSample(level: Int): String = when {
@@ -183,38 +224,7 @@ class PreferencesSheet(private val onChanged: () -> Unit = {}) : BottomSheetDial
         else       -> "I have a PhD. This was not in the contract."
     }
 
-    // ─── Voice ───────────────────────────────────────────────────────────
-
-    private fun setupVoicePicker() {
-        val ctx = requireContext()
-        val adapter = ArrayAdapter(ctx, R.layout.item_voice, VoiceCatalog.VOICES.map { it.label })
-        adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item)
-        binding.spinnerVoice.adapter = adapter
-        // setSelection(pos, false) applies synchronously, so the layout pass
-        // doesn't fire a spurious onItemSelected that would clobber the pref.
-        binding.spinnerVoice.setSelection(VoiceCatalog.indexOf(VoiceCatalog.selected(ctx)), false)
-
-        binding.spinnerVoice.onItemSelectedListener = object : AdapterView.OnItemSelectedListener {
-            override fun onItemSelected(parent: AdapterView<*>?, view: View?, position: Int, id: Long) {
-                val name = VoiceCatalog.VOICES[position].name
-                if (name != VoiceCatalog.selected(ctx)) {
-                    VoiceCatalog.select(ctx, name)
-                    if (name != "bm_daniel" && !VoiceDownloader.isDownloaded(ctx)) {
-                        VoiceDownloader.downloadVoices(ctx) {
-                            Toast.makeText(ctx, "Voice ready!", Toast.LENGTH_SHORT).show()
-                        }
-                    }
-                }
-            }
-            override fun onNothingSelected(parent: AdapterView<*>?) = Unit
-        }
-
-        binding.btnPreviewVoice.setOnClickListener { previewVoice() }
-    }
-
-    private fun previewVoice() {
-        binding.btnPreviewVoice.isEnabled = false
-        binding.btnPreviewVoice.text = "SYNTHESIZING…"
+    private fun previewVoice(onComplete: () -> Unit) {
         val ctx = requireContext().applicationContext
         val voice = VoiceCatalog.selected(ctx)
 
@@ -223,18 +233,15 @@ class PreferencesSheet(private val onChanged: () -> Unit = {}) : BottomSheetDial
             val pcm = engine.synthesize(PREVIEW_LINE, voice)
 
             withContext(Dispatchers.Main) {
-                _binding?.btnPreviewVoice?.text = "▶ PREVIEW"
-                _binding?.btnPreviewVoice?.isEnabled = true
                 if (pcm == null) {
-                    Toast.makeText(ctx, "The butler has lost his voice. (TTS model missing?)",
-                        Toast.LENGTH_SHORT).show()
+                    Toast.makeText(ctx, "The butler has lost his voice. (TTS model missing?)", Toast.LENGTH_SHORT).show()
                 }
+                onComplete()
             }
             if (pcm != null) playPreview(pcm)
         }
     }
 
-    /** Blocking Float32 PCM playback — call from Dispatchers.IO. */
     private fun playPreview(samples: FloatArray) {
         previewTrack?.runCatching { stop(); release() }
 
@@ -258,81 +265,27 @@ class PreferencesSheet(private val onChanged: () -> Unit = {}) : BottomSheetDial
         track.play()
         var offset = 0
         while (offset < samples.size) {
-            val wrote = track.write(samples, offset,
-                minOf(minBuf / 4, samples.size - offset), AudioTrack.WRITE_BLOCKING)
+            val wrote = track.write(samples, offset, minOf(minBuf / 4, samples.size - offset), AudioTrack.WRITE_BLOCKING)
             if (wrote < 0) break
             offset += wrote
         }
-        runCatching { track.stop() } // MODE_STREAM: plays out the buffered tail
+        runCatching { track.stop() }
     }
 
-    // ─── Snooze duration ─────────────────────────────────────────────────
-
-    private fun setupSnoozeChips() {
-        listOf(5, 10, 15, 20).forEach { minutes ->
-            val chip = TextView(requireContext()).apply {
-                text = "$minutes min"
-                gravity = Gravity.CENTER
-                textSize = 13f
-                letterSpacing = 0.02f
-                applyCinzel()
-                setTextColor(requireContext().getColorStateList(R.color.chip_text))
-                background = requireContext().getDrawable(R.drawable.chip_bg)
-                isSelected = ButlerPrefs.snoozeMinutes(requireContext()) == minutes
-                setPadding(0, dp(11), 0, dp(11))
-                layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
-                    .apply { marginEnd = dp(8) }
-                setOnClickListener {
-                    ButlerPrefs.setSnoozeMinutes(requireContext(), minutes)
-                    snoozeChips.values.forEach { it.isSelected = false }
-                    isSelected = true
-                }
-            }
-            snoozeChips[minutes] = chip
-            binding.snoozeChips.addView(chip)
-        }
+    override fun onDestroyView() {
+        previewTrack?.runCatching { stop(); release() }
+        previewTrack = null
+        previewEngine?.close()
+        previewEngine = null
+        super.onDestroyView()
     }
 
-    // ─── Toggles ─────────────────────────────────────────────────────────
-
-    private fun setupToggles() {
-        val ctx = requireContext()
-        addToggle("Voice wake-up monologue", "The butler speaks upon alarm",
-            ButlerPrefs.voiceEnabled(ctx)) { ButlerPrefs.setVoiceEnabled(ctx, it) }
-        addToggle("Birdsong overture", "Birds chirp before the butler speaks",
-            ButlerPrefs.birdsIntro(ctx)) { ButlerPrefs.setBirdsIntro(ctx, it) }
-        addToggle("Haptic accompaniment", "A refined vibration pattern",
-            ButlerPrefs.haptics(ctx)) { ButlerPrefs.setHaptics(ctx, it) }
-        addToggle("Snooze commentary", "He will note your indecision",
-            ButlerPrefs.snoozeCommentary(ctx)) { ButlerPrefs.setSnoozeCommentary(ctx, it) }
+    override fun onDismiss(dialog: android.content.DialogInterface) {
+        super.onDismiss(dialog)
+        onChanged()
     }
-
-    private fun addToggle(label: String, sub: String, initial: Boolean,
-                          onChange: (Boolean) -> Unit) {
-        val row = RowToggleBinding.inflate(layoutInflater, binding.toggleRows, true)
-        row.tvToggleLabel.text = label
-        row.tvToggleSub.text = sub
-        row.switchToggle.isChecked = initial
-        row.switchToggle.setOnCheckedChangeListener { _, checked -> onChange(checked) }
-    }
-
-    // ─── Helpers ─────────────────────────────────────────────────────────
-
-    private fun refreshQuips() {
-        val hon = ButlerPrefs.honorific(requireContext())
-        binding.tvHonorificQuip.text = "\"As you wish, $hon. A fine choice.\""
-        binding.tvFooterQuip.text = "\"Your preferences have been noted, $hon.\""
-    }
-
-    private fun TextView.applyCinzel() {
-        typeface = androidx.core.content.res.ResourcesCompat.getFont(requireContext(), R.font.cinzel)
-    }
-
-    private fun dp(v: Int) = (v * resources.displayMetrics.density).toInt()
 
     companion object {
-        // Uses only words already in the generated PhonemeEncoder lexicon.
-        private const val PREVIEW_LINE =
-            "Good morning. I am delighted you survived the night."
+        private const val PREVIEW_LINE = "Good morning. I am delighted you survived the night."
     }
 }

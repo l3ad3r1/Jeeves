@@ -14,6 +14,7 @@ import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalView
 import androidx.core.view.WindowCompat
+import androidx.compose.foundation.background
 
 /**
  * The three Hermes app themes derived from the brand site (hermes-agent.nousresearch.com).
@@ -95,3 +96,39 @@ fun HermesTheme(
         HermesHighContrastWrapper(darkTheme = darkTheme, content = content)
     }
 }
+
+/**
+ * Premium glassmorphism modifier that applies a translucent background 
+ * and blur effect (on supported API levels), creating depth.
+ */
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.blur
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.unit.dp
+
+fun Modifier.glassBackground(
+    color: Color,
+    alpha: Float = 0.65f,
+    blurRadius: Float = 16f
+): Modifier = this
+    .blur(blurRadius.dp)
+    .background(
+        brush = Brush.linearGradient(
+            colors = listOf(
+                color.copy(alpha = alpha),
+                color.copy(alpha = alpha * 0.8f)
+            )
+        )
+    )
+
+/**
+ * Premium gradient background modifier for primary buttons and accents.
+ */
+fun Modifier.premiumGradient(color: Color): Modifier = this.background(
+    brush = Brush.linearGradient(
+        colors = listOf(
+            color,
+            color.copy(alpha = 0.85f)
+        )
+    )
+)

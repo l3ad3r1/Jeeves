@@ -5,7 +5,7 @@
  * (com.sassybutler.alarm) so sources moved across keep their package declarations
  * and their R class does not collide with :app.
  *
- * Butler is View-based (AppCompatActivity + viewBinding), NOT Compose.
+ * Butler is now 100% Jetpack Compose (migrated from viewBinding).
  *
  * AGP 9 supplies Kotlin support built-in; do NOT apply org.jetbrains.kotlin.android.
  *
@@ -21,6 +21,7 @@ plugins {
     alias(libs.plugins.android.library)
     alias(libs.plugins.ksp)
     alias(libs.plugins.hilt)
+    alias(libs.plugins.kotlin.compose)
 }
 
 android {
@@ -37,7 +38,7 @@ android {
     }
 
     buildFeatures {
-        viewBinding = true
+        compose = true
     }
 }
 
@@ -46,16 +47,21 @@ dependencies {
     implementation(project(":core:settings"))
     implementation(platform(libs.androidx.compose.bom))
     implementation(project(":core:theme"))
+    
+    // --- Jetpack Compose ---
+    implementation(libs.androidx.compose.ui)
+    implementation(libs.androidx.compose.ui.graphics)
+    implementation(libs.androidx.compose.ui.tooling.preview)
+    implementation(libs.androidx.compose.material3)
+    implementation(libs.androidx.activity.compose)
 
     // --- Hilt (contributes ButlerModule to the host's single object graph) ---
     implementation(libs.hilt.android)
     ksp(libs.hilt.compiler)
 
     implementation(libs.androidx.core.ktx)
-    implementation(libs.androidx.core.splashscreen)
     implementation(libs.androidx.appcompat)
     implementation(libs.material)
-    implementation(libs.androidx.constraintlayout)
     implementation(libs.androidx.lifecycle.runtime.ktx)
     // AlarmForegroundService extends LifecycleService.
     implementation(libs.androidx.lifecycle.service)

@@ -4,91 +4,76 @@ import android.app.AlarmManager
 import android.content.Intent
 import android.os.Build
 import android.os.Bundle
-import android.os.Handler
-import android.os.Looper
 import android.provider.Settings
-import android.util.Log
-import android.view.LayoutInflater
-import android.view.View
-import android.view.ViewGroup
 import android.widget.Toast
-import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
-import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
+import androidx.activity.compose.setContent
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.unit.dp
 import androidx.lifecycle.lifecycleScope
-import androidx.recyclerview.widget.ItemTouchHelper
-import androidx.recyclerview.widget.LinearLayoutManager
-import androidx.recyclerview.widget.RecyclerView
-import com.sassybutler.alarm.databinding.ActivityMainBinding
-import com.sassybutler.alarm.databinding.ItemAlarmBinding
+import com.sassybutler.alarm.ui.ButlerTheme
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Date
 import java.util.Locale
 
-/**
- * The Parlour — main screen (design: ParlourScreen.tsx).
- *
- *  • Time-of-day greeting addressed with the honorific
- *  • Live ink clock strip
- *  • Multi-alarm list: toggle, swipe-to-dismiss
- *  • Serving-bell FAB → AddAlarmSheet
- *  • Bowler hat → PreferencesSheet
- *  • "Preview Wake-Up →" fires the alarm service immediately
- */
 class MainAlarmSetupActivity : AppCompatActivity() {
-
-    private lateinit var binding: ActivityMainBinding
     private lateinit var scheduler: AlarmScheduler
-    private lateinit var adapter: AlarmAdapter
-
-    private val clockHandler = Handler(Looper.getMainLooper())
-    private val clockTick = object : Runnable {
-        override fun run() {
-            updateClock()
-            clockHandler.postDelayed(this, 1000)
-        }
-    }
 
     private val locationPermission = registerForActivityResult(
         ActivityResultContracts.RequestPermission()
     ) { granted -> if (granted) refreshWeather() }
 
+    private var weatherState by mutableStateOf<WeatherService.Weather?>(null)
+    private var alarmsState by mutableStateOf(emptyList<Alarm>())
+    private var honorificState by mutableStateOf("Sir")
+
     override fun onCreate(savedInstanceState: Bundle?) {
         val isEmbedded = intent.getBooleanExtra("EXTRA_EMBEDDED", false)
-        if (!isEmbedded) {
-            installSplashScreen()
-        } else {
-            setTheme(R.style.Theme_SassyButler)
-        }
         super.onCreate(savedInstanceState)
+        scheduler = AlarmScheduler(this)
+
         if (isEmbedded) {
             @Suppress("DEPRECATION")
             overridePendingTransition(0, 0)
         }
-        binding = ActivityMainBinding.inflate(layoutInflater)
-        scheduler = AlarmScheduler(this)
-        setContentView(binding.root)
 
-        adapter = AlarmAdapter()
-        binding.rvAlarms.layoutManager = LinearLayoutManager(this)
-        binding.rvAlarms.adapter = adapter
-        attachSwipeToDelete()
-
-        binding.fabAdd.setOnClickListener {
-            AddAlarmSheet(onSaved = { refresh() }).show(supportFragmentManager, "add_alarm")
+        setContent {
+            ButlerTheme {
+                Surface(modifier = Modifier.fillMaxSize()) {
+                    MainAlarmScreen(
+                        alarms = alarmsState,
+                        weather = weatherState,
+                        honorific = honorificState,
+                        onToggle = { toggleAlarm(it) },
+                        onDelete = { deleteAlarm(it) },
+                        onAdd = { 
+                            AddAlarmSheet(onSaved = { refresh() }).show(supportFragmentManager, "add_alarm")
+                        },
+                        onPrefs = {
+                            PreferencesSheet { refresh() }.show(supportFragmentManager, "prefs")
+                        },
+                        onPreview = { previewWakeUp() }
+                    )
+                }
+            }
         }
-        binding.btnPrefs.setOnClickListener {
-            PreferencesSheet { refresh() }.show(supportFragmentManager, "prefs")
-        }
-        binding.btnPreviewWake.setOnClickListener { previewWakeUp() }
     }
 
     override fun onResume() {
         super.onResume()
         refresh()
-        clockHandler.post(clockTick)
         checkExactAlarmPermission()
 
         if (WeatherService.hasLocationPermission(this)) {
@@ -98,57 +83,17 @@ class MainAlarmSetupActivity : AppCompatActivity() {
         }
     }
 
-    /** Show cache instantly, then fetch fresh from Open-Meteo. */
     private fun refreshWeather() {
-        WeatherService.cached(this)?.let { showWeather(it) }
+        weatherState = WeatherService.cached(this)
         lifecycleScope.launch {
-            WeatherService.refresh(this@MainAlarmSetupActivity)?.let { showWeather(it) }
+            WeatherService.refresh(this@MainAlarmSetupActivity)?.let { weatherState = it }
         }
     }
-
-    private fun showWeather(w: WeatherService.Weather) {
-        binding.tvWeather.text = "${w.tempC}° · ${w.label}"
-        binding.tvWeather.visibility = View.VISIBLE
-    }
-
-    override fun onPause() {
-        clockHandler.removeCallbacks(clockTick)
-        super.onPause()
-    }
-
-    // ─── UI state ────────────────────────────────────────────────────────
 
     private fun refresh() {
-        val hon = ButlerPrefs.honorific(this)
-        binding.tvGreeting.text = greetingFor(hon)
-        binding.tvEmptyTitle.text = "No appointments, $hon."
-
-        val alarms = AlarmStore.all(this)
-        adapter.submit(alarms)
-        binding.tvScheduledCount.text = "${alarms.size} SCHEDULED"
-        binding.emptyState.visibility = if (alarms.isEmpty()) View.VISIBLE else View.GONE
+        honorificState = ButlerPrefs.honorific(this)
+        alarmsState = AlarmStore.all(this)
     }
-
-    private fun updateClock() {
-        val now = Date()
-        binding.tvClock.text = SimpleDateFormat("HH:mm", Locale.UK).format(now)
-        binding.tvClockSeconds.text = SimpleDateFormat(":ss", Locale.UK).format(now)
-        binding.tvWeekday.text = SimpleDateFormat("EEE", Locale.UK).format(now).uppercase()
-        binding.tvDate.text = SimpleDateFormat("d MMM", Locale.UK).format(now)
-    }
-
-    private fun greetingFor(hon: String): String {
-        val h = Calendar.getInstance().get(Calendar.HOUR_OF_DAY)
-        return when {
-            h < 5  -> "Good evening, $hon. The night watches over you."
-            h < 12 -> "Good morning, $hon. Shall I prepare your schedule?"
-            h < 17 -> "Good afternoon, $hon. You are, I note, still here."
-            h < 21 -> "Good evening, $hon. Shall we review the morrow?"
-            else   -> "Rather late, isn't it, $hon?"
-        }
-    }
-
-    // ─── Alarm actions ───────────────────────────────────────────────────
 
     private fun toggleAlarm(alarm: Alarm) {
         val updated = alarm.copy(enabled = !alarm.enabled)
@@ -183,83 +128,178 @@ class MainAlarmSetupActivity : AppCompatActivity() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
             val am = getSystemService(ALARM_SERVICE) as AlarmManager
             if (!am.canScheduleExactAlarms()) {
-                Toast.makeText(this,
-                    "I require the exact-alarm permission to be punctual.",
-                    Toast.LENGTH_LONG).show()
+                Toast.makeText(this, "I require the exact-alarm permission to be punctual.", Toast.LENGTH_LONG).show()
                 startActivity(Intent(Settings.ACTION_REQUEST_SCHEDULE_EXACT_ALARM))
                 return false
             }
         }
         return true
     }
+}
 
-    // ─── Swipe to delete ─────────────────────────────────────────────────
-
-    private fun attachSwipeToDelete() {
-        val helper = ItemTouchHelper(object :
-            ItemTouchHelper.SimpleCallback(0, ItemTouchHelper.LEFT) {
-            override fun onMove(rv: RecyclerView, vh: RecyclerView.ViewHolder,
-                                t: RecyclerView.ViewHolder) = false
-
-            override fun onSwiped(vh: RecyclerView.ViewHolder, direction: Int) {
-                adapter.alarmAt(vh.layoutPosition)?.let { deleteAlarm(it) }
-            }
-        })
-        helper.attachToRecyclerView(binding.rvAlarms)
-    }
-
-    // ─── Adapter ─────────────────────────────────────────────────────────
-
-    private inner class AlarmAdapter : RecyclerView.Adapter<AlarmAdapter.Holder>() {
-        private val items = mutableListOf<Alarm>()
-
-        fun submit(list: List<Alarm>) {
-            items.clear(); items.addAll(list)
-            notifyDataSetChanged()
-        }
-
-        fun alarmAt(position: Int): Alarm? = items.getOrNull(position)
-
-        inner class Holder(val b: ItemAlarmBinding) : RecyclerView.ViewHolder(b.root)
-
-        override fun onCreateViewHolder(parent: ViewGroup, viewType: Int) =
-            Holder(ItemAlarmBinding.inflate(LayoutInflater.from(parent.context), parent, false))
-
-        override fun getItemCount() = items.size
-
-        override fun onBindViewHolder(holder: Holder, position: Int) {
-            val alarm = items[position]
-            val b = holder.b
-
-            val h12 = when {
-                alarm.hour == 0 -> 12
-                alarm.hour > 12 -> alarm.hour - 12
-                else -> alarm.hour
-            }
-            b.tvTime.text = "$h12:${alarm.minute.toString().padStart(2, '0')}"
-            b.tvPeriod.text = if (alarm.hour < 12) "AM" else "PM"
-            b.tvLabel.text = alarm.label
-            b.tvDays.text = alarm.daysLabel()
-
-            val inkColor = getColor(if (alarm.enabled) R.color.ink else R.color.faded_grey)
-            b.tvTime.setTextColor(inkColor)
-            b.tvPeriod.setTextColor(getColor(
-                if (alarm.enabled) R.color.powder_blue else R.color.faded_grey))
-            b.cardAlarm.setCardBackgroundColor(getColor(
-                if (alarm.enabled) R.color.card else R.color.parchment))
-
-            b.switchEnabled.setOnCheckedChangeListener(null)
-            b.switchEnabled.isChecked = alarm.enabled
-            b.switchEnabled.setOnCheckedChangeListener { _, _ -> toggleAlarm(alarm) }
-
-            b.cardAlarm.setOnClickListener {
-                AddAlarmSheet(existing = alarm, onSaved = { refresh() })
-                    .show(supportFragmentManager, "edit_alarm")
-            }
+@Composable
+fun MainAlarmScreen(
+    alarms: List<Alarm>,
+    weather: WeatherService.Weather?,
+    honorific: String,
+    onToggle: (Alarm) -> Unit,
+    onDelete: (Alarm) -> Unit,
+    onAdd: () -> Unit,
+    onPrefs: () -> Unit,
+    onPreview: () -> Unit
+) {
+    var currentTime by remember { mutableStateOf(Date()) }
+    
+    LaunchedEffect(Unit) {
+        while(true) {
+            currentTime = Date()
+            delay(1000)
         }
     }
 
-    companion object {
-        private const val TAG = "Parlour"
+    Column(modifier = Modifier.fillMaxSize().padding(24.dp)) {
+        // Header
+        Row(
+            modifier = Modifier.fillMaxWidth().padding(bottom = 24.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Column {
+                Text(
+                    text = "SASSY BUTLER",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Text(
+                    text = greetingFor(honorific),
+                    style = MaterialTheme.typography.titleLarge,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+            }
+            Button(onClick = onPrefs) {
+                Text("Prefs")
+            }
+        }
+
+        // Live Clock
+        Card(
+            modifier = Modifier.fillMaxWidth().padding(bottom = 24.dp),
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
+        ) {
+            Row(
+                modifier = Modifier.padding(20.dp),
+                verticalAlignment = Alignment.Bottom
+            ) {
+                Text(
+                    text = SimpleDateFormat("HH:mm", Locale.UK).format(currentTime),
+                    style = MaterialTheme.typography.displayLarge
+                )
+                Text(
+                    text = SimpleDateFormat(":ss", Locale.UK).format(currentTime),
+                    style = MaterialTheme.typography.titleMedium,
+                    color = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.padding(bottom = 8.dp, start = 4.dp)
+                )
+                Spacer(modifier = Modifier.weight(1f))
+                Column(horizontalAlignment = Alignment.End) {
+                    Text(
+                        text = SimpleDateFormat("EEE", Locale.UK).format(currentTime).uppercase(),
+                        style = MaterialTheme.typography.labelSmall
+                    )
+                    Text(
+                        text = SimpleDateFormat("d MMM", Locale.UK).format(currentTime),
+                        style = MaterialTheme.typography.bodyMedium
+                    )
+                    if (weather != null) {
+                        Text(
+                            text = "${weather.tempC}° · ${weather.label}",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
+            }
+        }
+
+        // Alarms Header
+        Row(
+            modifier = Modifier.fillMaxWidth().padding(bottom = 12.dp),
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            Text("${alarms.size} SCHEDULED", style = MaterialTheme.typography.labelSmall)
+            Text(
+                text = "Preview Wake-Up →",
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.clickable { onPreview() }
+            )
+        }
+
+        // Alarms List
+        LazyColumn(modifier = Modifier.weight(1f)) {
+            items(alarms) { alarm ->
+                AlarmItem(alarm, onToggle)
+            }
+        }
+
+        // Add Button
+        FloatingActionButton(
+            onClick = onAdd,
+            modifier = Modifier.align(Alignment.End).padding(top = 16.dp)
+        ) {
+            Text("+")
+        }
+    }
+}
+
+@Composable
+fun AlarmItem(alarm: Alarm, onToggle: (Alarm) -> Unit) {
+    Card(
+        modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = if (alarm.enabled) MaterialTheme.colorScheme.surface else MaterialTheme.colorScheme.surfaceVariant
+        )
+    ) {
+        Row(
+            modifier = Modifier.padding(16.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Column(modifier = Modifier.weight(1f)) {
+                val h12 = when {
+                    alarm.hour == 0 -> 12
+                    alarm.hour > 12 -> alarm.hour - 12
+                    else -> alarm.hour
+                }
+                val amPm = if (alarm.hour < 12) "AM" else "PM"
+                Row(verticalAlignment = Alignment.Bottom) {
+                    Text(
+                        text = "$h12:${alarm.minute.toString().padStart(2, '0')}",
+                        style = MaterialTheme.typography.headlineMedium
+                    )
+                    Text(
+                        text = " $amPm",
+                        style = MaterialTheme.typography.labelLarge,
+                        modifier = Modifier.padding(bottom = 4.dp)
+                    )
+                }
+                Text(text = alarm.label, style = MaterialTheme.typography.bodyMedium)
+                Text(text = alarm.daysLabel(), style = MaterialTheme.typography.labelSmall)
+            }
+            Switch(
+                checked = alarm.enabled,
+                onCheckedChange = { onToggle(alarm) }
+            )
+        }
+    }
+}
+
+fun greetingFor(hon: String): String {
+    val h = Calendar.getInstance().get(Calendar.HOUR_OF_DAY)
+    return when {
+        h < 5  -> "Good evening, $hon."
+        h < 12 -> "Good morning, $hon."
+        h < 17 -> "Good afternoon, $hon."
+        h < 21 -> "Good evening, $hon."
+        else   -> "Rather late, isn't it, $hon?"
     }
 }
