@@ -6,10 +6,12 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.lightColorScheme
 import com.jeeves.core.theme.jeevesColorScheme
+import com.jeeves.core.theme.HermesTypography
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.SideEffect
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toArgb
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalView
 import androidx.core.view.WindowCompat
 
@@ -81,10 +83,15 @@ fun HermesTheme(
         }
     }
 
+    val context = LocalContext.current
+    val fontScale = context.resources.configuration.fontScale
+    val typography = if (fontScale > 1.2f) boostedTypography(HermesTypography) else HermesTypography
+
     MaterialTheme(
         colorScheme = colorScheme,
-        typography  = HermesTypography,
+        typography  = typography,
         shapes      = HermesShapes,
-        content     = content,
-    )
+    ) {
+        HermesHighContrastWrapper(darkTheme = darkTheme, content = content)
+    }
 }

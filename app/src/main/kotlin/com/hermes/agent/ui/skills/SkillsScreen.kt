@@ -38,17 +38,22 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.hermes.agent.domain.model.Skill
+import com.hermes.agent.ui.components.DestructiveActionDialog
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SkillsScreen(viewModel: SkillsViewModel = hiltViewModel()) {
     val state by viewModel.state.collectAsState()
+    var pendingDelete by remember { mutableStateOf<Skill?>(null) }
 
     Scaffold(
         topBar = {
@@ -89,7 +94,7 @@ fun SkillsScreen(viewModel: SkillsViewModel = hiltViewModel()) {
                         SkillCard(
                             skill = skill,
                             onClick = { viewModel.viewSkill(skill) },
-                            onDelete = { viewModel.deleteSkill(skill) },
+                            onDelete = { pendingDelete = skill },
                         )
                     }
                 }
@@ -114,6 +119,19 @@ fun SkillsScreen(viewModel: SkillsViewModel = hiltViewModel()) {
         SkillViewDialog(
             skill = state.selectedSkill!!,
             onDismiss = viewModel::hideViewDialog,
+        )
+    }
+
+    pendingDelete?.let { skill ->
+        DestructiveActionDialog(
+            title = "Delete \"${skill.name}\"?",
+            message = "This permanently removes the skill and its instructions. This action cannot be undone.",
+            confirmLabel = "Delete skill",
+            onConfirm = {
+                viewModel.deleteSkill(skill)
+                pendingDelete = null
+            },
+            onDismiss = { pendingDelete = null },
         )
     }
 }

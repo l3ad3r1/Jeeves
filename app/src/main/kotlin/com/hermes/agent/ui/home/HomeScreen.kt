@@ -37,8 +37,13 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.hermes.agent.domain.model.Conversation
 import com.hermes.agent.ui.components.ExpressiveEyes
 import com.hermes.agent.ui.components.HermesDiamond
-import com.hermes.agent.ui.theme.GeistMono
+import com.jeeves.core.theme.GeistMono
 import com.hermes.agent.ui.theme.HermesAccentDeep
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.Settings
+import androidx.compose.material3.Icon
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 
 /**
  * Home dashboard — the app's landing surface: greeting, the active cloud model,
@@ -96,14 +101,20 @@ fun HomeScreen(
             }
             Box(
                 modifier = Modifier
-                    .size(42.dp)
+                    .size(48.dp)
                     .clip(RoundedCornerShape(percent = 50))
                     .background(scheme.surface)
                     .border(1.dp, scheme.outline.copy(alpha = 0.4f), RoundedCornerShape(percent = 50))
-                    .clickable(onClick = onOpenSettings),
+                    .clickable(onClick = onOpenSettings)
+                    .semantics { contentDescription = "Open settings" },
                 contentAlignment = Alignment.Center,
             ) {
-                Text("A", fontWeight = FontWeight.SemiBold, color = scheme.onBackground)
+                Icon(
+                    imageVector = Icons.Outlined.Settings,
+                    contentDescription = null,
+                    tint = scheme.onBackground,
+                    modifier = Modifier.size(22.dp),
+                )
             }
         }
 
@@ -157,18 +168,26 @@ fun HomeScreen(
         Row(horizontalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.fillMaxWidth()) {
             QuickAction(
                 title = "Notes",
-                subtitle = "Notes & Gists",
+                subtitle = "Capture ideas",
                 modifier = Modifier.weight(1f),
                 onClick = {
-                    context.startActivity(Intent(context, com.l3ad3r1.octojotter.MainActivity::class.java))
+                    val intent = Intent(context, com.l3ad3r1.octojotter.MainActivity::class.java).apply {
+                        putExtra("EXTRA_EMBEDDED", true)
+                        addFlags(Intent.FLAG_ACTIVITY_NO_ANIMATION)
+                    }
+                    context.startActivity(intent)
                 },
             )
             QuickAction(
                 title = "Alarms",
-                subtitle = "Alarms",
+                subtitle = "Wake-ups & reminders",
                 modifier = Modifier.weight(1f),
                 onClick = {
-                    context.startActivity(Intent(context, com.sassybutler.alarm.MainAlarmSetupActivity::class.java))
+                    val intent = Intent(context, com.sassybutler.alarm.MainAlarmSetupActivity::class.java).apply {
+                        putExtra("EXTRA_EMBEDDED", true)
+                        addFlags(Intent.FLAG_ACTIVITY_NO_ANIMATION)
+                    }
+                    context.startActivity(intent)
                 },
             )
         }
@@ -182,7 +201,7 @@ fun HomeScreen(
             EmptyHint("No conversations yet — start a new chat.")
         } else {
             Column(verticalArrangement = Arrangement.spacedBy(9.dp)) {
-                threads.forEach { ThreadRow(it, onClick = onOpenConversations) }
+                threads.forEach { thread -> ThreadRow(thread, onClick = { onNewChat(thread.id) }) }
             }
         }
     }

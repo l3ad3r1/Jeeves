@@ -11,6 +11,7 @@ import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.platform.LocalContext
+import com.jeeves.core.theme.HermesTypography
 
 // Notes uses the shared Jeeves palette from :core:theme; its old private
 // "Inkwell" light/dark schemes were removed with the rebrand.
@@ -42,6 +43,10 @@ fun MyApplicationTheme(
   val statusColors = if (darkTheme) DarkStatusColors else LightStatusColors
 
   CompositionLocalProvider(LocalOctoStatusColors provides statusColors) {
-    MaterialTheme(colorScheme = colorScheme, typography = Typography, content = content)
+    MaterialTheme(
+      colorScheme = colorScheme,
+      typography = HermesTypography,
+      content = content
+    )
   }
 }

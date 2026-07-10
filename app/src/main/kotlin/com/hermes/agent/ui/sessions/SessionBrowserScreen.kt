@@ -24,6 +24,7 @@ import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material.icons.outlined.Search
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
@@ -48,6 +49,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.hermes.agent.R
 import com.hermes.agent.data.local.entity.SessionWithMessageCount
+import com.hermes.agent.ui.components.DestructiveActionDialog
 import com.hermes.agent.ui.components.SlimTopBar
 import java.text.DateFormat
 import java.util.Date
@@ -71,10 +73,11 @@ fun SessionBrowserScreen(
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     var searchQuery by rememberSaveable { mutableStateOf("") }
+    var pendingDelete by remember { mutableStateOf<SessionWithMessageCount?>(null) }
 
     Scaffold(
         topBar = {
-            SlimTopBar(title = "Search")
+            SlimTopBar(title = "Chats")
         },
         floatingActionButton = {
             FloatingActionButton(
@@ -96,7 +99,7 @@ fun SessionBrowserScreen(
                 value = searchQuery,
                 onValueChange = { query ->
                     searchQuery = query
-                    viewModel.searchSessions(query)
+                    viewModel.onSearchQueryChanged(query)
                 },
                 modifier = Modifier
                     .fillMaxWidth()
@@ -121,7 +124,9 @@ fun SessionBrowserScreen(
             Box(modifier = Modifier.weight(1f).fillMaxWidth()) {
                 when (val state = uiState) {
                     is SessionBrowserUiState.Loading -> {
-                        // Loading content here...
+                        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                            CircularProgressIndicator()
+                        }
                     }
                     is SessionBrowserUiState.Success -> {
                         if (state.sessions.isEmpty()) {
@@ -148,7 +153,7 @@ fun SessionBrowserScreen(
                                     SessionRow(
                                         item = item,
                                         onClick = { onOpenSession(item.session.id) },
-                                        onDelete = { viewModel.deleteSession(item.session.id) },
+                                        onDelete = { pendingDelete = item },
                                     )
                                 }
                             }
@@ -164,6 +169,20 @@ fun SessionBrowserScreen(
                 }
             }
         }
+    }
+
+    pendingDelete?.let { item ->
+        val name = item.session.title.ifBlank { "this conversation" }
+        DestructiveActionDialog(
+            title = "Delete \"$name\"?",
+            message = "This permanently removes the conversation and its messages. This action cannot be undone.",
+            confirmLabel = "Delete conversation",
+            onConfirm = {
+                viewModel.deleteSession(item.session.id)
+                pendingDelete = null
+            },
+            onDismiss = { pendingDelete = null },
+        )
     }
 }
 

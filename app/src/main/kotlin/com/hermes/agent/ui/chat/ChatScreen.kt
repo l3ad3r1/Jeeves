@@ -42,6 +42,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -63,7 +64,7 @@ import com.hermes.agent.ui.chat.components.MessageBubble
 import com.hermes.agent.ui.chat.components.StreamingBubble
 import com.hermes.agent.ui.components.PulsingDot
 import com.hermes.agent.ui.components.SlimTopBar
-import com.hermes.agent.ui.theme.GeistMono
+import com.jeeves.core.theme.GeistMono
 
 /**
  * Main chat screen. Renders the message list, the streaming bubble (when
@@ -89,9 +90,16 @@ fun ChatScreen(
     var planDrawerOpen by remember { mutableStateOf(false) }
     var chatTab by remember { mutableStateOf(0) } // 0=Tools, 1=Terminal, 2=Subagents
 
-    // Auto-scroll to bottom when new items arrive.
+    // Auto-scroll only when the user is already near the bottom of the list.
+    // This prevents pulling users away from earlier content they're reading.
+    val isNearBottom = remember {
+        derivedStateOf {
+            val lastVisible = listState.layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: 0
+            lastVisible >= (uiState.visibleItems.lastIndex - 1).coerceAtLeast(0)
+        }
+    }
     LaunchedEffect(uiState.visibleItems.size, uiState.streamingText) {
-        if (uiState.visibleItems.isNotEmpty()) {
+        if (uiState.visibleItems.isNotEmpty() && isNearBottom.value) {
             listState.animateScrollToItem(uiState.visibleItems.lastIndex)
         }
     }

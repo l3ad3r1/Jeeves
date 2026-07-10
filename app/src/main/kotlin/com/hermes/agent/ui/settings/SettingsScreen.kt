@@ -63,6 +63,7 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -70,6 +71,7 @@ import com.hermes.agent.BuildConfig
 import com.hermes.agent.R
 import com.hermes.agent.data.settings.UserSettings
 import com.hermes.agent.service.ApiServerController
+import com.hermes.agent.ui.components.DestructiveActionDialog
 import com.hermes.agent.ui.theme.AppTheme
 import com.hermes.agent.ui.theme.hermesFieldColors
 import com.hermes.agent.ui.theme.hermesSwitchColors
@@ -84,6 +86,10 @@ import androidx.compose.material3.SingleChoiceSegmentedButtonRow
 import androidx.compose.material3.Slider
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.role
+import androidx.compose.ui.semantics.selected
+import androidx.compose.ui.semantics.stateDescription
 import com.jeeves.core.settings.JeevesSettings
 import com.sassybutler.alarm.VoiceCatalog
 import java.util.Locale
@@ -567,7 +573,12 @@ private fun ThemeSwatch(
                 .height(64.dp)
                 .clip(RoundedCornerShape(8.dp))
                 .border(2.dp, borderColor, RoundedCornerShape(8.dp))
-                .clickable(onClick = onClick),
+                .clickable(onClick = onClick)
+                .semantics {
+                    role = Role.RadioButton
+                    this.selected = selected
+                    this.contentDescription = "Theme: ${option.label}"
+                },
         ) {
             Surface(
                 modifier = Modifier.matchParentSize(),
@@ -702,7 +713,10 @@ private fun AlarmSettingsSection(
                     value = state.sassLevel.toFloat(),
                     onValueChange = { onSassLevel(it.toInt()) },
                     valueRange = 0f..100f,
-                    modifier = Modifier.semantics { contentDescription = "Sass level" },
+                    modifier = Modifier.semantics {
+                        contentDescription = "Sass level"
+                        stateDescription = "${state.sassLevel} out of 100"
+                    },
                 )
             }
 
@@ -715,7 +729,10 @@ private fun AlarmSettingsSection(
                     value = state.snoozeMinutes.toFloat(),
                     onValueChange = { onSnoozeMinutes(it.toInt().coerceAtLeast(1)) },
                     valueRange = 1f..30f,
-                    modifier = Modifier.semantics { contentDescription = "Snooze minutes" },
+                    modifier = Modifier.semantics {
+                        contentDescription = "Snooze duration"
+                        stateDescription = "${state.snoozeMinutes} minutes"
+                    },
                 )
             }
 
@@ -793,6 +810,8 @@ private fun ApiServerSection(
 ) {
     val status by ApiServerController.status.collectAsStateWithLifecycle()
     val clipboard = LocalContext.current.getSystemService(android.content.ClipboardManager::class.java)
+    var tokenVisible by remember { mutableStateOf(false) }
+    var confirmRegeneration by remember { mutableStateOf(false) }
 
     Card(modifier = Modifier.fillMaxWidth()) {
         Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
@@ -827,17 +846,37 @@ private fun ApiServerSection(
                     label = { Text("Bearer token") },
                     supportingText = { Text("Send as: Authorization: Bearer <token>") },
                     singleLine = true,
+                    visualTransformation = if (tokenVisible) {
+                        VisualTransformation.None
+                    } else {
+                        PasswordVisualTransformation()
+                    },
                     colors = hermesFieldColors(),
                     modifier = Modifier.fillMaxWidth(),
                 )
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    OutlinedButton(onClick = {
-                        clipboard?.setPrimaryClip(
-                            android.content.ClipData.newPlainText("Jeeves API key", settings.apiServerKey),
-                        )
-                    }) { Text("Copy token") }
-                    OutlinedButton(onClick = onRegenerateKey) { Text("Regenerate") }
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    OutlinedButton(
+                        onClick = { tokenVisible = !tokenVisible },
+                        modifier = Modifier.weight(1f),
+                    ) {
+                        Text(if (tokenVisible) "Hide token" else "Reveal token")
+                    }
+                    OutlinedButton(
+                        onClick = {
+                            clipboard?.setPrimaryClip(
+                                android.content.ClipData.newPlainText("Jeeves API key", settings.apiServerKey),
+                            )
+                        },
+                        modifier = Modifier.weight(1f),
+                    ) { Text("Copy token") }
                 }
+                OutlinedButton(
+                    onClick = { confirmRegeneration = true },
+                    modifier = Modifier.fillMaxWidth(),
+                ) { Text("Regenerate token") }
 
                 HorizontalDivider()
                 ToggleRow(
@@ -854,6 +893,20 @@ private fun ApiServerSection(
                 )
             }
         }
+    }
+
+    if (confirmRegeneration) {
+        DestructiveActionDialog(
+            title = "Regenerate bearer token?",
+            message = "Apps using the current token will lose access until you update their connection settings.",
+            confirmLabel = "Regenerate token",
+            onConfirm = {
+                onRegenerateKey()
+                tokenVisible = false
+                confirmRegeneration = false
+            },
+            onDismiss = { confirmRegeneration = false },
+        )
     }
 }
 

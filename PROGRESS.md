@@ -16,6 +16,16 @@ repo. Octo Jotter and Sassy Butler are NOT yet imported (Phase 3).
 
 ## Status log (newest first)
 
+### UI/UX P0 trust and safety — DONE (2026-07-10)
+- [x] UX-001: onboarding permissions are now requested one capability at a time, with a clear
+      purpose, live Allowed state, and explicit permission to continue without granting access.
+- [x] UX-002: one shared destructive-action dialog now protects conversation deletion, custom
+      skill deletion, and plugin uninstall with named consequences and explicit confirmation.
+- [x] UX-005: the local API bearer token is masked by default, has an explicit reveal/hide
+      control, and regeneration warns that connected clients will lose access.
+- [x] `:app:compileDebugKotlin` and `:app:testDebugUnitTest` completed successfully. Runtime
+      permission denial/permanent-denial recovery and dialog focus behavior still need a device pass.
+
 ### Product UI/UX audit — 2026-07-10
 - [x] Created `docs/UI_UX_VISUAL_REPORT_2026-07-10.md`: a code-evidenced visual audit of
       Material Design, accessibility, navigation, trust, safety, workflow continuity, and the

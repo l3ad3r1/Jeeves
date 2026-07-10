@@ -44,6 +44,8 @@ android {
 dependencies {
     // The one settings store shared with :app and :feature:jotter.
     implementation(project(":core:settings"))
+    implementation(platform(libs.androidx.compose.bom))
+    implementation(project(":core:theme"))
 
     // --- Hilt (contributes ButlerModule to the host's single object graph) ---
     implementation(libs.hilt.android)

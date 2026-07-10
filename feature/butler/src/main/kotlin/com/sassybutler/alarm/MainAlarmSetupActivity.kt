@@ -56,10 +56,17 @@ class MainAlarmSetupActivity : AppCompatActivity() {
     ) { granted -> if (granted) refreshWeather() }
 
     override fun onCreate(savedInstanceState: Bundle?) {
-        // Must run before super.onCreate(): reads the manifest's Splash
-        // theme, shows the tuxedo icon, then hands off to postSplashScreenTheme.
-        installSplashScreen()
+        val isEmbedded = intent.getBooleanExtra("EXTRA_EMBEDDED", false)
+        if (!isEmbedded) {
+            installSplashScreen()
+        } else {
+            setTheme(R.style.Theme_SassyButler)
+        }
         super.onCreate(savedInstanceState)
+        if (isEmbedded) {
+            @Suppress("DEPRECATION")
+            overridePendingTransition(0, 0)
+        }
         binding = ActivityMainBinding.inflate(layoutInflater)
         scheduler = AlarmScheduler(this)
         setContentView(binding.root)

@@ -18,9 +18,17 @@ class MainActivity : FragmentActivity() {
   private val viewModel: NoteViewModel by viewModels()
 
   override fun onCreate(savedInstanceState: Bundle?) {
-    // Must be called before super.onCreate() so the system splash is handed off cleanly.
-    installSplashScreen()
+    val isEmbedded = intent.getBooleanExtra("EXTRA_EMBEDDED", false)
+    if (!isEmbedded) {
+      installSplashScreen()
+    } else {
+      setTheme(R.style.Theme_MyApplication)
+    }
     super.onCreate(savedInstanceState)
+    if (isEmbedded) {
+      @Suppress("DEPRECATION")
+      overridePendingTransition(0, 0)
+    }
     if (savedInstanceState == null) {
       handleSharedText(intent)
     }

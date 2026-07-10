@@ -93,7 +93,14 @@ class TtsEngine(private val context: Context) : Closeable {
         voiceCache[name]?.let { return it }
 
         try {
-            context.assets.open(ASSET_VOICES).use { raw ->
+            val downloadedFile = java.io.File(context.filesDir, VoiceDownloader.DOWNLOADED_VOICES_FILE)
+            val inputStream = if (downloadedFile.exists() && downloadedFile.length() > 0) {
+                java.io.FileInputStream(downloadedFile)
+            } else {
+                context.assets.open(ASSET_VOICES)
+            }
+
+            inputStream.use { raw ->
                 ZipInputStream(BufferedInputStream(raw)).use { zip ->
                     var entry = zip.nextEntry
                     while (entry != null) {
@@ -109,7 +116,7 @@ class TtsEngine(private val context: Context) : Closeable {
                     }
                 }
             }
-            Log.w(TAG, "Voice '$name' not found in $ASSET_VOICES")
+            Log.w(TAG, "Voice '$name' not found in bundle")
         } catch (e: Exception) {
             Log.e(TAG, "Failed to load voice '$name'", e)
         }

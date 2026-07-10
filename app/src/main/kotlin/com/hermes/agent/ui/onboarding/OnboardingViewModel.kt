@@ -47,6 +47,9 @@ class OnboardingViewModel @Inject constructor(
     private val _device = MutableStateFlow<DeviceProfile?>(null)
     val device: StateFlow<DeviceProfile?> = _device.asStateFlow()
 
+    private val _error = MutableStateFlow<String?>(null)
+    val error: StateFlow<String?> = _error.asStateFlow()
+
     private val _scanning = MutableStateFlow(false)
     val scanning: StateFlow<Boolean> = _scanning.asStateFlow()
 
@@ -62,7 +65,12 @@ class OnboardingViewModel @Inject constructor(
         if (_scanning.value) return
         viewModelScope.launch {
             _scanning.value = true
-            _device.value = runCatching { deviceProfiler.profile() }.getOrNull()
+            try {
+                _error.value = null
+                _device.value = deviceProfiler.profile()
+            } catch (e: Exception) {
+                _error.value = e.message ?: "Failed to profile device"
+            }
             _scanning.value = false
         }
     }

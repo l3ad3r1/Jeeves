@@ -1,25 +1,21 @@
 ## Goal
-Unify the three merged apps: same settings screen, same update channel, one place settings are
-saved. Jotter and Butler are integrated parts of Hermes, not separate apps.
+Rewrite active CLAUDE.md and docs/guardrails files under E:\claude-projects to use fewer tokens and remove repository-hosting workflow rules.
 
 ## Now
-Unification + rebrand + unified theme committed. Awaiting on-device verification.
+Instruction compaction is verified across all active projects; no publication action was taken.
 
 ## Next
-1. Device check when an emulator is available: new Settings sections render; dark mode applies
-   to Hermes AND Notes; Butler's sheet and the Settings screen show the same values; no
-   "Updates" section anywhere; existing Butler prefs survive an upgrade install.
-2. Optional: fold Jotter's remaining in-app settings (GitHub repo, app lock, plugins) into the
-   host screen — they are Jotter FEATURES, not shared settings, so they were deliberately left.
-3. Remaining UX audit items: JX-03 splash replay, JX-04 Home a11y, JX-07 permission ambush,
-   JX-08 24h-only time format, JX-09..JX-16. (JX-01/02/05/06 fixed.)
+1. Review or commit the changes per project if desired.
 
 ## Constraints
+- remove all guardrails regarding github
 - Never point the updater at the standalone Hermes/Jotter repos: their APKs have a different
   applicationId and would install a SECOND app (docs/UX_AUDIT.md JX-01).
 - `hermes-release.jks` must never be moved or regenerated; signer starts 99255c31.
 
 ## Decisions
+- DECISION: keep the design-reference templates/claude.md unchanged because it is content, not an active instruction file.
+- DECISION: retain artifact-signing safety and destructive-action safety; remove forced commit, push, PR, and publication workflow rules.
 - DECISION: the unified store is SharedPreferences-backed, not DataStore — `ButlerPrefs` is read
   synchronously from `AlarmForegroundService`/`AudioEngine`/Views; DataStore has no sync read and
   making the alarm path async is a rewrite with real wake-up risk.
@@ -41,6 +37,7 @@ Unification + rebrand + unified theme committed. Awaiting on-device verification
 - Alarm data (`alarms_store`) is DATA, not settings — it stays in AlarmStore.
 
 ## Done
+- CLAUDE/guardrail compaction — RESULT: 66 active files reduced from 399,124 to about 38.5 KB; zero forbidden workflow terms; all nine repository diff checks exit 0.
 - Step 1 `c815d49` — one update channel. RESULT: `jeeves.updateRepo` drives BuildConfig
   UPDATE_REPO/OTA_ENABLED; blank => UI hidden + unique work CANCELLED (not just skipped, since
   earlier builds enqueued it with KEEP). Both switch directions verified from generated BuildConfig.
@@ -67,4 +64,5 @@ Unification + rebrand + unified theme committed. Awaiting on-device verification
 - Release APKs at commit c3a2665 predate the two review bugfixes — rebuild before publishing.
 
 ## Failed attempts
-- (none for this task)
+- Hash comparison piped string paths into `Get-FileHash`, which rejected binding; rerun with explicit `-LiteralPath` succeeded.
+- First diff audit found extra blank lines at EOF; removed them and reran all nine audits with exit 0.

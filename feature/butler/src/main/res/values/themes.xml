@@ -2,6 +2,8 @@
 <resources>
     <!-- The Parlour — light Magritte-butler theme -->
     <style name="Theme.SassyButler" parent="Theme.MaterialComponents.DayNight.NoActionBar">
+        <item name="android:fontFamily">@font/geist_regular</item>
+        <item name="fontFamily">@font/geist_regular</item>
         <item name="colorPrimary">@color/ink</item>
         <item name="colorPrimaryVariant">@color/ink</item>
         <item name="colorOnPrimary">@color/cream</item>
@@ -30,6 +32,7 @@
 
     <!-- NumberPicker styling (light parlour version) -->
     <style name="NumberPickerTheme" parent="Theme.MaterialComponents.DayNight">
+        <item name="android:fontFamily">@font/geist_regular</item>
         <item name="colorControlNormal">@color/ink</item>
         <item name="colorControlActivated">@color/ink</item>
         <item name="android:textColorPrimary">@color/ink</item>

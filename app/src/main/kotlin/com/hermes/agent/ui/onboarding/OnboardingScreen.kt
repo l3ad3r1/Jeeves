@@ -44,8 +44,8 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.foundation.text.KeyboardOptions
 import com.hermes.agent.data.device.DeviceProfile
 import com.hermes.agent.ui.components.HermesDiamond
-import com.hermes.agent.ui.theme.Geist
-import com.hermes.agent.ui.theme.GeistMono
+import com.jeeves.core.theme.Geist
+import com.jeeves.core.theme.GeistMono
 
 /**
  * Multi-step setup journey: welcome → profile → permissions → device scan.

@@ -72,7 +72,7 @@ fun HermesNavGraph(startAtSettings: Boolean = false) {
                                     restoreState = true
                                 }
                             },
-                            icon = { Icon(dest.icon, contentDescription = dest.label) },
+                            icon = { Icon(dest.icon, contentDescription = null) },
                             label = { Text(dest.label) },
                         )
                     }

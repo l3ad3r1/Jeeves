@@ -24,7 +24,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.hermes.agent.domain.model.Connector
 import com.hermes.agent.domain.model.ConnectorType
-import com.hermes.agent.ui.theme.GeistMono
+import com.jeeves.core.theme.GeistMono
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable

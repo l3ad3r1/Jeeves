@@ -21,6 +21,9 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
@@ -28,6 +31,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.hermes.agent.domain.plugin.PluginInstance
 import com.hermes.agent.domain.plugin.PluginState
+import com.hermes.agent.ui.components.DestructiveActionDialog
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -35,6 +39,7 @@ fun PluginsScreen(
     viewModel: PluginsViewModel = hiltViewModel(),
 ) {
     val plugins by viewModel.plugins.collectAsStateWithLifecycle()
+    var pendingUninstall by remember { mutableStateOf<PluginInstance?>(null) }
 
     Scaffold(
         topBar = {
@@ -72,11 +77,24 @@ fun PluginsScreen(
                             if (enabled) viewModel.activate(plugin.manifest.id)
                             else viewModel.suspend_(plugin.manifest.id)
                         },
-                        onUninstall = { viewModel.uninstall(plugin.manifest.id) },
+                        onUninstall = { pendingUninstall = plugin },
                     )
                 }
             }
         }
+    }
+
+    pendingUninstall?.let { plugin ->
+        DestructiveActionDialog(
+            title = "Uninstall \"${plugin.manifest.displayName}\"?",
+            message = "This removes the plugin and its local configuration. You will need to install it again to use it.",
+            confirmLabel = "Uninstall plugin",
+            onConfirm = {
+                viewModel.uninstall(plugin.manifest.id)
+                pendingUninstall = null
+            },
+            onDismiss = { pendingUninstall = null },
+        )
     }
 }
 

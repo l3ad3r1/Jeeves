@@ -197,7 +197,14 @@ class PreferencesSheet(private val onChanged: () -> Unit = {}) : BottomSheetDial
         binding.spinnerVoice.onItemSelectedListener = object : AdapterView.OnItemSelectedListener {
             override fun onItemSelected(parent: AdapterView<*>?, view: View?, position: Int, id: Long) {
                 val name = VoiceCatalog.VOICES[position].name
-                if (name != VoiceCatalog.selected(ctx)) VoiceCatalog.select(ctx, name)
+                if (name != VoiceCatalog.selected(ctx)) {
+                    VoiceCatalog.select(ctx, name)
+                    if (name != "bm_daniel" && !VoiceDownloader.isDownloaded(ctx)) {
+                        VoiceDownloader.downloadVoices(ctx) {
+                            Toast.makeText(ctx, "Voice ready!", Toast.LENGTH_SHORT).show()
+                        }
+                    }
+                }
             }
             override fun onNothingSelected(parent: AdapterView<*>?) = Unit
         }

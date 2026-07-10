@@ -34,7 +34,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.hermes.agent.ui.theme.GeistMono
+import com.jeeves.core.theme.GeistMono
 
 /**
  * Settings → Logs. Shows the captured app log and lets the user copy or share
