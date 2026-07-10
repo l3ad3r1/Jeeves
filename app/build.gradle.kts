@@ -165,6 +165,7 @@ kotlin {
 dependencies {
     // The one settings store, shared with both feature modules.
     implementation(project(":core:settings"))
+    implementation(project(":core:theme"))
 
     // --- Feature modules ---
     implementation(project(":feature:jotter"))

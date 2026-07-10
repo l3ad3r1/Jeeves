@@ -67,6 +67,7 @@ kotlin {
 dependencies {
     // The one settings store shared with :app and :feature:butler.
     implementation(project(":core:settings"))
+    implementation(project(":core:theme"))
 
     // --- Hilt (contributes JotterModule to the host's single object graph) ---
     implementation(libs.hilt.android)

@@ -4,7 +4,9 @@
     <color name="cream">#F5F2EE</color>          <!-- background -->
     <color name="card">#FDFBF7</color>           <!-- card surface -->
     <color name="ink">#1C2127</color>            <!-- primary / text -->
-    <color name="powder_blue">#87BDD4</color>    <!-- secondary accent -->
+    <!-- Accent for text/links. Darkened from #87BDD4, which measured 1.83:1 on cream
+         and failed WCAG on the primary "Preview Wake-Up" action (JX-05). Now 5.04:1. -->
+    <color name="powder_blue">#2E6E8E</color>    <!-- secondary accent -->
     <color name="apple_green">#5C8B3A</color>    <!-- Magritte accent -->
     <color name="parchment">#EBE6DF</color>      <!-- muted surface -->
     <color name="linen_border">#D4CDBF</color>   <!-- borders -->

@@ -519,9 +519,11 @@ private data class ThemeOption(
 )
 
 private val themeOptions = listOf(
-    ThemeOption("MIDNIGHT",    "Midnight",     Color(0xFF0A0A0F), Color(0xFFF3F3F6), Color(0xFF5B73FF)),
-    ThemeOption("PAPER",       "Paper",        Color(0xFFF3F2EE), Color(0xFF0D0D12), Color(0xFF0000F2)),
-    ThemeOption("HERMES_BLUE", "Hermes Blue",  Color(0xFF3300FF), Color(0xFFFFFFFF), Color(0xFF2200CC)),
+    // Accent brands, not light/dark variants — Dark mode picks the variant.
+    // MIDNIGHT is the stored value for the default monochrome brand; the legacy PAPER
+    // value still reads back as monochrome (HermesTheme maps both to the shared palette).
+    ThemeOption("MIDNIGHT",    "Monochrome",   Color(0xFF0A0A0F), Color(0xFFF3F3F6), Color(0xFF5B73FF)),
+    ThemeOption("HERMES_BLUE", "Blue",         Color(0xFF3300FF), Color(0xFFFFFFFF), Color(0xFF2200CC)),
 )
 
 @Composable

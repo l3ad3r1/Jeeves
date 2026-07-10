@@ -1,18 +1,15 @@
 package com.hermes.agent.ui.theme
 
 import android.app.Activity
-import android.os.Build
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.darkColorScheme
-import androidx.compose.material3.dynamicDarkColorScheme
-import androidx.compose.material3.dynamicLightColorScheme
 import androidx.compose.material3.lightColorScheme
+import com.jeeves.core.theme.jeevesColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.SideEffect
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toArgb
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalView
 import androidx.core.view.WindowCompat
 
@@ -28,56 +25,6 @@ enum class AppTheme {
     PAPER,
     HERMES_BLUE,
 }
-
-// ── Midnight color scheme — monochrome ───────────────────────────────
-private val MidnightColorScheme = darkColorScheme(
-    primary              = MidnightPrimary,
-    onPrimary            = MidnightOnPrimary,
-    primaryContainer     = MidnightPrimaryContainer,
-    onPrimaryContainer   = MidnightOnPrimaryContainer,
-    secondary            = MidnightSecondary,
-    onSecondary          = MidnightOnSecondary,
-    secondaryContainer   = MidnightSecondaryContainer,
-    tertiary             = Color(0xFFAAAAAA),   // neutral grey (was green)
-    onTertiary           = Color(0xFF000000),
-    background           = MidnightBackground,
-    onBackground         = MidnightOnBackground,
-    surface              = MidnightSurface,
-    onSurface            = MidnightOnSurface,
-    surfaceVariant       = MidnightSurfaceVariant,
-    onSurfaceVariant     = MidnightOnSurfaceVariant,
-    surfaceContainer     = MidnightSurface,
-    surfaceContainerHigh = MidnightSurfaceVariant,
-    outline              = MidnightOutline,
-    outlineVariant       = MidnightSurfaceVariant,
-    error                = MidnightError,
-    onError              = Color.Black,
-)
-
-// ── Paper color scheme ────────────────────────────────────────────────
-private val PaperColorScheme = lightColorScheme(
-    primary              = PaperPrimary,
-    onPrimary            = PaperOnPrimary,
-    primaryContainer     = PaperPrimaryContainer,
-    onPrimaryContainer   = PaperOnPrimaryContainer,
-    secondary            = PaperSecondary,
-    onSecondary          = PaperOnSecondary,
-    secondaryContainer   = PaperSecondaryContainer,
-    tertiary             = HermesGoodLight,
-    onTertiary           = Color.White,
-    background           = PaperBackground,
-    onBackground         = PaperOnBackground,
-    surface              = PaperSurface,
-    onSurface            = PaperOnSurface,
-    surfaceVariant       = PaperSurfaceVariant,
-    onSurfaceVariant     = PaperOnSurfaceVariant,
-    surfaceContainer     = PaperSurface,
-    surfaceContainerHigh = PaperSurfaceVariant,
-    outline              = PaperOutline,
-    outlineVariant       = PaperSurfaceVariant,
-    error                = PaperError,
-    onError              = Color.White,
-)
 
 // ── Hermes Blue color scheme ──────────────────────────────────────────
 private val HermesBlueColorScheme = darkColorScheme(
@@ -98,62 +45,32 @@ private val HermesBlueColorScheme = darkColorScheme(
     onError              = Color.White,
 )
 
-// ── Legacy light / dark (used when dynamicColor is active) ────────────
-private val LightColors = lightColorScheme(
-    primary              = HermesPrimary,
-    onPrimary            = HermesOnPrimary,
-    primaryContainer     = HermesPrimaryContainer,
-    onPrimaryContainer   = HermesOnPrimaryContainer,
-    secondary            = HermesAccent,
-    onSecondary          = HermesOnAccent,
-    secondaryContainer   = HermesAccentContainer,
-    background           = HermesBackground,
-    onBackground         = HermesOnBackground,
-    surface              = HermesSurface,
-    onSurface            = HermesOnSurface,
-    surfaceVariant       = HermesSurfaceVariant,
-    onSurfaceVariant     = HermesOnSurfaceVariant,
-    error                = HermesError,
-)
-
-private val DarkColors = darkColorScheme(
-    primary              = HermesPrimaryDarkMode,
-    secondary            = HermesAccentDarkMode,
-    background           = HermesBackgroundDark,
-    onBackground         = HermesOnBackgroundDark,
-    surface              = HermesSurfaceDark,
-    onSurface            = HermesOnSurfaceDark,
-    surfaceVariant       = Color(0xFF334155),
-    onSurfaceVariant     = Color(0xFFCBD5E1),
-    error                = Color(0xFFFCA5A5),
-)
-
 /**
- * Root theme composable. When [appTheme] is provided it overrides dynamic
- * color and system dark-mode — the user's explicit choice wins.
+ * Root theme composable — the one Jeeves theme, shared with Notes via `:core:theme`.
+ *
+ * [appTheme] selects the accent brand, [darkTheme] selects the light/dark variant. They are
+ * orthogonal: MIDNIGHT and PAPER were always the dark and light halves of the same monochrome
+ * palette, so both now map to the shared Jeeves scheme and the app-wide Dark mode setting
+ * decides which half is used. HERMES_BLUE is a genuinely different brand and is dark-only.
+ *
+ * Previously a non-null [appTheme] short-circuited [darkTheme] entirely — and MainActivity
+ * always passes one (defaulting to MIDNIGHT), so the Dark mode setting never affected this
+ * app's own surfaces.
  */
 @Composable
 fun HermesTheme(
     appTheme: AppTheme? = null,
     darkTheme: Boolean = isSystemInDarkTheme(),
-    dynamicColor: Boolean = true,
     content: @Composable () -> Unit,
 ) {
-    val context = LocalContext.current
-
     val colorScheme = when (appTheme) {
-        AppTheme.MIDNIGHT   -> MidnightColorScheme
-        AppTheme.PAPER      -> PaperColorScheme
+        // Dark-only accent brand.
         AppTheme.HERMES_BLUE -> HermesBlueColorScheme
-        null -> when {
-            dynamicColor && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S ->
-                if (darkTheme) dynamicDarkColorScheme(context) else dynamicLightColorScheme(context)
-            darkTheme -> DarkColors
-            else -> LightColors
-        }
+        // MIDNIGHT / PAPER / null -> the shared palette; the mode picks the variant.
+        else -> jeevesColorScheme(darkTheme)
     }
 
-    val isDark = appTheme != AppTheme.PAPER && (appTheme != null || darkTheme)
+    val isDark = appTheme == AppTheme.HERMES_BLUE || darkTheme
 
     val view = LocalView.current
     if (!view.isInEditMode) {
