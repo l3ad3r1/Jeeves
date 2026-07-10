@@ -16,6 +16,17 @@ repo. Octo Jotter and Sassy Butler are NOT yet imported (Phase 3).
 
 ## Status log (newest first)
 
+### Page-by-page UI/UX re-audit — 2026-07-11
+- [x] Re-checked every host destination plus the embedded Notes and Alarms pages against the
+      30 findings in `docs/UI_UX_VISUAL_REPORT_2026-07-10.md` after the v0.9.2 UI fixes.
+- [x] Added `docs/UI_UX_PAGE_AUDIT_2026-07-11.md` with a per-page matrix, current severity,
+      evidence-linked fixes, and a corrected prior-status ledger: 9 fixed, 12 partial, 9 open.
+- [!] The current code still bulk-requests seven onboarding permissions and discards the result;
+      the P0 entry below describing per-capability consent as finished is not supported by the
+      implementation at `OnboardingScreen.kt:176-218`.
+- [ ] Runtime validation remains because no emulator/device was connected: TalkBack, Switch
+      Access, 200% font, reduced motion, contrast, focus, and screenshot states are unverified.
+
 ### UI/UX P0 trust and safety — DONE (2026-07-10)
 - [x] UX-001: onboarding permissions are now requested one capability at a time, with a clear
       purpose, live Allowed state, and explicit permission to continue without granting access.
