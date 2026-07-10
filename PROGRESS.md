@@ -181,8 +181,8 @@ directly (e.g. full-text search across notes from the agent's own RAG index).
 ### Phase 6 — Integration synergies — IN PROGRESS
 - [x] **`create_note` tool** -> Octo Jotter's `NoteRepository`.
 - [x] **`set_alarm` tool** -> Sassy Butler's `AlarmScheduler` + `AlarmStore`.
-- [ ] **Shared TTS** — expose Butler's `TtsEngine` behind a lazy, off-main-thread guard so
-      Hermes can speak agent replies. Not started (see the Phase 4 note on its 92 MB eager init).
+- [x] **Shared TTS** — `ButlerSpeech` (`:feature:butler`) wraps `TtsEngine` behind a lazy,
+      mutex-guarded init on `Dispatchers.IO`, and Hermes's `speak` tool now uses it by default.
 
 Both tools follow the mandatory 3-step wiring rule:
 1. registered in `di/ToolsModule` (as `provideToolRegistry` parameters),
@@ -221,12 +221,47 @@ Design notes:
 **Not verified:** an end-to-end LLM tool call (needs a real API key), and the alarm actually firing
 from an agent-created alarm.
 
+### Shared TTS — `ButlerSpeech`
+`feature/butler/.../ButlerSpeech.kt` is an injectable `@Singleton` that owns `TtsEngine`.
+`TtsEngine` itself is still NOT a Hilt binding, because its `init` loads the ~92 MB ONNX model
+synchronously; `ButlerSpeech` builds it exactly once, lazily, on `Dispatchers.IO`, behind a
+`Mutex` so concurrent `speak` calls cannot both load the model. Playback mirrors Butler's
+`AudioEngine.playPcmBuffer` (Float32 PCM, tail drained before release) with one deliberate
+difference: `USAGE_ASSISTANT` instead of `USAGE_ALARM`, so an agent reply is not routed to the
+alarm stream or through Do Not Disturb.
+
+Hermes's existing `speak` tool now tries `ButlerSpeech` first and falls back to the platform
+`TextToSpeech` when the model is unavailable, or when the model passes `voice='system'`.
+Both agents' prompts were updated (step 3 of the wiring rule).
+
+**A real bug the tests caught.** `speak(text, voiceName = VoiceCatalog.selected(context))` looked
+harmless, but Kotlin evaluates default arguments **at the call site** (`speak$default`), so
+`VoiceCatalog.selected()` — a `SharedPreferences` disk read — ran on the *caller's* thread, before
+`withContext(Dispatchers.IO)`. On the main thread that is exactly the stall this wrapper exists to
+prevent. The parameter is now `voiceName: String? = null`, resolved inside the IO block.
+
+**Verified:**
+- `:app:testDebugUnitTest` -> **241 tests, 0 failures** (+6 `TtsToolTest`: Butler preferred,
+  fallback on failure, `voice='system'` bypass, both-engines-fail, stop halts both, missing text).
+- `:app:connectedDebugAndroidTest` on a Pixel_7 emulator -> **4/4 passed**
+  (`ButlerSpeechInstrumentedTest`). Logcat: `TtsEngine: Loaded voice 'bm_george' (510 style rows)`
+  -> `Synthesized 97200 samples (~4s)` -> `AudioTrack: stop(16): called with 97200 frames delivered`
+  -> `ButlerSpeech playback complete`. Every synthesized sample reached the speaker.
+  Blank text returns false in ~3 ms without loading the model; `release()` unloads and `warmUp()`
+  transparently reloads.
+- Also added the missing `androidx.test:runner` / `androidx.test:core` androidTest dependencies —
+  `AndroidJUnitRunner` was named in `defaultConfig` but the artifact was never declared, so the
+  project could not run an instrumented test at all.
+
 ## Next steps
-1. Finish Phase 6: expose `TtsEngine` as an injectable, lazily-initialised service
-   (`suspend` init on `Dispatchers.IO`, guarded by a mutex) and let Hermes speak replies through it.
-   Beware: its `init` block loads the ~92 MB ONNX model synchronously.
-2. Phase 7: release hardening — sign with `hermes-release.jks`, verify signer `99255c31...`,
+1. Phase 7: release hardening — sign with `hermes-release.jks`, verify signer `99255c31...`,
    ABI splits / download-on-first-use for the TTS models, GitHub release marked `--latest`.
+
+## Deferred / noted
+- `DeviceControlAgent`'s prompt still describes `speak` without the new `voice` parameter; it is
+  granted the tool and will get Butler's voice by default. Harmless, but could be spelled out.
+- `ButlerSpeech` keeps the ONNX session warm after first use (reload costs seconds). `release()`
+  exists for memory pressure but nothing calls it — consider wiring it to `MemoryPressureMonitor`.
 
 ## Verified at runtime: the FileProvider export fix (Phase 3a)
 Tested on the Pixel_7 emulator via Jotter Settings -> "Export Database to JSON" ->

@@ -48,7 +48,8 @@ class ConversationalAgent @Inject constructor() : Agent {
             "- clarify: ask the user a question (with optional choices) when a request is " +
             "ambiguous — prefer asking once over guessing\n" +
             "- delegate: hand focused or parallel subtasks to isolated subagents, get results back\n" +
-            "- speak: read text aloud through the device speaker\n" +
+            "- speak: read text aloud through the device speaker, using the natural on-device " +
+            "Butler voice by default (pass voice='system' for the plain platform engine)\n" +
             "- generate_image: create an image from a text prompt and return its URL\n\n" +
             "When a tool fits the request, call it — don't just describe what you could do.\n\n" +
             "Any personal info the user mentions (name, preferences, habits) — save it " +
