@@ -27,13 +27,13 @@
         <activity
             android:name=".MainAlarmSetupActivity"
             android:exported="false"
-            android:theme="@style/Theme.SassyButler.Splash"
+            android:theme="@style/Theme.AppCompat.Light.NoActionBar"
             android:launchMode="singleTop" />
 
         <activity
             android:name=".AlarmActivity"
             android:exported="false"
-            android:theme="@style/Theme.SassyButler.Wake"
+            android:theme="@style/Theme.AppCompat.Light.NoActionBar"
             android:launchMode="singleInstance"
             android:showOnLockScreen="true"
             android:turnScreenOn="true"
