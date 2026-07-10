@@ -75,6 +75,17 @@ import com.hermes.agent.ui.theme.hermesFieldColors
 import com.hermes.agent.ui.theme.hermesSwitchColors
 import java.text.SimpleDateFormat
 import java.util.Date
+import androidx.compose.material.icons.outlined.RecordVoiceOver
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.SegmentedButton
+import androidx.compose.material3.SegmentedButtonDefaults
+import androidx.compose.material3.SingleChoiceSegmentedButtonRow
+import androidx.compose.material3.Slider
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
+import com.jeeves.core.settings.JeevesSettings
+import com.sassybutler.alarm.VoiceCatalog
 import java.util.Locale
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -87,6 +98,9 @@ fun SettingsScreen(
     val updateState by viewModel.updateState.collectAsStateWithLifecycle()
     val backupState by viewModel.backupState.collectAsStateWithLifecycle()
     val exportState by viewModel.exportState.collectAsStateWithLifecycle()
+    // Shared with Jotter and Butler — one store, one screen.
+    val themeMode by viewModel.themeMode.collectAsStateWithLifecycle()
+    val alarmSettings by viewModel.alarmSettings.collectAsStateWithLifecycle()
     val context = LocalContext.current
 
     Scaffold(
@@ -126,6 +140,27 @@ fun SettingsScreen(
             ThemePicker(
                 currentTheme = settings.appTheme,
                 onThemeSelected = viewModel::setAppTheme,
+            )
+            Spacer(modifier = Modifier.height(12.dp))
+            // App-wide: drives this app's theme and the Notes screens.
+            DarkModePicker(
+                current = themeMode,
+                onSelected = viewModel::setThemeMode,
+            )
+
+            // --- Alarms (Sassy Butler, an integrated part of this app) ---
+            SectionHeader(text = "Alarms")
+            AlarmSettingsSection(
+                state = alarmSettings,
+                voices = viewModel.voiceOptions,
+                onHonorific = viewModel::setHonorific,
+                onSassLevel = viewModel::setSassLevel,
+                onSnoozeMinutes = viewModel::setSnoozeMinutes,
+                onVoiceEnabled = viewModel::setVoiceEnabled,
+                onBirdsIntro = viewModel::setBirdsIntro,
+                onSnoozeCommentary = viewModel::setSnoozeCommentary,
+                onHaptics = viewModel::setHaptics,
+                onVoiceName = viewModel::setVoiceName,
             )
 
             // --- Features (navigate to sub-screens) ---
@@ -575,6 +610,165 @@ private fun ThemeSwatch(
             style = MaterialTheme.typography.labelSmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
+    }
+}
+
+/**
+ * App-wide light/dark/system mode, stored in the one settings store. Distinct from
+ * [ThemePicker], which chooses a colour scheme (Midnight / Hermes Blue).
+ */
+@Composable
+private fun DarkModePicker(
+    current: String,
+    onSelected: (String) -> Unit,
+) {
+    val options = listOf(
+        JeevesSettings.THEME_SYSTEM to "System",
+        JeevesSettings.THEME_LIGHT to "Light",
+        JeevesSettings.THEME_DARK to "Dark",
+    )
+    Card(modifier = Modifier.fillMaxWidth()) {
+        Column(modifier = Modifier.padding(16.dp)) {
+            Text(text = "Dark mode", style = MaterialTheme.typography.bodyLarge)
+            Text(
+                text = "Applies across the app, including Notes.",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            Spacer(modifier = Modifier.height(12.dp))
+            SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth()) {
+                options.forEachIndexed { index, (value, label) ->
+                    SegmentedButton(
+                        selected = current == value,
+                        onClick = { onSelected(value) },
+                        shape = SegmentedButtonDefaults.itemShape(index, options.size),
+                    ) { Text(label) }
+                }
+            }
+        }
+    }
+}
+
+/**
+ * Sassy Butler's preferences, edited here rather than only in Butler's own sheet. Both write
+ * the same keys through the one settings store, so the two surfaces cannot drift apart.
+ */
+@Composable
+private fun AlarmSettingsSection(
+    state: AlarmSettings,
+    voices: List<VoiceCatalog.Voice>,
+    onHonorific: (String) -> Unit,
+    onSassLevel: (Int) -> Unit,
+    onSnoozeMinutes: (Int) -> Unit,
+    onVoiceEnabled: (Boolean) -> Unit,
+    onBirdsIntro: (Boolean) -> Unit,
+    onSnoozeCommentary: (Boolean) -> Unit,
+    onHaptics: (Boolean) -> Unit,
+    onVoiceName: (String) -> Unit,
+) {
+    var voiceMenuOpen by remember { mutableStateOf(false) }
+    val honorifics = listOf("Sir", "Madam", "Boss")
+
+    Card(modifier = Modifier.fillMaxWidth()) {
+        Column(
+            modifier = Modifier.padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(14.dp),
+        ) {
+            // How the butler addresses you.
+            Column {
+                Text(text = "Address me as", style = MaterialTheme.typography.bodyLarge)
+                Spacer(modifier = Modifier.height(8.dp))
+                SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth()) {
+                    honorifics.forEachIndexed { index, name ->
+                        SegmentedButton(
+                            selected = state.honorific == name,
+                            onClick = { onHonorific(name) },
+                            shape = SegmentedButtonDefaults.itemShape(index, honorifics.size),
+                        ) { Text(name) }
+                    }
+                }
+            }
+
+            Column {
+                Text(text = "Sass level: ${state.sassLevel}", style = MaterialTheme.typography.bodyLarge)
+                Text(
+                    text = "How sharp the wake-up remark is.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                Slider(
+                    value = state.sassLevel.toFloat(),
+                    onValueChange = { onSassLevel(it.toInt()) },
+                    valueRange = 0f..100f,
+                    modifier = Modifier.semantics { contentDescription = "Sass level" },
+                )
+            }
+
+            Column {
+                Text(
+                    text = "Snooze: ${state.snoozeMinutes} min",
+                    style = MaterialTheme.typography.bodyLarge,
+                )
+                Slider(
+                    value = state.snoozeMinutes.toFloat(),
+                    onValueChange = { onSnoozeMinutes(it.toInt().coerceAtLeast(1)) },
+                    valueRange = 1f..30f,
+                    modifier = Modifier.semantics { contentDescription = "Snooze minutes" },
+                )
+            }
+
+            ToggleRow(
+                title = "Spoken wake-up",
+                subtitle = "Use the on-device butler voice. Off: birdsong only.",
+                checked = state.voiceEnabled,
+                onCheckedChange = onVoiceEnabled,
+            )
+
+            // The voice only matters when the butler actually speaks.
+            if (state.voiceEnabled) {
+                Box {
+                    NavRow(
+                        icon = Icons.Outlined.RecordVoiceOver,
+                        title = "Voice",
+                        subtitle = state.voiceLabel,
+                        onClick = { voiceMenuOpen = true },
+                    )
+                    DropdownMenu(
+                        expanded = voiceMenuOpen,
+                        onDismissRequest = { voiceMenuOpen = false },
+                    ) {
+                        voices.forEach { voice ->
+                            DropdownMenuItem(
+                                text = { Text(voice.label) },
+                                onClick = {
+                                    onVoiceName(voice.name)
+                                    voiceMenuOpen = false
+                                },
+                            )
+                        }
+                    }
+                }
+            }
+
+            ToggleRow(
+                title = "Birdsong intro",
+                subtitle = "Play birds before the spoken greeting.",
+                checked = state.birdsIntro,
+                onCheckedChange = onBirdsIntro,
+            )
+            ToggleRow(
+                title = "Comment on snooze",
+                subtitle = "The butler has opinions about your snoozing.",
+                checked = state.snoozeCommentary,
+                onCheckedChange = onSnoozeCommentary,
+            )
+            ToggleRow(
+                title = "Haptics",
+                subtitle = "Vibrate while the alarm sounds.",
+                checked = state.haptics,
+                onCheckedChange = onHaptics,
+            )
+        }
     }
 }
 

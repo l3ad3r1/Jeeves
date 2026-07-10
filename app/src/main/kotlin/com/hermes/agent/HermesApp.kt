@@ -14,6 +14,7 @@ import com.hermes.agent.work.SkillImprovementWorker
 import com.hermes.agent.data.log.FileLogTree
 import com.hermes.agent.data.log.LogManager
 import com.hermes.agent.data.performance.MemoryPressureMonitor
+import com.jeeves.core.settings.JeevesSettings
 import com.l3ad3r1.octojotter.data.local.ThemePreferences
 import dagger.hilt.android.HiltAndroidApp
 import kotlinx.coroutines.CoroutineScope
@@ -73,6 +74,11 @@ class HermesApp : Application(), Configuration.Provider {
      */
     private fun migrateLegacyThemeSetting() {
         CoroutineScope(Dispatchers.IO).launch {
+            // Touch the store here first so its one-time SharedPreferences migration (which
+            // commit()s) runs off the main thread rather than on whichever caller gets there
+            // first — MainActivity reads the theme during composition.
+            runCatching { JeevesSettings.prefs(this@HermesApp) }
+                .onFailure { Timber.tag("Migration").w(it, "settings store warm-up failed") }
             runCatching { ThemePreferences(this@HermesApp).migrateLegacyTheme() }
                 .onFailure { Timber.tag("Migration").w(it, "legacy theme migration failed") }
         }

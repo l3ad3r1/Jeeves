@@ -4,6 +4,7 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.collectAsState
@@ -11,6 +12,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.lifecycle.lifecycleScope
 import com.hermes.agent.data.settings.SettingsRepository
+import com.jeeves.core.settings.JeevesSettings
 import com.hermes.agent.ui.navigation.HermesNavGraph
 import com.hermes.agent.ui.onboarding.OnboardingScreen
 import com.hermes.agent.ui.theme.AppTheme
@@ -51,7 +53,16 @@ class MainActivity : ComponentActivity() {
                 runCatching { AppTheme.valueOf(name) }.getOrDefault(AppTheme.MIDNIGHT)
             }
 
-            HermesTheme(appTheme = appTheme) {
+            // App-wide light/dark/system, from the one settings store shared with Notes.
+            val themeMode by JeevesSettings.themeModeFlow(this)
+                .collectAsState(initial = JeevesSettings.themeMode(this))
+            val darkTheme = when (themeMode) {
+                JeevesSettings.THEME_DARK -> true
+                JeevesSettings.THEME_LIGHT -> false
+                else -> isSystemInDarkTheme()
+            }
+
+            HermesTheme(appTheme = appTheme, darkTheme = darkTheme) {
                 Surface(modifier = Modifier.fillMaxSize()) {
                     val state by onboardingState.collectAsState()
                     when (state) {

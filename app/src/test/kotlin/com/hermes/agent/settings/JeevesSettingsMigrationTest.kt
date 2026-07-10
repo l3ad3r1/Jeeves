@@ -1,5 +1,6 @@
 package com.hermes.agent.settings
 
+import android.app.Application
 import android.content.Context
 import androidx.test.core.app.ApplicationProvider
 import com.jeeves.core.settings.JeevesSettings
@@ -20,9 +21,15 @@ import org.robolectric.annotation.Config
  * The unified settings store must adopt a user's existing Butler preferences rather than
  * silently resetting them to defaults on upgrade — the failure mode is "my alarm voice and
  * snooze time reverted", which no build or type check would catch.
+ *
+ * Runs against a plain [Application], not `HermesApp`: the real application's `onCreate`
+ * warms the settings store from a `Dispatchers.IO` coroutine, which would race this test's
+ * legacy-store seeding and mark the migration done before it could run. That warm-up is
+ * correct in production — there the legacy files already exist when it runs — but it has no
+ * business inside a unit test of `JeevesSettings`.
  */
 @RunWith(RobolectricTestRunner::class)
-@Config(sdk = [34])
+@Config(sdk = [34], application = Application::class)
 class JeevesSettingsMigrationTest {
 
     private val context: Context = ApplicationProvider.getApplicationContext()
@@ -127,5 +134,31 @@ class JeevesSettingsMigrationTest {
     fun `theme defaults to system when never chosen`() = runTest {
         assertFalse(JeevesSettings.hasThemeMode(context))
         assertEquals(JeevesSettings.THEME_SYSTEM, JeevesSettings.themeMode(context))
+    }
+
+    /**
+     * "Same settings": Butler's own preferences sheet writes through ButlerPrefs, while the
+     * unified Hermes settings screen reads/writes JeevesSettings. If those ever addressed
+     * different storage the two surfaces would silently disagree.
+     */
+    @Test
+    fun `Butler's sheet and the unified settings screen read and write the same values`() {
+        // Butler's sheet writes...
+        ButlerPrefs.setSassLevel(context, 77)
+        ButlerPrefs.setVoiceEnabled(context, false)
+        VoiceCatalog.select(context, "bm_lewis")
+
+        // ...the Hermes settings screen sees it.
+        assertEquals(77, JeevesSettings.sassLevel(context))
+        assertFalse(JeevesSettings.voiceEnabled(context))
+        assertEquals("bm_lewis", JeevesSettings.voiceName(context, "bm_george"))
+
+        // And the reverse: the settings screen writes...
+        JeevesSettings.setSnoozeMinutes(context, 21)
+        JeevesSettings.setHonorific(context, "Madam")
+
+        // ...Butler's alarm path sees it.
+        assertEquals(21, ButlerPrefs.snoozeMinutes(context))
+        assertEquals("Madam", ButlerPrefs.honorific(context))
     }
 }

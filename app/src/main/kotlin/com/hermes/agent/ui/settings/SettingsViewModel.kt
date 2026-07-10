@@ -1,5 +1,6 @@
 package com.hermes.agent.ui.settings
 
+import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.hermes.agent.data.backup.GithubBackupService
@@ -10,7 +11,11 @@ import com.hermes.agent.data.settings.UserSettings
 import com.hermes.agent.data.export.SessionExporter
 import com.hermes.agent.data.update.OtaInstaller
 import com.hermes.agent.data.update.OtaUpdateChecker
+import com.jeeves.core.settings.JeevesSettings
+import com.sassybutler.alarm.TtsEngine
+import com.sassybutler.alarm.VoiceCatalog
 import dagger.hilt.android.lifecycle.HiltViewModel
+import dagger.hilt.android.qualifiers.ApplicationContext
 import java.io.File
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -19,6 +24,24 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import javax.inject.Inject
+
+/**
+ * The alarm settings, mirrored from the one settings store. Butler's own preferences sheet
+ * writes the same keys through `ButlerPrefs`, so both surfaces stay in sync automatically.
+ */
+data class AlarmSettings(
+    val honorific: String = JeevesSettings.DEFAULT_HONORIFIC,
+    val sassLevel: Int = JeevesSettings.DEFAULT_SASS_LEVEL,
+    val snoozeMinutes: Int = JeevesSettings.DEFAULT_SNOOZE_MINUTES,
+    val voiceEnabled: Boolean = true,
+    val birdsIntro: Boolean = true,
+    val snoozeCommentary: Boolean = true,
+    val haptics: Boolean = false,
+    val voiceName: String = TtsEngine.DEFAULT_VOICE,
+) {
+    val voiceLabel: String
+        get() = VoiceCatalog.VOICES.firstOrNull { it.name == voiceName }?.label ?: voiceName
+}
 
 sealed class UpdateUiState {
     object Idle : UpdateUiState()
@@ -52,6 +75,7 @@ sealed class ExportUiState {
 
 @HiltViewModel
 class SettingsViewModel @Inject constructor(
+    @ApplicationContext private val appContext: Context,
     private val settingsRepository: SettingsRepository,
     private val knox: KnoxSecurityManager,
     private val keystore: KeystoreManager,
@@ -60,6 +84,43 @@ class SettingsViewModel @Inject constructor(
     private val githubBackupService: GithubBackupService,
     private val sessionExporter: SessionExporter,
 ) : ViewModel() {
+
+    // ─── Unified settings (shared with Jotter and Butler) ───────────────────
+
+    /** App-wide light/dark/system mode. Drives Hermes' own theme and Jotter's. */
+    val themeMode: StateFlow<String> = JeevesSettings.themeModeFlow(appContext)
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), JeevesSettings.THEME_SYSTEM)
+
+    fun setThemeMode(mode: String) = JeevesSettings.setThemeMode(appContext, mode)
+
+    /** Butler's preferences, editable here as well as in Butler's own sheet. */
+    private val _alarmSettings = MutableStateFlow(readAlarmSettings())
+    val alarmSettings: StateFlow<AlarmSettings> = _alarmSettings.asStateFlow()
+
+    val voiceOptions: List<VoiceCatalog.Voice> = VoiceCatalog.VOICES
+
+    private fun readAlarmSettings() = AlarmSettings(
+        honorific = JeevesSettings.honorific(appContext),
+        sassLevel = JeevesSettings.sassLevel(appContext),
+        snoozeMinutes = JeevesSettings.snoozeMinutes(appContext),
+        voiceEnabled = JeevesSettings.voiceEnabled(appContext),
+        birdsIntro = JeevesSettings.birdsIntro(appContext),
+        snoozeCommentary = JeevesSettings.snoozeCommentary(appContext),
+        haptics = JeevesSettings.haptics(appContext),
+        voiceName = JeevesSettings.voiceName(appContext, TtsEngine.DEFAULT_VOICE),
+    )
+
+    /** Re-read after every write so this screen and Butler's sheet never drift apart. */
+    private fun refreshAlarmSettings() { _alarmSettings.value = readAlarmSettings() }
+
+    fun setHonorific(value: String) { JeevesSettings.setHonorific(appContext, value); refreshAlarmSettings() }
+    fun setSassLevel(value: Int) { JeevesSettings.setSassLevel(appContext, value); refreshAlarmSettings() }
+    fun setSnoozeMinutes(value: Int) { JeevesSettings.setSnoozeMinutes(appContext, value); refreshAlarmSettings() }
+    fun setVoiceEnabled(value: Boolean) { JeevesSettings.setVoiceEnabled(appContext, value); refreshAlarmSettings() }
+    fun setBirdsIntro(value: Boolean) { JeevesSettings.setBirdsIntro(appContext, value); refreshAlarmSettings() }
+    fun setSnoozeCommentary(value: Boolean) { JeevesSettings.setSnoozeCommentary(appContext, value); refreshAlarmSettings() }
+    fun setHaptics(value: Boolean) { JeevesSettings.setHaptics(appContext, value); refreshAlarmSettings() }
+    fun setVoiceName(value: String) { JeevesSettings.setVoiceName(appContext, value); refreshAlarmSettings() }
 
     val settings: StateFlow<UserSettings> = settingsRepository.observe()
         .stateIn(
