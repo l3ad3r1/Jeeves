@@ -39,8 +39,10 @@ android {
         applicationId = "com.jeeves.app"   // fresh identity so Jeeves installs alongside standalone Hermes; code namespace stays com.hermes.agent
         minSdk = 29          // Android 10 — covers ~95% of active devices; highest of the three merged apps (29/24/26)
         targetSdk = 36       // Android 16 — matches Octo Jotter and Sassy Butler
-        versionCode = 59
-        versionName = "0.8.9"
+        // Single source of truth in gradle.properties; :feature:jotter reads the same
+        // property for its BuildConfig.VERSION_NAME.
+        versionCode = (project.findProperty("jeeves.versionCode") as String?)?.toInt() ?: 60
+        versionName = project.findProperty("jeeves.versionName") as String? ?: "0.9.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables { useSupportLibrary = true }
@@ -84,6 +86,19 @@ android {
                     this.keyPassword = keyPass
                 }
             }
+        }
+    }
+
+    // ONNX Runtime ships libonnxruntime.so for four ABIs — 73.8 MB of the release APK, of
+    // which x86/x86_64 (42.4 MB) are dead weight on a phone. Split per ABI so a device
+    // downloads only its own, and keep a universal APK for anyone who wants one artifact.
+    // x86_64 is retained because the emulator runs on it.
+    splits {
+        abi {
+            isEnable = true
+            reset()
+            include("arm64-v8a", "armeabi-v7a", "x86_64")
+            isUniversalApk = true
         }
     }
 

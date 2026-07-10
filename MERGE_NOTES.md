@@ -109,3 +109,58 @@ keeps **one** of each.
 - The original prototype source folders are left untouched; this is a fresh copy.
 - A handful of prebuilt `*.apk` files copied in from the base could not be deleted from the
   working environment — they are stale artifacts and safe to remove.
+
+---
+
+# Second merge — Jeeves (Hermes + Octo Jotter + Sassy Butler)
+
+The app above became the base of **Jeeves**, which folds in two more standalone apps.
+Full history and per-phase evidence: `PROGRESS.md`; plan: `docs/SUPER_APP_ROADMAP.md`.
+
+| Source | Package | Became |
+|--------|---------|--------|
+| Hermes Agent (this repo) | `com.hermes.agent` | `:app` — host, launcher, single Hilt graph |
+| Octo Jotter | `com.l3ad3r1.octojotter` | `:feature:jotter` — Android library (Compose) |
+| Sassy Butler | `com.sassybutler.alarm` | `:feature:butler` — Android library (Views + ONNX TTS) |
+
+Shipped as one APK, `applicationId = com.jeeves.app`, so it installs alongside the three
+standalone apps rather than replacing them. Each feature module's **namespace is the original
+package**, so sources moved across with no renames and no `R`-class collisions.
+
+## What differs from the plan
+- **Toolchain bumps could not be committed one at a time.** AGP 8.x dies on Gradle >= 9.6.0
+  (`InternalProblems` removed); AGP 9 has built-in Kotlin and rejects `kotlin-android`;
+  Hilt < 2.57 fails on AGP 9; the old KSP line registers sources via `kotlin.sourceSets`,
+  which built-in Kotlin forbids. They land as one commit.
+- **Jotter is launched as an Activity, not embedded in the host nav graph.** Its entry is a
+  `FragmentActivity` (BiometricPrompt requires one); the host is a `ComponentActivity`.
+- **No duplicate `OkHttpClient` binding existed.** Jotter's client is a private field in a
+  Kotlin `object`, never a Hilt binding. `JotterModule` deliberately does not bind one.
+- **Phase 5 (fold Jotter's Room DB into `HermesDatabase`) was skipped.** The agent reaches
+  notes through the injected `NoteRepository`, so no schema bump or migration is warranted.
+  `gist_notes_database` and `hermes.db` coexist.
+
+## Landmines worth remembering
+- **`file_paths.xml`.** Jotter calls `getUriForFile(..., "${packageName}.fileprovider", ...)`,
+  which resolves to the *host's* provider — and an app-module `res/xml` always overrides a
+  library's. Jotter's three roots had to be merged into `app/src/main/res/xml/file_paths.xml`.
+  Without them, every note export crashes with `Failed to find configured root`. Proven by
+  removing them and watching it crash; restored and re-verified.
+- **`noCompress` and `jniLibs.pickFirsts` belong in `:app`, not `:feature:butler`.** Both are
+  applied when the APK is packaged, after library assets are merged in.
+- **`TtsEngine` must never be a Hilt binding.** Its `init` reads the whole ~92 MB ONNX model
+  synchronously. `ButlerSpeech` owns it and builds it lazily on `Dispatchers.IO` behind a Mutex.
+- **Kotlin default arguments are evaluated at the call site.** `speak(text, voice = VoiceCatalog
+  .selected(context))` ran a SharedPreferences disk read on the caller's thread, *outside* the
+  `withContext(Dispatchers.IO)` it appeared to sit behind.
+- **Neither Jotter nor Butler ever shipped minified** (`isMinifyEnabled = false` standalone).
+  Their reflective surfaces — Moshi's `KotlinJsonAdapterFactory`, Rhino, ONNX's JNI peers — all
+  needed explicit keep rules before the merged release build would work. See `proguard-rules.pro`.
+- **Measure APK size only from a clean build.** AGP's incremental packager rewrites
+  `app-debug.apk` in place and leaves gaps; a dirty tree reported ~13 MB of phantom growth.
+
+## Agent integration (the reason for merging at all)
+`create_note` -> Jotter's `NoteRepository`; `set_alarm` -> Butler's `AlarmScheduler` +
+`AlarmStore` (persist *before* scheduling, or the alarm dies on reboot); and Hermes's `speak`
+tool now uses Butler's on-device Kokoro voice via `ButlerSpeech`, falling back to platform TTS.
+Every tool needs all three wiring steps — `di/ToolsModule`, `AgentToolAccess`, persona prompts.

@@ -34,7 +34,7 @@ android {
         // An Android library's BuildConfig does NOT get VERSION_NAME, but
         // NoteViewModel reads com.l3ad3r1.octojotter.BuildConfig.VERSION_NAME.
         // Supply it explicitly rather than editing the ported source.
-        buildConfigField("String", "VERSION_NAME", "\"${project.findProperty("jeeves.versionName") ?: "0.8.9"}\"")
+        buildConfigField("String", "VERSION_NAME", "\"${project.findProperty("jeeves.versionName") ?: "0.9.0"}\"")
     }
 
     compileOptions {

@@ -253,9 +253,63 @@ prevent. The parameter is now `voiceName: String? = null`, resolved inside the I
   `AndroidJUnitRunner` was named in `defaultConfig` but the artifact was never declared, so the
   project could not run an instrumented test at all.
 
+### Phase 7 — Release hardening — DONE (except publishing)
+Version is now a single source of truth in `gradle.properties` (`jeeves.versionCode=60`,
+`jeeves.versionName=0.9.0`), read by `:app` and by `:feature:jotter`'s `BuildConfig.VERSION_NAME`.
+
+**R8 was the real risk, not signing.** Neither Jotter nor Butler ever shipped minified
+(both set `isMinifyEnabled = false` standalone), yet the merged release runs R8 + resource
+shrinking over them. Added targeted keep rules for every reflective surface:
+- `ai.onnxruntime.**` — JNI peers looked up by name from `libonnxruntime.so`.
+- `org.mozilla.javascript.**` — Rhino reflects into host objects for plugin scripting.
+- Moshi — 26 `@JsonClass` codegen adapters *plus* a reflective `KotlinJsonAdapterFactory`
+  (`Converters`, `RetrofitClient`, `PluginRepository`, `NoteViewModel`), which needs Kotlin
+  metadata and constructor parameter names.
+- Jotter's `plugin.**`, `data.remote.**`, `DatabaseBackup` — constructed by name.
+- Butler's manifest entry points (receiver, service, both activities).
+
+**ABI splits.** ONNX Runtime shipped `libonnxruntime.so` for four ABIs = 73.8 MB of the APK,
+of which x86/x86_64 were dead weight on a phone. `splits { abi { ... } }` now emits per-ABI
+APKs plus a universal one (x86_64 kept so emulators still work).
+
+| Artifact | Size |
+|---|---|
+| `app-arm64-v8a-release.apk` | 145.5 MB |
+| `app-armeabi-v7a-release.apk` | 139.9 MB |
+| `app-x86_64-release.apk` | 148.1 MB |
+| `app-universal-release.apk` | 200.9 MB |
+
+Composition of the universal APK: TTS models 115.0 MB (Stored, by design), native libs 73.8 MB,
+dex 7.6 MB, resources 3.6 MB. R8 + resource shrinking cut 69 MB off the debug build.
+
+**Verified:**
+- `:app:assembleRelease` -> BUILD SUCCESSFUL; `:app:testDebugUnitTest` -> 241 tests, 0 failures.
+- **Signer on all four APKs: `99255c31ffba1932e4ab2abc12d99b82bf780874b8c686076497157996cf6d6f`**
+  (CN=Hermes Agent) — matches the required `99255c31...` prefix.
+- `app-arm64-v8a-release.apk` contains only `lib/arm64-v8a/`; TTS models still `Stored`.
+- `hermes-release.jks` is byte-identical (md5 `4aa1d0c9...`) to the copy in the Hermes repo and
+  remains gitignored. It was copied, never moved.
+- **The minified, signed, ABI-split APK was smoke-tested on device** — every reflective surface
+  R8 could have broken:
+  1. Jotter opens (Room + Moshi `Converters`).
+  2. "Export Database to JSON" succeeds -> reflective `DatabaseBackup` adapter works.
+  3. Share resolves `content://com.jeeves.app.fileprovider/exports/...`.
+  4. Butler's ONNX TTS: `Synthesized 297000 samples` -> `AudioTrack: stop(22): called with
+     297000 frames delivered`. No `UnsatisfiedLinkError`, no `dlopen` failure.
+  5. Community Plugins renders the fetched registry ("Ocean Dark", "Rose Light") -> the
+     reflective `RegistryIndex`/`PluginManifest` adapters survive minification.
+
+**NOT DONE — publishing.** The repo has **no git remote**, and publishing a GitHub release is
+irreversible, so nothing was pushed. To ship: create the remote, push `master`, then
+`gh release create v0.9.0 --latest` with the signed APKs, verifying the signer once more first.
+
 ## Next steps
-1. Phase 7: release hardening — sign with `hermes-release.jks`, verify signer `99255c31...`,
-   ABI splits / download-on-first-use for the TTS models, GitHub release marked `--latest`.
+1. Publish (needs an explicit go-ahead): create the GitHub remote, push, cut release `v0.9.0`
+   marked `--latest` with the signed APKs. Standing rule: verify signer `99255c31...` before publish.
+2. Optional size work: download-on-first-use for the 115 MB TTS models would take the arm64 APK
+   from 145 MB to ~30 MB. Bigger change — the models are currently required at build time.
+3. Close the last verification gap: an end-to-end LLM tool call with a real API key
+   ("wake me at 7am" -> `set_alarm` -> alarm fires).
 
 ## Deferred / noted
 - `DeviceControlAgent`'s prompt still describes `speak` without the new `voice` parameter; it is
