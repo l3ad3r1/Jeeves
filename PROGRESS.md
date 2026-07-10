@@ -119,17 +119,66 @@ exit APK. **Always measure APK size from a clean build.** No regression; nothing
   FOREGROUND_SERVICE_MEDIA_PLAYBACK, USE_FULL_SCREEN_INTENT, VIBRATE, DISABLE_KEYGUARD).
 - TTS models packaged **Stored/uncompressed** as intended; clean APK 282,977,250 bytes.
 
-### Phase 4 — Unified Hilt graph — NOT STARTED
+### Phase 4 — Unified Hilt graph — DONE
+`HermesApp` remains the only `@HiltAndroidApp` (verified: exactly 1 in the tree, and it is
+the only `Application` subclass). Jotter and Butler had **zero** Hilt annotations — they were
+ported verbatim and wire themselves manually.
+
+- [x] Hilt + KSP added to `:feature:jotter` and `:feature:butler`.
+- [x] `JotterModule` contributes `AppDatabase`, `NoteDao`, `PluginDao`, `TokenManager`,
+      `GithubApiService`, `NoteRepository` into `SingletonComponent`.
+- [x] `ButlerModule` contributes `AlarmScheduler`.
+- [x] `app/.../di/FeatureBridge.kt` — a Hilt `@EntryPoint` exposing `noteRepository()` and
+      `alarmScheduler()`. This is the seam Phase 6's tools (and Butler's plain
+      `BroadcastReceiver`) will use, and it turns the unified graph into a **compile-time
+      guarantee**: Dagger only validates bindings reachable from an entry point.
+
+**Bindings are additive — no behaviour change.** Jotter's `NoteViewModel`/`SyncWorker` still
+construct `NoteRepository` directly; Butler's components still construct what they need.
+
+**The roadmap's predicted "duplicate OkHttpClient binding" did not materialise.** Jotter's
+client is a private field inside the `RetrofitClient` *object*, never a Hilt binding, so there
+is nothing to collide with. The graph has exactly one `OkHttpClient` provider (Hermes's
+`NetworkModule`). `JotterModule` deliberately does not bind one — doing so *would* have been a
+duplicate-binding compile error. Consolidating the two client instances (they have different
+interceptors/timeouts) is a separate behaviour-changing decision; not done.
+
+**`TtsEngine` is deliberately NOT bound.** Its `init` block calls `initSession()`, which does
+`context.assets.open(...).readBytes()` on the ~92 MB ONNX model and builds an ORT session
+*synchronously*. A `@Singleton @Provides` would load 92 MB on whatever thread first injected
+it — possibly the main thread. Exposing TTS as a shared service needs a lazy, off-main-thread
+guard: Phase 6.
+
+**Not done (deliberately):** no Butler component was converted to `@AndroidEntryPoint`. The
+roadmap says "where they need injection" and, today, none do. Convert when Phase 6 requires it.
+
+**Verified:**
+- `:app:assembleDebug` + `:app:testDebugUnitTest` -> BUILD SUCCESSFUL, 219 tests, 0 failures.
+- Both feature modules aggregate into the graph: `hilt_aggregated_deps/_com_l3ad3r1_octojotter_di_JotterModule.java`
+  and `..._com_sassybutler_alarm_di_ButlerModule.java` are generated.
+- The generated `DaggerHermesApp_HiltComponents_SingletonC` now materialises
+  `provideNoteRepository`, `provideAlarmScheduler`, `provideAppDatabase`, `provideTokenManager`,
+  `provideGithubApiService` plus both entry-point accessors. (Before `FeatureBridge` existed
+  they were absent — Dagger prunes bindings nothing consumes, so "module on the classpath"
+  is NOT the same as "binding resolves".)
+- On-device: app installs and `com.hermes.agent.MainActivity` resumes with no Hilt/Dagger
+  runtime error and no crash. The objects the bridge provides were already proven
+  constructible on-device in Phase 3, since `NoteViewModel` builds the same
+  `NoteRepository(noteDao, githubApiService, tokenManager)` and Jotter's UI rendered.
+
+**NOTED (unverified):** Jotter's `SyncWorker` is a plain `CoroutineWorker`, not `@HiltWorker`,
+while `HermesApp` installs `HiltWorkerFactory`. `HiltWorkerFactory` should return null for
+unknown workers and let WorkManager fall back to default instantiation, but Gist sync has not
+been run. Check when exercising Jotter sync.
 
 ## Next steps
-1. Phase 4: one Hilt graph. `HermesApp` stays the sole `@HiltAndroidApp`; convert Butler's
-   Activities/Service/Receiver to `@AndroidEntryPoint` where they need injection; resolve
-   duplicate bindings (two OkHttpClients: Hermes's and Jotter's RetrofitClient).
-2. Phase 5: data layer. Jotter ships its own Room DB (`AppDatabase`) separate from
-   `HermesDatabase` — keep them separate unless the agent must query notes directly
-   (which Phase 6's `create_note` tool will decide).
-3. Phase 6: the payoff — `create_note` / `set_alarm` agent tools (each needs all 3 wiring
-   steps), and Butler's `TtsEngine` exposed so Hermes can speak agent replies.
+1. Phase 5: data layer. Jotter ships its own Room DB (`AppDatabase`) separate from
+   `HermesDatabase`. Recommendation: **keep them separate** — the agent reaches notes through
+   the injected `NoteRepository` (Phase 4's `FeatureBridge`), not by querying tables, so there
+   is no reason to fold entities into `HermesDatabase` or write a migration.
+2. Phase 6: the payoff — `create_note` / `set_alarm` agent tools (each needs ALL THREE wiring
+   steps: `di/ToolsModule` + `data/agent/agents/AgentToolAccess` + the persona prompts), and
+   `TtsEngine` exposed behind a lazy off-main-thread guard so Hermes can speak agent replies.
 
 ## Verified at runtime: the FileProvider export fix (Phase 3a)
 Tested on the Pixel_7 emulator via Jotter Settings -> "Export Database to JSON" ->

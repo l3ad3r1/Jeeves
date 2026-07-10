@@ -21,6 +21,7 @@ plugins {
     alias(libs.plugins.android.library)
     alias(libs.plugins.kotlin.compose)
     alias(libs.plugins.ksp)
+    alias(libs.plugins.hilt)
 }
 
 android {
@@ -56,6 +57,10 @@ kotlin {
 }
 
 dependencies {
+    // --- Hilt (contributes JotterModule to the host's single object graph) ---
+    implementation(libs.hilt.android)
+    ksp(libs.hilt.compiler)
+
     // --- Compose (BOM-managed) ---
     implementation(platform(libs.androidx.compose.bom))
     implementation(libs.androidx.compose.ui)

@@ -19,6 +19,8 @@
 
 plugins {
     alias(libs.plugins.android.library)
+    alias(libs.plugins.ksp)
+    alias(libs.plugins.hilt)
 }
 
 android {
@@ -40,6 +42,10 @@ android {
 }
 
 dependencies {
+    // --- Hilt (contributes ButlerModule to the host's single object graph) ---
+    implementation(libs.hilt.android)
+    ksp(libs.hilt.compiler)
+
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.core.splashscreen)
     implementation(libs.androidx.appcompat)
