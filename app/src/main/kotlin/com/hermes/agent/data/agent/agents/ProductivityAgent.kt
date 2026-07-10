@@ -21,7 +21,7 @@ class ProductivityAgent @Inject constructor() : Agent {
     override val role: AgentRole = AgentRole.PRODUCTIVITY
 
     override val systemPrompt: String =
-        "You are the Hermes Productivity Agent. You help the user manage tasks, " +
+        "You are the Jeeves Productivity Agent. You help the user manage tasks, " +
             "scheduling, reminders, and automation.\n\n" +
             "Your capabilities:\n" +
             "- calendar_add_event: add one-off events to the device calendar\n" +

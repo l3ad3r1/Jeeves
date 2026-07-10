@@ -15,7 +15,7 @@ class BootReceiver : BroadcastReceiver() {
         if (intent.action == Intent.ACTION_BOOT_COMPLETED ||
             intent.action == Intent.ACTION_LOCKED_BOOT_COMPLETED
         ) {
-            Timber.i("Boot completed — restarting Hermes agent service")
+            Timber.i("Boot completed — restarting Jeeves agent service")
             AgentServiceController.start(context)
         }
     }

@@ -103,7 +103,7 @@ class AgentForegroundService : Service() {
         ServiceCompat.startForeground(
             this,
             NOTIFICATION_ID,
-            buildNotification("Hermes Agent active", "Monitoring the board…"),
+            buildNotification("Jeeves active", "Monitoring the board…"),
             serviceType,
         )
         AgentServiceController.setRunning(true)
@@ -127,7 +127,7 @@ class AgentForegroundService : Service() {
                 }
                 // Going idle: suspend until poked (or the fallback fires).
                 AgentServiceController.setWorkingOn(null)
-                updateNotification("Hermes Agent idle", "Waiting for new tickets…")
+                updateNotification("Jeeves idle", "Waiting for new tickets…")
                 withTimeoutOrNull(IDLE_FALLBACK_MS) { wake.receive() }
             }
         }
@@ -191,7 +191,7 @@ class AgentForegroundService : Service() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             val channel = NotificationChannel(
                 CHANNEL_ID,
-                "Hermes Agent Service",
+                "Jeeves Service",
                 NotificationManager.IMPORTANCE_LOW,
             ).apply {
                 description = "Background agent execution status"

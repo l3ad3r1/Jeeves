@@ -61,7 +61,7 @@ fun ConnectScreen(viewModel: ConnectViewModel = hiltViewModel()) {
                 )
                 Spacer(Modifier.height(6.dp))
                 Text(
-                    "One agent, one memory, every surface. Link a platform and Hermes shows up there.",
+                    "One agent, one memory, every surface. Link a platform and Jeeves shows up there.",
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )

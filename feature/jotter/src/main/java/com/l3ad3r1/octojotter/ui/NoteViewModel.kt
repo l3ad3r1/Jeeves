@@ -1150,7 +1150,7 @@ class NoteViewModel(application: Application) : AndroidViewModel(application) {
             val content = buildString {
                 append(sharedText)
                 append("\n\n---\n")
-                append("Captured with Octo Jotter on ")
+                append("Captured with Jeeves on ")
                 append(clippedAt)
             }
             val newNote = NoteEntity(

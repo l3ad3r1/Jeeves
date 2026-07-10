@@ -156,7 +156,7 @@ fun HomeScreen(
         Spacer(Modifier.height(11.dp))
         Row(horizontalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.fillMaxWidth()) {
             QuickAction(
-                title = "Octo Jotter",
+                title = "Notes",
                 subtitle = "Notes & Gists",
                 modifier = Modifier.weight(1f),
                 onClick = {
@@ -164,7 +164,7 @@ fun HomeScreen(
                 },
             )
             QuickAction(
-                title = "Sassy Butler",
+                title = "Alarms",
                 subtitle = "Alarms",
                 modifier = Modifier.weight(1f),
                 onClick = {

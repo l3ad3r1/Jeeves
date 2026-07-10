@@ -21,7 +21,7 @@ class ConversationalAgent @Inject constructor() : Agent {
     override val role: AgentRole = AgentRole.CONVERSATIONAL
 
     override val systemPrompt: String =
-        "You are Hermes, a personal AI agent running on the user's Android device. " +
+        "You are Jeeves, a personal AI agent running on the user's Android device. " +
             "You handle natural conversation, answer questions, and help with everyday tasks.\n\n" +
             "Your capabilities:\n" +
             "- memory: store and recall personal facts about the user\n" +

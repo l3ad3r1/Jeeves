@@ -338,7 +338,7 @@ fun SettingsScreen(
             Spacer(modifier = Modifier.height(8.dp))
             Card(modifier = Modifier.fillMaxWidth()) {
                 Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                    InfoRow(title = "Application", value = "Hermes Agent")
+                    InfoRow(title = "Application", value = "Jeeves")
                     InfoRow(
                         title = stringResource(R.string.settings_app_version),
                         value = "${BuildConfig.VERSION_NAME} (${BuildConfig.VERSION_CODE})",
@@ -797,7 +797,7 @@ private fun ApiServerSection(
             ToggleRow(
                 title = "Run local API server",
                 subtitle = "Expose an OpenAI-compatible endpoint so other apps (Open WebUI, " +
-                    "LobeChat, scripts) can use Hermes as a backend.",
+                    "LobeChat, scripts) can use Jeeves as a backend.",
                 checked = settings.apiServerEnabled,
                 onCheckedChange = onToggle,
             )
@@ -831,7 +831,7 @@ private fun ApiServerSection(
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     OutlinedButton(onClick = {
                         clipboard?.setPrimaryClip(
-                            android.content.ClipData.newPlainText("Hermes API key", settings.apiServerKey),
+                            android.content.ClipData.newPlainText("Jeeves API key", settings.apiServerKey),
                         )
                     }) { Text("Copy token") }
                     OutlinedButton(onClick = onRegenerateKey) { Text("Regenerate") }
@@ -1033,14 +1033,14 @@ private fun UpdateSection(
                 }
                 is UpdateUiState.UpdateAvailable -> {
                     Text(
-                        "Hermes ${state.version} is available!",
+                        "Jeeves ${state.version} is available!",
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.primary,
                     )
                     if (state.apkUrl.isNotBlank()) {
                         if (!canInstall) {
                             Text(
-                                "Allow \"install unknown apps\" for Hermes so it can " +
+                                "Allow \"install unknown apps\" for Jeeves so it can " +
                                     "install the update directly.",
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -1067,7 +1067,7 @@ private fun UpdateSection(
                 }
                 is UpdateUiState.Downloading -> {
                     Text(
-                        "Downloading Hermes ${state.version}… ${state.percent}%",
+                        "Downloading Jeeves ${state.version}… ${state.percent}%",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )

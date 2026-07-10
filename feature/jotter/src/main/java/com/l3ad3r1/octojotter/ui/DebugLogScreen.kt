@@ -74,7 +74,7 @@ fun DebugLogScreen(viewModel: NoteViewModel, onNavigateBack: () -> Unit = {}) {
                         onClick = {
                             val send = Intent(Intent.ACTION_SEND).apply {
                                 type = "text/plain"
-                                putExtra(Intent.EXTRA_SUBJECT, "Octo Jotter logs")
+                                putExtra(Intent.EXTRA_SUBJECT, "Jeeves logs")
                                 putExtra(Intent.EXTRA_TEXT, logs)
                             }
                             context.startActivity(Intent.createChooser(send, "Share logs"))

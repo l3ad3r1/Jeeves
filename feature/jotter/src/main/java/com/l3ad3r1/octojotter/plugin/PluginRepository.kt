@@ -64,7 +64,7 @@ class PluginRepository(private val pluginDao: PluginDao) {
                 ?: return@withContext Result.failure(IOException("Malformed plugin manifest."))
             if (!meetsMinVersion(manifest.minAppVersion, appVersion)) {
                 return@withContext Result.failure(
-                    IOException("${manifest.name} needs Octo Jotter ${manifest.minAppVersion}+ (you have $appVersion). Please update the app.")
+                    IOException("${manifest.name} needs Notes ${manifest.minAppVersion}+ (you have $appVersion). Please update the app.")
                 )
             }
             pluginDao.upsert(

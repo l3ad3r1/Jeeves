@@ -135,7 +135,7 @@ fun CommunityPluginsScreen(viewModel: NoteViewModel, onNavigateBack: () -> Unit 
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             Text(
-                text = "Extend Octo Jotter with themes and packs shared by the community. Install one, then toggle it on. Only trusted, declarative plugins for now — no third-party code runs on your device.",
+                text = "Extend Notes with themes and packs shared by the community. Install one, then toggle it on. Only trusted, declarative plugins for now — no third-party code runs on your device.",
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )

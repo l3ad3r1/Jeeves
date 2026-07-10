@@ -282,7 +282,7 @@ private fun ClarificationCard(
     ) {
         Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp)) {
             Text(
-                text = "Hermes needs a quick answer",
+                text = "Jeeves needs a quick answer",
                 style = MaterialTheme.typography.labelSmall,
                 fontFamily = GeistMono,
                 color = scheme.onPrimaryContainer.copy(alpha = 0.7f),

@@ -353,7 +353,7 @@ fun AppLockScreen(
             }
         )
         val promptInfo = BiometricPrompt.PromptInfo.Builder()
-            .setTitle("Unlock Octo Jotter")
+            .setTitle("Unlock Notes")
             .setSubtitle("Use your fingerprint to open your notes")
             .setNegativeButtonText("Cancel")
             .setAllowedAuthenticators(BiometricManager.Authenticators.BIOMETRIC_WEAK)
@@ -385,7 +385,7 @@ fun AppLockScreen(
                 modifier = Modifier.size(64.dp)
             )
             Text(
-                text = "Octo Jotter is locked",
+                text = "Notes is locked",
                 style = MaterialTheme.typography.headlineSmall,
                 fontWeight = FontWeight.Bold
             )
@@ -670,7 +670,7 @@ fun NotesListScreen(
             snackbarHost = { SnackbarHost(snackbarHostState) },
             topBar = {
                 TopAppBar(
-                    title = { Text(selectedFolder ?: "Octo Jotter", fontWeight = FontWeight.Bold) },
+                    title = { Text(selectedFolder ?: "Notes", fontWeight = FontWeight.Bold) },
                     navigationIcon = {
                         IconButton(
                             onClick = {
@@ -3505,7 +3505,7 @@ fun SettingsScreen(
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
                             Text(
-                                text = "Require fingerprint unlock when opening Octo Jotter.",
+                                text = "Require fingerprint unlock when opening Notes.",
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )

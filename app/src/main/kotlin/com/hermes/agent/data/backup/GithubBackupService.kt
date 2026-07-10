@@ -316,7 +316,7 @@ class GithubBackupService @Inject constructor(
 
     private fun buildGistPayload(jsonContent: String): String = buildString {
         append("{")
-        append("\"description\":\"Hermes Agent backup\",")
+        append("\"description\":\"Jeeves backup\",")
         append("\"public\":false,")
         append("\"files\":{\"$GIST_FILENAME\":{\"content\":")
         // JSONObject.quote() correctly escapes the content string.

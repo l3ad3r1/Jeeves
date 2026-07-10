@@ -3,9 +3,9 @@
     <!-- Renamed from `app_name`: in the merged app the host owns `app_name` ("Jeeves"),
          and an app-module resource always overrides a library one of the same name.
          Used as the label of Butler's setup activity. -->
-    <string name="butler_app_name">Sassy Butler</string>
+    <string name="butler_app_name">Alarms</string>
     <string name="alarm_channel_name">Alarm Notifications</string>
-    <string name="alarm_channel_desc">Notifications for the Sassy Butler alarm clock</string>
+    <string name="alarm_channel_desc">Notifications for the Jeeves alarm clock</string>
     <string name="btn_hush">HUSH</string>
     <string name="btn_snooze">Snooze (5 min)</string>
     <string name="btn_set_alarm">Set Alarm</string>

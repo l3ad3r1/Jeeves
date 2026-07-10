@@ -81,7 +81,7 @@ fun MemoryScreen(
                 onValueChange = { newMemory = it },
                 label = { Text("Add a memory") },
                 supportingText = {
-                    Text("Anything Hermes should remember about you.")
+                    Text("Anything Jeeves should remember about you.")
                 },
                 modifier = Modifier.fillMaxWidth(),
                 minLines = 2,
