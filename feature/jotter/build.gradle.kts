@@ -35,6 +35,14 @@ android {
         // NoteViewModel reads com.l3ad3r1.octojotter.BuildConfig.VERSION_NAME.
         // Supply it explicitly rather than editing the ported source.
         buildConfigField("String", "VERSION_NAME", "\"${project.findProperty("jeeves.versionName") ?: "0.9.0"}\"")
+
+        // Jotter is an integrated part of Jeeves, not a separate product: the app has ONE
+        // update channel, owned by the host (:app, BuildConfig.UPDATE_REPO). Jotter's own
+        // updater checks the STANDALONE Octo-Jotter channel (v2.x) — inside Jeeves it would
+        // permanently offer a bogus "update" whose APK installs a second, separate notes app
+        // (different applicationId). Kept behind this flag so the module still builds as a
+        // standalone app; false in every Jeeves build. See docs/UX_AUDIT.md JX-01.
+        buildConfigField("boolean", "UPDATER_ENABLED", "false")
     }
 
     compileOptions {

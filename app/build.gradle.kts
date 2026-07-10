@@ -52,6 +52,16 @@ android {
         buildConfigField("String", "CLOUD_MODEL", "\"${project.findProperty("hermes.cloudModel") ?: "gpt-4o-mini"}\"")
         // API key is read from local properties only — never committed.
         buildConfigField("String", "CLOUD_API_KEY", "\"${localProps.getProperty("hermes.cloudApiKey") ?: ""}\"")
+
+        // JX-01 (docs/UX_AUDIT.md): the ONE update channel for the whole app.
+        // Jotter and Butler are parts of Jeeves, not separate products, so they no longer
+        // carry updaters of their own. Set `jeeves.updateRepo` in gradle.properties to a
+        // Jeeves "owner/repo"; blank disables the updater everywhere (UI hidden, background
+        // check cancelled). It must never point at the standalone Hermes/Jotter repos —
+        // their APKs have a different applicationId and would install a SECOND app.
+        val updateRepo = (project.findProperty("jeeves.updateRepo") as String?).orEmpty().trim()
+        buildConfigField("String", "UPDATE_REPO", "\"$updateRepo\"")
+        buildConfigField("boolean", "OTA_ENABLED", updateRepo.isNotBlank().toString())
     }
 
     buildTypes {

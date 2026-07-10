@@ -263,19 +263,23 @@ fun SettingsScreen(
             )
 
             // --- OTA Update ---
-            SectionHeader(text = "Updates")
-            UpdateSection(
-                state = updateState,
-                canInstall = viewModel.canInstallPackages(),
-                onCheck = viewModel::checkForUpdate,
-                onDownload = viewModel::downloadAndInstall,
-                onManagePermission = viewModel::promptInstallPermission,
-                onOpenUrl = { url ->
-                    context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url)))
-                    viewModel.dismissUpdateState()
-                },
-                onDismiss = viewModel::dismissUpdateState,
-            )
+            // JX-01 (docs/UX_AUDIT.md): hidden — the checker targets the standalone
+            // Hermes-Agent-Android channel, whose APKs are a different application.
+            if (com.hermes.agent.BuildConfig.OTA_ENABLED) {
+                SectionHeader(text = "Updates")
+                UpdateSection(
+                    state = updateState,
+                    canInstall = viewModel.canInstallPackages(),
+                    onCheck = viewModel::checkForUpdate,
+                    onDownload = viewModel::downloadAndInstall,
+                    onManagePermission = viewModel::promptInstallPermission,
+                    onOpenUrl = { url ->
+                        context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url)))
+                        viewModel.dismissUpdateState()
+                    },
+                    onDismiss = viewModel::dismissUpdateState,
+                )
+            }
 
             // --- Security ---
             SectionHeader(text = stringResource(R.string.settings_section_security))

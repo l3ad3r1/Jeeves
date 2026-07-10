@@ -24,6 +24,12 @@ class OtaUpdateWorker @AssistedInject constructor(
 ) : CoroutineWorker(appContext, params) {
 
     override suspend fun doWork(): Result {
+        // JX-01: HermesApp cancels this unique work when OTA is disabled, but a run
+        // already queued before the cancel could still execute once — refuse here too.
+        if (!com.hermes.agent.BuildConfig.OTA_ENABLED) {
+            Timber.tag("OtaWorker").i("OTA disabled in this build — skipping check")
+            return Result.success()
+        }
         Timber.tag("OtaWorker").d("checking for update")
         val update = runCatching { checker.check() }
             .onFailure { Timber.tag("OtaWorker").w(it, "check failed") }

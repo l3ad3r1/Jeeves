@@ -67,6 +67,16 @@ class HermesApp : Application(), Configuration.Provider {
             .build()
 
     private fun scheduleOtaUpdateCheck() {
+        // JX-01 (docs/UX_AUDIT.md): the OTA checker targets the STANDALONE
+        // Hermes-Agent-Android release channel — the wrong channel for this
+        // applicationId; "updating" would install a second, separate app.
+        // Cancel rather than merely skip: earlier Jeeves builds already enqueued
+        // this unique work with ExistingPeriodicWorkPolicy.KEEP, so on updated
+        // installs it would otherwise keep running daily forever.
+        if (!BuildConfig.OTA_ENABLED) {
+            WorkManager.getInstance(this).cancelUniqueWork(OtaUpdateWorker.UNIQUE_NAME)
+            return
+        }
         val request = PeriodicWorkRequestBuilder<OtaUpdateWorker>(
             1, TimeUnit.DAYS,
         )

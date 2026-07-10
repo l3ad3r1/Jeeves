@@ -3957,7 +3957,9 @@ fun SettingsScreen(
             ) {
                 Column(modifier = Modifier.padding(16.dp)) {
                     Text(
-                        text = "Updates",
+                        // JX-01: with the updater hidden this card only shows the version
+                        // (and the hidden 7-tap debug entry), so "Updates" would be a lie.
+                        text = if (com.l3ad3r1.octojotter.BuildConfig.UPDATER_ENABLED) "Updates" else "About",
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Bold,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
@@ -3979,7 +3981,9 @@ fun SettingsScreen(
                     )
                     Spacer(modifier = Modifier.height(12.dp))
 
-                    when (val status = updateStatus) {
+                    // JX-01: the whole check/download/install flow targets the standalone
+                    // Octo-Jotter release channel — hidden in the Jeeves build.
+                    if (com.l3ad3r1.octojotter.BuildConfig.UPDATER_ENABLED) when (val status = updateStatus) {
                         is UpdateStatus.Available -> {
                             Row(verticalAlignment = Alignment.CenterVertically) {
                                 Icon(

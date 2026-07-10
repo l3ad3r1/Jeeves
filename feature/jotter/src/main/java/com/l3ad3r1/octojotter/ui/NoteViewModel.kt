@@ -430,6 +430,12 @@ class NoteViewModel(application: Application) : AndroidViewModel(application) {
     val updateStatus: StateFlow<UpdateStatus> = _updateStatus.asStateFlow()
 
     fun checkForUpdate() {
+        // JX-01: this checks the STANDALONE Octo-Jotter release channel, which is wrong
+        // inside Jeeves. The Settings UI is hidden behind the same flag; this guard is the belt.
+        if (!com.l3ad3r1.octojotter.BuildConfig.UPDATER_ENABLED) {
+            android.util.Log.i(logTag, "Updater disabled in this build — standalone release channel does not apply")
+            return
+        }
         viewModelScope.launch {
             _updateStatus.value = UpdateStatus.Checking
             android.util.Log.i(logTag, "Update check started (current v$currentVersionName)")
@@ -477,6 +483,12 @@ class NoteViewModel(application: Application) : AndroidViewModel(application) {
     val downloadStatus: StateFlow<DownloadStatus> = _downloadStatus.asStateFlow()
 
     fun downloadAndInstallUpdate(apkUrl: String, version: String) {
+        // JX-01: that APK is the standalone Octo Jotter (different applicationId) — installing
+        // it would put a second, separate notes app on the device.
+        if (!com.l3ad3r1.octojotter.BuildConfig.UPDATER_ENABLED) {
+            android.util.Log.w(logTag, "Updater disabled in this build — refusing to download $apkUrl")
+            return
+        }
         viewModelScope.launch {
             _downloadStatus.value = DownloadStatus.Downloading(0)
             android.util.Log.i(logTag, "Update download started: v$version from $apkUrl")

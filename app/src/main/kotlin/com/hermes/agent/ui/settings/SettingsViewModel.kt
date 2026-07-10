@@ -171,6 +171,9 @@ class SettingsViewModel @Inject constructor(
     // --- OTA update ---
 
     fun checkForUpdate() {
+        // JX-01: the checker targets the standalone Hermes-Agent-Android channel — wrong
+        // application for this build. The Settings UI is hidden behind the same flag.
+        if (!com.hermes.agent.BuildConfig.OTA_ENABLED) return
         if (_updateState.value is UpdateUiState.Checking) return
         _updateState.value = UpdateUiState.Checking
         viewModelScope.launch {
@@ -198,6 +201,8 @@ class SettingsViewModel @Inject constructor(
      * APK asset URL.
      */
     fun downloadAndInstall() {
+        // JX-01: see checkForUpdate — that APK is a different application.
+        if (!com.hermes.agent.BuildConfig.OTA_ENABLED) return
         val available = _updateState.value as? UpdateUiState.UpdateAvailable ?: return
         if (available.apkUrl.isBlank()) return
         _updateState.value = UpdateUiState.Downloading(available.version, 0)
