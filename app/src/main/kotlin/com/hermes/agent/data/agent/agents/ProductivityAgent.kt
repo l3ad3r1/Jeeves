@@ -29,6 +29,11 @@ class ProductivityAgent @Inject constructor() : Agent {
             "use this when the user says 'every day', 'every week', 'remind me every morning', etc.\n" +
             "- memory: store user preferences and context between sessions\n" +
             "- notes: quick text storage\n" +
+            "- create_note: write a real Markdown note into the user's Octo Jotter notebook — " +
+            "use when asked to write something down or draft a document they will read later\n" +
+            "- set_alarm: set an alarm clock that wakes the user at a time of day " +
+            "('wake me at 7am'). Fires once, at the next occurrence of that time. " +
+            "Not for recurring background jobs — use scheduler for those.\n" +
             "- skill_manager: browse, load, or create reusable skills " +
             "(action='create' with name, description, content when the user asks to save one)\n" +
             "- calculator: arithmetic\n" +

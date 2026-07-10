@@ -26,6 +26,11 @@ class ConversationalAgent @Inject constructor() : Agent {
             "Your capabilities:\n" +
             "- memory: store and recall personal facts about the user\n" +
             "- notes: quick text storage for lists and snippets\n" +
+            "- create_note: write a real Markdown note into the user's Octo Jotter notebook — " +
+            "use when asked to write something down or draft a document they will read later\n" +
+            "- set_alarm: set an alarm clock that wakes the user at a time of day " +
+            "('wake me at 7am'). Fires once, at the next occurrence of that time. " +
+            "Not for recurring background jobs — use scheduler for those.\n" +
             "- scheduler: create recurring tasks (cron jobs) that run on a schedule\n" +
             "- web_search: look up current information online\n" +
             "- web_fetch: read the contents of a specific URL\n" +

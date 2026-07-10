@@ -171,14 +171,62 @@ while `HermesApp` installs `HiltWorkerFactory`. `HiltWorkerFactory` should retur
 unknown workers and let WorkManager fall back to default instantiation, but Gist sync has not
 been run. Check when exercising Jotter sync.
 
+### Phase 5 — Data layer — SKIPPED (deliberately, decision recorded)
+Jotter keeps its own Room database (`gist_notes_database`), separate from `hermes.db`. Both
+files coexist on device (verified via `run-as ... ls databases/`). No entities were folded into
+`HermesDatabase` and no migration was written, because the agent reaches notes through the
+injected `NoteRepository`, not by querying tables. Revisit only if the agent must query notes
+directly (e.g. full-text search across notes from the agent's own RAG index).
+
+### Phase 6 — Integration synergies — IN PROGRESS
+- [x] **`create_note` tool** -> Octo Jotter's `NoteRepository`.
+- [x] **`set_alarm` tool** -> Sassy Butler's `AlarmScheduler` + `AlarmStore`.
+- [ ] **Shared TTS** — expose Butler's `TtsEngine` behind a lazy, off-main-thread guard so
+      Hermes can speak agent replies. Not started (see the Phase 4 note on its 92 MB eager init).
+
+Both tools follow the mandatory 3-step wiring rule:
+1. registered in `di/ToolsModule` (as `provideToolRegistry` parameters),
+2. granted in `data/agent/agents/AgentToolAccess` (CONVERSATIONAL + PRODUCTIVITY),
+3. named in both agents' `systemPrompt`.
+
+Design notes:
+- `create_note` is distinct from the pre-existing `notes` tool, which despite its name stores
+  *long-term memories* via `MemoryRepository`. Both descriptions cross-reference each other so
+  the model does not confuse them.
+- `set_alarm` persists to `AlarmStore` **before** scheduling, mirroring Butler's own
+  `AddAlarmSheet`. `AlarmReceiver` re-registers stored alarms after reboot, so scheduling an
+  unstored alarm would silently vanish on restart. A unit test locks this ordering in.
+- `set_alarm` creates one-shot alarms (`days = emptySet()`, Butler labels them "Once") and
+  reports a caveat when `SCHEDULE_EXACT_ALARM` is not granted (Butler degrades to an inexact
+  alarm rather than throwing).
+- Agent-created notes are local-only (`needsSync = false`); pushing to a Gist needs a token and
+  is left to Jotter's own sync flow.
+
+**Verified:**
+- `:app:testDebugUnitTest` -> **235 tests, 0 failures** (was 219; +16).
+  New: `CreateNoteToolTest` (6), `SetAlarmToolTest` (8, Robolectric + real `AlarmStore`),
+  and 2 added to `AgentToolAccessTest` — one of which asserts step 3, that any agent granted a
+  tool also names it in its system prompt.
+- The `persists to AlarmStore before scheduling` test was **proven to detect the bug**: inverting
+  the two calls in `SetAlarmTool` turned exactly that one test red
+  (`alarm was scheduled before it was persisted expected:<1> but was:<0>`); order restored, green.
+- **Runtime, on device:** `OrchestratorImpl @Inject constructor(... toolRegistry: ToolRegistry ...)`
+  and `ToolsModule.provideToolRegistry` takes both new tools as parameters, so Dagger cannot build
+  the orchestrator without instantiating them. Logcat shows `Orchestrator: Routed to CONVERSATIONAL`
+  followed by a real `HTTP 401` from the chat-completions POST (dummy API key) — i.e. the request
+  was actually assembled and sent. That proves `CreateNoteTool` -> Jotter's `NoteRepository`/Room and
+  `SetAlarmTool` -> Butler's `AlarmScheduler` both resolve across module boundaries in the live app.
+  No Dagger/Hilt runtime error, no crash.
+
+**Not verified:** an end-to-end LLM tool call (needs a real API key), and the alarm actually firing
+from an agent-created alarm.
+
 ## Next steps
-1. Phase 5: data layer. Jotter ships its own Room DB (`AppDatabase`) separate from
-   `HermesDatabase`. Recommendation: **keep them separate** — the agent reaches notes through
-   the injected `NoteRepository` (Phase 4's `FeatureBridge`), not by querying tables, so there
-   is no reason to fold entities into `HermesDatabase` or write a migration.
-2. Phase 6: the payoff — `create_note` / `set_alarm` agent tools (each needs ALL THREE wiring
-   steps: `di/ToolsModule` + `data/agent/agents/AgentToolAccess` + the persona prompts), and
-   `TtsEngine` exposed behind a lazy off-main-thread guard so Hermes can speak agent replies.
+1. Finish Phase 6: expose `TtsEngine` as an injectable, lazily-initialised service
+   (`suspend` init on `Dispatchers.IO`, guarded by a mutex) and let Hermes speak replies through it.
+   Beware: its `init` block loads the ~92 MB ONNX model synchronously.
+2. Phase 7: release hardening — sign with `hermes-release.jks`, verify signer `99255c31...`,
+   ABI splits / download-on-first-use for the TTS models, GitHub release marked `--latest`.
 
 ## Verified at runtime: the FileProvider export fix (Phase 3a)
 Tested on the Pixel_7 emulator via Jotter Settings -> "Export Database to JSON" ->
