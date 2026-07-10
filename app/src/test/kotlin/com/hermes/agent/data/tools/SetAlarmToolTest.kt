@@ -78,6 +78,33 @@ class SetAlarmToolTest {
         assertEquals("alarm was scheduled before it was persisted", 1, storedWhenScheduled)
     }
 
+    /**
+     * Butler's own UI assigns sequential ids via AlarmStore.nextId() (1, 2, 3, ...).
+     * The agent's time-derived id must live in a disjoint range: an id collision makes
+     * AlarmStore.upsert silently REPLACE the user's alarm, and — because the PendingIntent
+     * request code is the alarm id — clobbers its scheduled intent too. The midnight hour
+     * is where hour*100+minute lands right in the UI's id space ("12:05am" -> 5).
+     */
+    @Test
+    fun `midnight-hour agent alarm does not replace a UI-created alarm`() = runTest {
+        (1..5).forEach { i ->
+            AlarmStore.upsert(
+                context,
+                Alarm(id = i, hour = 8, minute = i, label = "UI $i", enabled = true, days = emptySet()),
+            )
+        }
+
+        tool.execute(args("hour" to JsonPrimitive(0), "minute" to JsonPrimitive(5)))
+
+        val stored = AlarmStore.all(context)
+        assertEquals("agent alarm must be added, not swallow a UI alarm", 6, stored.size)
+        assertTrue(
+            "user's alarm id=5 was silently replaced by the agent's",
+            stored.any { it.id == 5 && it.label == "UI 5" },
+        )
+        assertTrue("agent's 00:05 alarm missing", stored.any { it.hour == 0 && it.minute == 5 })
+    }
+
     @Test
     fun `accepts hour and minute sent as quoted strings`() = runTest {
         val result = tool.execute(

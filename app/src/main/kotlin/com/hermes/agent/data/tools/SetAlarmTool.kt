@@ -81,7 +81,13 @@ class SetAlarmTool @Inject constructor(
 
         return try {
             val alarm = Alarm(
-                id = hour * 100 + minute,   // same id scheme AlarmScheduler.schedule() defaults to
+                // Time-derived so asking for the same time twice UPDATES rather than duplicates,
+                // offset out of the UI's id space: Butler's AddAlarmSheet assigns sequential ids
+                // via AlarmStore.nextId() (1, 2, 3, ...), and a bare hour*100+minute overlaps that
+                // range in the midnight hour ("12:05am" -> 5). AlarmStore.upsert and the
+                // PendingIntent request code both key on id, so a collision silently replaces a
+                // user's alarm.
+                id = AGENT_ALARM_ID_BASE + hour * 100 + minute,
                 hour = hour,
                 minute = minute,
                 label = label,
@@ -114,4 +120,9 @@ class SetAlarmTool @Inject constructor(
     /** Accepts both JSON numbers and quoted strings — models emit either. */
     private fun JsonElement.extractInt(): Int? =
         (this as? JsonPrimitive)?.contentOrNull?.trim()?.toIntOrNull()
+
+    private companion object {
+        /** Agent alarm ids live at 10000 + hour*100 + minute (10000..12359), disjoint from the UI's sequential ids. */
+        const val AGENT_ALARM_ID_BASE = 10_000
+    }
 }
