@@ -86,7 +86,27 @@ exit APK. **Always measure APK size from a clean build.** No regression; nothing
       `noCompress(onnx,bin)` and jniLibs `pickFirsts` live in `:app`, not the library,
       because both are applied when the APK is packaged.
 - [x] Manifest union verified by parsing the merged manifest (see below).
-- [ ] **3c. Host navigation** — neither feature is reachable from the launcher yet.
+- [x] **3c. Host navigation** — an "Apps" section on the Hermes home dashboard starts
+      `com.l3ad3r1.octojotter.MainActivity` and `com.sassybutler.alarm.MainAlarmSetupActivity`
+      by Intent (same APK, no IPC).
+- [x] **Runtime smoke test on a Pixel_7 emulator (API 34, x86_64)** — see below.
+
+**MILESTONE REACHED: booting merged shell.** Installed the 283 MB debug APK
+(`com.jeeves.app.debug`) and drove the UI with adb:
+- Hermes host launches; single launcher icon.
+- Tapping **Octo Jotter** opens its Compose UI (Room DB live: "No notes saved locally";
+  Gist sync UI present). No crash.
+- Tapping **Sassy Butler** opens its View UI ("THE PARLOUR", clock, custom Cinzel/Playfair
+  fonts, weather "21 OVERCAST"). Started `from uid 10194 ... result code=0`, i.e. in-process.
+  Starting it from `adb shell` is correctly *denied* (`not exported from uid 10194`) — the
+  `exported=false` guard works as designed; only the host can launch it.
+- **Butler's full ONNX TTS pipeline ran inside the merged app:**
+  `TtsEngine: Loaded voice 'bm_george' (510 style rows)` -> `AudioEngine: TTS synthesis
+  started` -> `MediaPlayer started (birds)` -> `TtsEngine: Synthesized 299400 samples (~12s)`
+  -> `AlarmForegroundService: Birds finished, TTS playing` -> `AudioEngine: AudioTrack
+  playback complete`. No crash, no UnsatisfiedLinkError, no OOM.
+  This proves the `noCompress(onnx,bin)` packaging, the ONNX native lib, the merged asset
+  directory, and `mediaPlayback` coexisting with Hermes's `dataSync` foreground services.
 
 **Exit gate so far (clean build):** `:app:assembleDebug` + `:app:testDebugUnitTest`
 -> BUILD SUCCESSFUL, 219 tests, 0 failures. Merged manifest verified with an XML parser:
@@ -99,13 +119,23 @@ exit APK. **Always measure APK size from a clean build.** No regression; nothing
   FOREGROUND_SERVICE_MEDIA_PLAYBACK, USE_FULL_SCREEN_INTENT, VIBRATE, DISABLE_KEYGUARD).
 - TTS models packaged **Stored/uncompressed** as intended; clean APK 282,977,250 bytes.
 
-Runtime behaviour is NOT yet verified (no device run, no host entry point).
+### Phase 4 — Unified Hilt graph — NOT STARTED
 
 ## Next steps
-1. Phase 3c: add host hub entries — start `com.l3ad3r1.octojotter.MainActivity` and
-   `com.sassybutler.alarm.MainAlarmSetupActivity` by Intent from the Hermes UI.
-   That completes the "booting merged shell" milestone; then smoke-test on a device.
-2. Phase 4: unify the Hilt graph (Butler's service/activities -> `@AndroidEntryPoint`).
+1. Phase 4: one Hilt graph. `HermesApp` stays the sole `@HiltAndroidApp`; convert Butler's
+   Activities/Service/Receiver to `@AndroidEntryPoint` where they need injection; resolve
+   duplicate bindings (two OkHttpClients: Hermes's and Jotter's RetrofitClient).
+2. Phase 5: data layer. Jotter ships its own Room DB (`AppDatabase`) separate from
+   `HermesDatabase` — keep them separate unless the agent must query notes directly
+   (which Phase 6's `create_note` tool will decide).
+3. Phase 6: the payoff — `create_note` / `set_alarm` agent tools (each needs all 3 wiring
+   steps), and Butler's `TtsEngine` exposed so Hermes can speak agent replies.
+
+## Not yet exercised at runtime
+- Jotter: creating/saving a note, Gist sync, biometric app-lock, share-target intent,
+  and the FileProvider export path (the `file_paths.xml` merge fix is unverified at runtime).
+- Butler: scheduling a real alarm and firing the lock-screen `AlarmActivity`; boot re-registration.
+- Hermes: agent chat / cron / foreground service after the toolchain upgrade.
 
 ## Deferred / noted (not done)
 - Jotter's 4 roborazzi screenshot tests were not ported (would need the roborazzi plugin).
