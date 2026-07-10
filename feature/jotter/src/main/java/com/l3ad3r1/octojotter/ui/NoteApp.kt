@@ -98,6 +98,23 @@ import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.ui.text.input.OffsetMapping
 import androidx.compose.ui.text.input.TransformedText
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material.icons.filled.Description
+import androidx.compose.material.icons.filled.StarBorder
+import androidx.compose.material.icons.filled.NotificationsNone
+import androidx.compose.material.icons.filled.LibraryBooks
+import androidx.compose.material.icons.filled.Archive
+import androidx.compose.material.icons.filled.DeleteOutline
+import androidx.compose.material.icons.filled.Home
+import androidx.compose.material.icons.filled.MenuBook
+import androidx.compose.material.icons.filled.Tag
+import androidx.compose.material.icons.filled.DarkMode
+import androidx.compose.material.icons.filled.FormatUnderlined
+import androidx.compose.material.icons.filled.MoreVert
+import androidx.compose.material.icons.filled.Remove
+import androidx.compose.material.icons.filled.Undo
+import androidx.compose.material.icons.filled.Redo
+import androidx.compose.material.icons.filled.LocalOffer
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -495,173 +512,81 @@ fun NotesListScreen(
     ModalNavigationDrawer(
         drawerState = drawerState,
         drawerContent = {
-            ModalDrawerSheet {
-                Spacer(modifier = Modifier.height(12.dp))
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 16.dp, vertical = 8.dp),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Text(
-                        text = "Notebook Folders",
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.primary
-                    )
-                    IconButton(
-                        onClick = { showCreateFolderDialog = true },
-                        modifier = Modifier.testTag("drawer_add_folder_button")
+            ModalDrawerSheet(
+                drawerContainerColor = MaterialTheme.colorScheme.background,
+                modifier = Modifier.width(300.dp)
+            ) {
+                Spacer(modifier = Modifier.height(16.dp))
+
+                // List Items
+                val drawerItems = listOf(
+                    Triple("Notes", Icons.Default.Description, selectedFolder == null),
+                    Triple("Favorites", Icons.Default.StarBorder, selectedFolder == "Favorites"),
+                    Triple("Reminders", Icons.Default.NotificationsNone, selectedFolder == "Reminders"),
+                    Triple("Monographs", Icons.Default.LibraryBooks, selectedFolder == "Monographs"),
+                    Triple("Archive", Icons.Default.Archive, selectedFolder == "Archive"),
+                    Triple("Trash", Icons.Default.DeleteOutline, false)
+                )
+
+                drawerItems.forEach { (label, icon, isSelected) ->
+                    val isNotes = label == "Notes"
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 12.dp, vertical = 4.dp)
+                            .clip(RoundedCornerShape(8.dp))
+                            .background(if (isSelected) MaterialTheme.colorScheme.surfaceVariant else Color.Transparent)
+                            .clickable {
+                                if (label == "Trash") {
+                                    onNavigateToTrash()
+                                } else if (isNotes) {
+                                    viewModel.selectFolder(null)
+                                } else {
+                                    viewModel.selectFolder(label)
+                                }
+                                scope.launch { drawerState.close() }
+                            }
+                            .padding(horizontal = 16.dp, vertical = 12.dp),
+                        verticalAlignment = Alignment.CenterVertically
                     ) {
                         Icon(
-                            imageVector = Icons.Default.CreateNewFolder,
-                            contentDescription = "Create folder",
-                            tint = MaterialTheme.colorScheme.primary
+                            imageVector = icon,
+                            contentDescription = label,
+                            tint = if (isNotes && isSelected) Color(0xFF4CAF50) else MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.size(20.dp)
+                        )
+                        Spacer(modifier = Modifier.width(16.dp))
+                        Text(
+                            text = label,
+                            style = MaterialTheme.typography.bodyLarge,
+                            color = MaterialTheme.colorScheme.onBackground,
+                            modifier = Modifier.weight(1f)
+                        )
+                        Text(
+                            text = if (label == "Trash") "${syncHealth.trash}" else "0", // Mock counts for others
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
                 }
-                HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
-                
-                // All Notes selection
-                NavigationDrawerItem(
-                    icon = { Icon(Icons.AutoMirrored.Filled.Notes, contentDescription = null) },
-                    label = { Text("All Notes") },
-                    selected = selectedFolder == null,
-                    onClick = {
-                        viewModel.selectFolder(null)
-                        scope.launch { drawerState.close() }
-                    },
-                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp).testTag("folder_item_all")
-                )
 
-                // Uncategorized selection
-                NavigationDrawerItem(
-                    icon = { Icon(Icons.Default.FolderOpen, contentDescription = null) },
-                    label = { Text("Uncategorized") },
-                    selected = selectedFolder == "Uncategorized",
-                    onClick = {
-                        viewModel.selectFolder("Uncategorized")
-                        scope.launch { drawerState.close() }
-                    },
-                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp).testTag("folder_item_uncategorized")
-                )
+                HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp), color = MaterialTheme.colorScheme.surfaceVariant)
 
-                NavigationDrawerItem(
-                    icon = { Icon(Icons.Default.Delete, contentDescription = null) },
-                    label = { Text("Trash (${syncHealth.trash})") },
-                    selected = false,
-                    onClick = {
-                        scope.launch { drawerState.close() }
-                        onNavigateToTrash()
-                    },
-                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp).testTag("folder_item_trash")
-                )
+                Spacer(modifier = Modifier.weight(1f))
 
-                NavigationDrawerItem(
-                    icon = { Icon(Icons.Default.CheckBox, contentDescription = null) },
-                    label = { Text("Task Board") },
-                    selected = false,
-                    onClick = {
-                        scope.launch { drawerState.close() }
-                        onNavigateToTaskBoard()
-                    },
-                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp).testTag("folder_item_task_board")
-                )
-
-                HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
-
-                // Nested folder tree - repos nest into their folders. Built from
-                // all notes' locationPath, plus any empty custom folders.
-                val drawerTree = remember(allNotesForFolders, customFolders) {
-                    buildFolderTree(allNotesForFolders).also { root ->
-                        customFolders.forEach { name ->
-                            root.children.getOrPut(name) { FolderTreeNode(name, name) }
-                        }
-                    }
-                }
-                val drawerRows = remember(drawerTree, drawerFolderExpanded.toMap()) {
-                    mutableListOf<FolderTreeRow>().also {
-                        flattenFolderTree(drawerTree, 0, drawerFolderExpanded, it)
-                    }
-                }
-                LazyColumn(
-                    modifier = Modifier.fillMaxWidth().weight(1f),
-                    verticalArrangement = Arrangement.spacedBy(2.dp)
+                // Bottom Tab Icons
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .background(MaterialTheme.colorScheme.surface)
+                        .padding(horizontal = 24.dp, vertical = 12.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
-                    items(
-                        drawerRows.filterIsInstance<FolderRow>(),
-                        key = { "drawer_${it.node.path}" }
-                    ) { row ->
-                        val hasChildren = row.node.children.isNotEmpty()
-                        val isSelected = selectedFolder == row.node.path
-                        val isCustomTop = row.depth == 0 && row.node.path in customFolders
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(start = (12 + row.depth * 16).dp, end = 12.dp)
-                                .clip(RoundedCornerShape(12.dp))
-                                .background(
-                                    if (isSelected) MaterialTheme.colorScheme.secondaryContainer
-                                    else Color.Transparent
-                                )
-                                .clickable {
-                                    viewModel.selectFolder(row.node.path)
-                                    scope.launch { drawerState.close() }
-                                }
-                                .padding(vertical = 8.dp, horizontal = 8.dp)
-                                .testTag("folder_item_${row.node.path}"),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            if (hasChildren) {
-                                IconButton(
-                                    onClick = { drawerFolderExpanded[row.node.path] = !row.expanded },
-                                    modifier = Modifier.size(28.dp)
-                                ) {
-                                    Icon(
-                                        imageVector = if (row.expanded) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
-                                        contentDescription = if (row.expanded) "Collapse" else "Expand"
-                                    )
-                                }
-                            } else {
-                                Spacer(modifier = Modifier.width(28.dp))
-                            }
-                            Icon(
-                                imageVector = if (row.expanded && hasChildren) Icons.Default.FolderOpen else Icons.Default.Folder,
-                                contentDescription = null,
-                                tint = MaterialTheme.colorScheme.primary,
-                                modifier = Modifier.size(20.dp)
-                            )
-                            Spacer(modifier = Modifier.width(8.dp))
-                            Text(
-                                text = row.node.name,
-                                style = MaterialTheme.typography.bodyMedium,
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis,
-                                modifier = Modifier.weight(1f)
-                            )
-                            if (row.node.noteCount > 0) {
-                                Text(
-                                    text = "${row.node.noteCount}",
-                                    style = MaterialTheme.typography.labelSmall,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                                )
-                            }
-                            if (isCustomTop && row.node.noteCount == 0) {
-                                IconButton(
-                                    onClick = { viewModel.deleteFolder(row.node.name) },
-                                    modifier = Modifier.size(28.dp).testTag("delete_folder_${row.node.name}")
-                                ) {
-                                    Icon(
-                                        imageVector = Icons.Default.Delete,
-                                        contentDescription = "Delete Folder",
-                                        modifier = Modifier.size(18.dp),
-                                        tint = MaterialTheme.colorScheme.error
-                                    )
-                                }
-                            }
-                        }
-                    }
+                    Icon(Icons.Default.Home, contentDescription = "Home", tint = Color(0xFF4CAF50))
+                    Icon(Icons.Default.MenuBook, contentDescription = "Book", tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Icon(Icons.Default.Tag, contentDescription = "Tags", tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Icon(Icons.Default.DarkMode, contentDescription = "Theme", tint = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
             }
         }
@@ -2126,187 +2051,87 @@ fun EditorScreen(
 
     val editorToolbar: @Composable () -> Unit = {
         Surface(
-            color = MaterialTheme.colorScheme.surfaceContainer,
-            contentColor = MaterialTheme.colorScheme.onSurface,
-            tonalElevation = 3.dp,
+            color = Color(0xFF1E1E1E), // Dark background matching the editor
+            contentColor = Color.LightGray,
+            tonalElevation = 0.dp,
             modifier = Modifier.fillMaxWidth()
         ) {
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .horizontalScroll(rememberScrollState())
-                    .padding(horizontal = 8.dp, vertical = 4.dp),
-                horizontalArrangement = Arrangement.spacedBy(4.dp),
+                    .padding(horizontal = 8.dp, vertical = 8.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                IconButton(onClick = { insertMarkdown("# ", "") }, modifier = Modifier.testTag("format_heading_button")) {
-                    Icon(Icons.Default.Title, contentDescription = "Heading 1")
-                }
-                IconButton(onClick = { insertMarkdown("## ", "") }, modifier = Modifier.testTag("format_heading2_button")) {
-                    Text("H2", fontWeight = FontWeight.Bold, style = MaterialTheme.typography.labelLarge)
-                }
-                IconButton(onClick = { insertMarkdown("### ", "") }, modifier = Modifier.testTag("format_heading3_button")) {
-                    Text("H3", fontWeight = FontWeight.Bold, style = MaterialTheme.typography.labelMedium)
-                }
-                IconButton(onClick = { insertMarkdown("**") }, modifier = Modifier.testTag("format_bold_button")) {
-                    Icon(Icons.Default.FormatBold, contentDescription = "Format Bold")
-                }
-                IconButton(onClick = { insertMarkdown("*") }, modifier = Modifier.testTag("format_italic_button")) {
-                    Icon(Icons.Default.FormatItalic, contentDescription = "Format Italic")
-                }
-                IconButton(onClick = { insertMarkdown("~~") }, modifier = Modifier.testTag("format_strikethrough_button")) {
-                    Icon(Icons.Default.FormatStrikethrough, contentDescription = "Format Strikethrough")
-                }
-                IconButton(onClick = { insertMarkdown("`") }, modifier = Modifier.testTag("format_code_button")) {
-                    Icon(Icons.Default.Code, contentDescription = "Inline Code")
-                }
-                IconButton(onClick = { insertMarkdown("- ", "") }, modifier = Modifier.testTag("format_list_button")) {
-                    Icon(Icons.AutoMirrored.Filled.FormatListBulleted, contentDescription = "Format Unordered List")
-                }
-                IconButton(onClick = { insertMarkdown("1. ", "") }, modifier = Modifier.testTag("format_numbered_list_button")) {
-                    Icon(Icons.Default.FormatListNumbered, contentDescription = "Format Numbered List")
-                }
-                IconButton(onClick = { insertMarkdown("> ", "") }, modifier = Modifier.testTag("format_quote_button")) {
-                    Icon(Icons.Default.FormatQuote, contentDescription = "Blockquote")
-                }
-                IconButton(onClick = { insertMarkdown("- [ ] ", "") }, modifier = Modifier.testTag("format_checkbox_button")) {
-                    Icon(Icons.Default.CheckBox, contentDescription = "Task checkbox")
-                }
-                IconButton(onClick = { insertMarkdown("[", "](url)") }, modifier = Modifier.testTag("format_link_button")) {
-                    Icon(Icons.Default.InsertLink, contentDescription = "Link")
-                }
-                IconButton(onClick = { insertMarkdown("[[", "]]") }, modifier = Modifier.testTag("format_wikilink_button")) {
-                    Icon(Icons.Default.Link, contentDescription = "Wiki link")
-                }
-                IconButton(onClick = { imagePicker.launch("image/*") }, modifier = Modifier.testTag("add_image_button")) {
-                    Icon(Icons.Default.Image, contentDescription = "Add image")
-                }
-                IconButton(onClick = { showDrawingDialog = true }, modifier = Modifier.testTag("add_drawing_button")) {
-                    Icon(Icons.Default.Brush, contentDescription = "Add drawing")
-                }
-                if (pluginCommands.isNotEmpty() || pluginSnippets.isNotEmpty()) {
-                    Box {
-                        IconButton(onClick = { showPluginMenu = true }, modifier = Modifier.testTag("plugin_commands_button")) {
-                            Icon(Icons.Default.Extension, contentDescription = "Plugin commands")
-                        }
-                        DropdownMenu(expanded = showPluginMenu, onDismissRequest = { showPluginMenu = false }) {
-                            pluginCommands.forEach { cmd ->
-                                DropdownMenuItem(
-                                    text = { Text(cmd.name) },
-                                    leadingIcon = { Icon(Icons.Default.Bolt, contentDescription = null) },
-                                    onClick = {
-                                        showPluginMenu = false
-                                        scope.launch {
-                                            val out = viewModel.runPluginCommand(cmd, textFieldValue.text)
-                                            if (out != null) {
-                                                textFieldValue = TextFieldValue(text = out, selection = TextRange(out.length))
-                                                viewModel.onNoteTextChanged(editorTitle, out)
-                                            }
-                                        }
-                                    },
-                                    modifier = Modifier.testTag("plugin_command_${cmd.pluginId}_${cmd.id}")
-                                )
-                            }
-                            pluginSnippets.forEach { snippet ->
-                                DropdownMenuItem(
-                                    text = { Text(snippet.name) },
-                                    leadingIcon = { Icon(Icons.Default.Bookmark, contentDescription = null) },
-                                    onClick = {
-                                        showPluginMenu = false
-                                        insertTextAtCursor(snippet.content)
-                                    },
-                                    modifier = Modifier.testTag("plugin_snippet_${snippet.id}")
-                                )
-                            }
-                        }
+                // Left side icons (+, B, I, U, Menu)
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(16.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    IconButton(onClick = { /* Add element */ }) {
+                        Icon(Icons.Default.Add, contentDescription = "Add", tint = Color(0xFF4CAF50)) // Green plus
                     }
+                    IconButton(onClick = { insertMarkdown("**") }) {
+                        Icon(Icons.Default.FormatBold, contentDescription = "Format Bold", tint = Color.LightGray)
+                    }
+                    IconButton(onClick = { insertMarkdown("*") }) {
+                        Icon(Icons.Default.FormatItalic, contentDescription = "Format Italic", tint = Color.LightGray)
+                    }
+                    IconButton(onClick = { insertMarkdown("<u>", "</u>") }) {
+                        Icon(Icons.Default.FormatUnderlined, contentDescription = "Format Underlined", tint = Color.LightGray)
+                    }
+                    IconButton(onClick = { /* More options */ }) {
+                        Icon(Icons.Default.MoreVert, contentDescription = "More Options", tint = Color.LightGray)
+                    }
+                }
+                
+                // Right side tools (Text size, etc.)
+                Row(
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    IconButton(onClick = { /* Decrease size */ }) {
+                        Icon(Icons.Default.Remove, contentDescription = "Decrease size", tint = Color.LightGray)
+                    }
+                    Text("16px", color = Color.LightGray, style = MaterialTheme.typography.bodyMedium)
                 }
             }
         }
     }
 
     Scaffold(
+        containerColor = Color(0xFF1E1E1E),
         topBar = {
-            Column {
-                TopAppBar(
-                title = {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Text(
-                            text = editorTitle.ifBlank { "Untitled Note" },
-                            fontWeight = FontWeight.SemiBold,
-                            style = MaterialTheme.typography.titleMedium,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis,
-                            modifier = Modifier.weight(1f, fill = false)
-                        )
-                        Spacer(modifier = Modifier.weight(1f))
-                        SaveStatusIndicator(saveStatus = saveStatus)
-                        Spacer(modifier = Modifier.width(8.dp))
-                        IconButton(
-                            onClick = { isEditing = !isEditing },
-                            modifier = Modifier.testTag("editor_mode_button")
-                        ) {
-                            Icon(
-                                imageVector = if (isEditing) Icons.Default.Visibility else Icons.Default.Edit,
-                                contentDescription = if (isEditing) "Preview note" else "Edit note",
-                                tint = MaterialTheme.colorScheme.onPrimaryContainer
-                            )
-                        }
-                        note?.let { currentNote ->
-                            IconButton(
-                                onClick = onNavigateToHistory,
-                                enabled = !currentNote.gistId.isNullOrBlank() || !currentNote.repository.isNullOrBlank(),
-                                modifier = Modifier.testTag("editor_history_button")
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Default.History,
-                                    contentDescription = "Note history",
-                                    tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.8f)
-                                )
-                            }
-                            IconButton(
-                                onClick = { viewModel.toggleLockNote(currentNote) },
-                                modifier = Modifier.testTag("editor_lock_button")
-                            ) {
-                                Icon(
-                                    imageVector = if (currentNote.locked) Icons.Default.Lock else Icons.Default.LockOpen,
-                                    contentDescription = if (currentNote.locked) "Unlock note" else "Lock note",
-                                    tint = if (currentNote.locked) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
-                                )
-                            }
-                            IconButton(
-                                onClick = { viewModel.togglePinNote(currentNote) },
-                                modifier = Modifier.testTag("editor_pin_button")
-                            ) {
-                                Icon(
-                                    imageVector = if (currentNote.pinned) Icons.Filled.PushPin else Icons.Outlined.PushPin,
-                                    contentDescription = if (currentNote.pinned) "Unpin Note" else "Pin Note",
-                                    tint = if (currentNote.pinned) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
-                                )
-                            }
-                        }
-                    }
-                },
+            TopAppBar(
+                title = { },
                 navigationIcon = {
                     IconButton(onClick = handleExit) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back", tint = Color.LightGray)
+                    }
+                },
+                actions = {
+                    IconButton(onClick = { /* TODO: Undo */ }) {
+                        Icon(Icons.Default.Undo, contentDescription = "Undo", tint = Color.DarkGray)
+                    }
+                    IconButton(onClick = { /* TODO: Redo */ }) {
+                        Icon(Icons.Default.Redo, contentDescription = "Redo", tint = Color.DarkGray)
+                    }
+                    IconButton(onClick = { /* TODO: Tag */ }) {
+                        Icon(Icons.Default.LocalOffer, contentDescription = "Tag", tint = Color.LightGray)
+                    }
+                    IconButton(onClick = { /* TODO: Options */ }) {
+                        Icon(Icons.Default.MoreVert, contentDescription = "Options", tint = Color.LightGray)
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.primaryContainer,
-                    titleContentColor = MaterialTheme.colorScheme.onPrimaryContainer,
-                    navigationIconContentColor = MaterialTheme.colorScheme.onPrimaryContainer
+                    containerColor = Color(0xFF1E1E1E),
                 )
-                )
-                if (isEditing) {
-                    editorToolbar()
-                }
-            }
+            )
         },
+        bottomBar = {
+            if (isEditing) {
+                editorToolbar()
+            }
+        }
     ) { innerPadding ->
         note?.let {
             if (isEditing) {
@@ -2517,14 +2342,15 @@ fun EditorInputs(
         TextField(
             value = title,
             onValueChange = onTitleChanged,
-            placeholder = { Text("Title", style = MaterialTheme.typography.headlineSmall) },
+            placeholder = { Text("Note title", style = MaterialTheme.typography.headlineLarge.copy(fontWeight = FontWeight.Bold, color = Color.Gray)) },
             singleLine = true,
-            textStyle = MaterialTheme.typography.headlineSmall.copy(fontWeight = FontWeight.Bold),
+            textStyle = MaterialTheme.typography.headlineLarge.copy(fontWeight = FontWeight.Bold, color = Color.White),
             colors = TextFieldDefaults.colors(
                 focusedContainerColor = Color.Transparent,
                 unfocusedContainerColor = Color.Transparent,
                 focusedIndicatorColor = Color.Transparent,
-                unfocusedIndicatorColor = Color.Transparent
+                unfocusedIndicatorColor = Color.Transparent,
+                cursorColor = Color.White
             ),
             modifier = Modifier
                 .fillMaxWidth()
@@ -2745,13 +2571,14 @@ fun EditorInputs(
             TextField(
                 value = textFieldValue,
                 onValueChange = onContentChanged,
-                placeholder = { Text("Type your markdown here...") },
-                textStyle = MaterialTheme.typography.bodyLarge.copy(fontFamily = MonoFontFamily),
+                placeholder = { Text("Start writing your note...", color = Color.DarkGray) },
+                textStyle = MaterialTheme.typography.bodyLarge.copy(fontFamily = MonoFontFamily, color = Color.LightGray),
                 colors = TextFieldDefaults.colors(
                     focusedContainerColor = Color.Transparent,
                     unfocusedContainerColor = Color.Transparent,
                     focusedIndicatorColor = Color.Transparent,
-                    unfocusedIndicatorColor = Color.Transparent
+                    unfocusedIndicatorColor = Color.Transparent,
+                    cursorColor = Color.White
                 ),
                 visualTransformation = markdownTransformation,
                 modifier = Modifier
