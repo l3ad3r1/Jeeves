@@ -1,5 +1,6 @@
 package com.hermes.agent.ui.home
 
+import android.content.Intent
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -26,6 +27,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -54,6 +56,7 @@ fun HomeScreen(
     val model by viewModel.modelName.collectAsStateWithLifecycle()
     val presence by viewModel.presence.collectAsStateWithLifecycle()
     val scheme = MaterialTheme.colorScheme
+    val context = LocalContext.current
 
     Column(
         modifier = Modifier
@@ -145,6 +148,33 @@ fun HomeScreen(
 
         Spacer(Modifier.height(20.dp))
 
+        // Bundled apps. Jotter and Butler each keep their own Activity rather than being
+        // embedded in this nav graph: Jotter's is a FragmentActivity (BiometricPrompt
+        // needs one) and Butler's UI is View-based, not Compose. Both live in feature
+        // modules of this same APK, so a plain Intent starts them.
+        SectionLabel("Apps")
+        Spacer(Modifier.height(11.dp))
+        Row(horizontalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.fillMaxWidth()) {
+            QuickAction(
+                title = "Octo Jotter",
+                subtitle = "Notes & Gists",
+                modifier = Modifier.weight(1f),
+                onClick = {
+                    context.startActivity(Intent(context, com.l3ad3r1.octojotter.MainActivity::class.java))
+                },
+            )
+            QuickAction(
+                title = "Sassy Butler",
+                subtitle = "Alarms",
+                modifier = Modifier.weight(1f),
+                onClick = {
+                    context.startActivity(Intent(context, com.sassybutler.alarm.MainAlarmSetupActivity::class.java))
+                },
+            )
+        }
+
+        Spacer(Modifier.height(20.dp))
+
         // Recent threads
         SectionHeader("Recent threads", action = "Open", onAction = onOpenConversations)
         Spacer(Modifier.height(11.dp))
@@ -188,6 +218,18 @@ private fun QuickAction(
         Text(title, fontWeight = FontWeight.SemiBold, fontSize = 14.sp, color = scheme.onSurface)
         Text(subtitle, fontSize = 11.5.sp, color = scheme.onSurfaceVariant)
     }
+}
+
+/** Section heading without a trailing action link (cf. [SectionHeader]). */
+@Composable
+private fun SectionLabel(title: String) {
+    Text(
+        title.uppercase(),
+        style = MaterialTheme.typography.labelMedium,
+        fontWeight = FontWeight.SemiBold,
+        letterSpacing = 1.sp,
+        color = MaterialTheme.colorScheme.outline,
+    )
 }
 
 @Composable
