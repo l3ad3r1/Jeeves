@@ -3,19 +3,16 @@ Unify the three merged apps: same settings screen, same update channel, one plac
 saved. Jotter and Butler are integrated parts of Hermes, not separate apps.
 
 ## Now
-Step 1 of 3 — collapse the two update channels into one configurable Jeeves channel.
+Unification complete (3/3 committed). Awaiting on-device verification.
 
 ## Next
-1. Step 1: one update channel. `jeeves.updateRepo` in gradle.properties -> `BuildConfig.UPDATE_REPO`
-   + `OTA_ENABLED`. Jotter's updater UI/VM gated off; Hermes OTA is the only updater; blank repo
-   hides the UI and cancels the background worker. Check: `:app:assembleDebug` + `:app:testDebugUnitTest`.
-2. Step 2: new `:core:settings` Android library with `JeevesSettings` — ONE SharedPreferences
-   file `jeeves_settings`, sync getters (Butler's Views/services need sync) + Flows (Compose).
-   One-time migration from legacy `butler_prefs`, `voice_prefs`, `theme_settings`. Butler's
-   `ButlerPrefs`/`VoiceCatalog` and Jotter's `ThemePreferences` delegate to it, public APIs
-   unchanged. Check: Robolectric tests for migration + delegation.
-3. Step 3: one Settings screen — Hermes Settings gains "Notes" and "Alarms" sections editing
-   `JeevesSettings`; Jotter's theme row and Butler's preferences sheet route there.
+1. Device check when an emulator is available: new Settings sections render; dark mode applies
+   to Hermes AND Notes; Butler's sheet and the Settings screen show the same values; no
+   "Updates" section anywhere; existing Butler prefs survive an upgrade install.
+2. Optional: fold Jotter's remaining in-app settings (GitHub repo, app lock, plugins) into the
+   host screen — they are Jotter FEATURES, not shared settings, so they were deliberately left.
+3. Remaining UX audit items: JX-02 brand fracture, JX-03 splash replay, JX-04 Home a11y,
+   JX-05 Butler contrast 1.83:1, JX-06 Butler dark mode.
 
 ## Constraints
 - Never point the updater at the standalone Hermes/Jotter repos: their APKs have a different
@@ -44,7 +41,18 @@ Step 1 of 3 — collapse the two update channels into one configurable Jeeves ch
 - Alarm data (`alarms_store`) is DATA, not settings — it stays in AlarmStore.
 
 ## Done
-- (this task) nothing yet.
+- Step 1 `c815d49` — one update channel. RESULT: `jeeves.updateRepo` drives BuildConfig
+  UPDATE_REPO/OTA_ENABLED; blank => UI hidden + unique work CANCELLED (not just skipped, since
+  earlier builds enqueued it with KEEP). Both switch directions verified from generated BuildConfig.
+- Step 2 `9d180ea` — one settings store. RESULT: `:core:settings` / `JeevesSettings`
+  (SharedPreferences `jeeves_settings`); `butler_prefs` + `voice_prefs` migrate on first touch,
+  `theme_settings` DataStore migrates from HermesApp's IO coroutine. 251 tests, 0 failures;
+  migration tests proven red when ensureMigrated is stubbed out.
+- Step 3 `76f28e1` — one Settings screen. RESULT: Hermes Settings owns Dark mode (app-wide, now
+  drives HermesTheme too) + a full Alarms section. 252 tests, 0 failures.
+- Test-isolation bug: Robolectric boots the real HermesApp, whose IO warm-up raced the migration
+  tests' seeding (3/3 reproducible, not a flake). Fixed with @Config(application = Application::class).
+  Production unaffected — legacy files already exist when the warm-up runs.
 
 ## Open items
 - docs/UX_AUDIT.md JX-02..JX-16 remain unfixed (brand fracture, splash replay, Home a11y,
