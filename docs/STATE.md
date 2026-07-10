@@ -3,7 +3,7 @@ Unify the three merged apps: same settings screen, same update channel, one plac
 saved. Jotter and Butler are integrated parts of Hermes, not separate apps.
 
 ## Now
-Unification complete (3/3 committed). Awaiting on-device verification.
+Unification + rebrand + unified theme committed. Awaiting on-device verification.
 
 ## Next
 1. Device check when an emulator is available: new Settings sections render; dark mode applies
@@ -11,8 +11,8 @@ Unification complete (3/3 committed). Awaiting on-device verification.
    "Updates" section anywhere; existing Butler prefs survive an upgrade install.
 2. Optional: fold Jotter's remaining in-app settings (GitHub repo, app lock, plugins) into the
    host screen — they are Jotter FEATURES, not shared settings, so they were deliberately left.
-3. Remaining UX audit items: JX-02 brand fracture, JX-03 splash replay, JX-04 Home a11y,
-   JX-05 Butler contrast 1.83:1, JX-06 Butler dark mode.
+3. Remaining UX audit items: JX-03 splash replay, JX-04 Home a11y, JX-07 permission ambush,
+   JX-08 24h-only time format, JX-09..JX-16. (JX-01/02/05/06 fixed.)
 
 ## Constraints
 - Never point the updater at the standalone Hermes/Jotter repos: their APKs have a different
@@ -53,6 +53,13 @@ Unification complete (3/3 committed). Awaiting on-device verification.
 - Test-isolation bug: Robolectric boots the real HermesApp, whose IO warm-up raced the migration
   tests' seeding (3/3 reproducible, not a flake). Fixed with @Config(application = Application::class).
   Production unaffected — legacy files already exist when the warm-up runs.
+- Rebrand `4d832a4` — RESULT: Hermes Agent->Jeeves, Octo Jotter->Notes, Sassy Butler->Alarms in all
+  display copy incl. 6 locales. Packages/classes/channel IDs/X-Hermes-* headers/Hermes-Cloud model
+  ids/User-Agents/"Hermes Blue" enum label/Termux-CLI refs deliberately untouched. 252 tests green.
+- Unified theme `a0b8d4d` — RESULT: new :core:theme owns the one palette; Notes' "Inkwell" schemes
+  and app's Midnight/Paper/Legacy schemes deleted; Alarms gains values-night + DayNight parents.
+  FIXED A BUG from 76f28e1: HermesTheme ignored darkTheme whenever appTheme was non-null (always),
+  so "app-wide dark mode" never applied to the agent surfaces. Also JX-05: accent 1.83:1 -> 5.04:1.
 
 ## Open items
 - docs/UX_AUDIT.md JX-02..JX-16 remain unfixed (brand fracture, splash replay, Home a11y,

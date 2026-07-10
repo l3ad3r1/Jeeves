@@ -1,5 +1,9 @@
 # Jeeves UI/UX Audit — v0.9.0
 
+> **Status update.** JX-01 (dueling updaters), JX-02 (brand fracture), JX-05 (Alarms contrast)
+> and JX-06 (Alarms light-only) are FIXED — see commits c815d49, 4d832a4, a0b8d4d.
+> JX-03, JX-04, JX-07..JX-16 remain open.
+
 **Scope:** the merged super app as shipped at commit `35dbf89` — the Hermes host (home,
 onboarding, chat, settings), the embedded Octo Jotter and Sassy Butler surfaces, and the seams
 between them. **Method:** heuristic review (Material guidance, Nielsen heuristics), code
