@@ -16,6 +16,16 @@ repo. Octo Jotter and Sassy Butler are NOT yet imported (Phase 3).
 
 ## Status log (newest first)
 
+### Product UI/UX audit — 2026-07-10
+- [x] Created `docs/UI_UX_VISUAL_REPORT_2026-07-10.md`: a code-evidenced visual audit of
+      Material Design, accessibility, navigation, trust, safety, workflow continuity, and the
+      shared design system across the Jeeves host, Notes, and Alarms.
+- [x] Prioritized 30 findings: 0 Critical, 10 High, 15 Medium, and 5 Low, each with an impact
+      statement and recommended fix. Added a severity scorecard, journey and information-
+      architecture diagrams, phased remediation plan, and device-validation checklist.
+- [ ] Runtime validation remains: no emulator/device was connected for this audit. Run the
+      report's TalkBack, Switch Access, 200% font, reduced-motion, theme, and screenshot matrix.
+
 ### Phase 0 — Prep & fresh repo — DONE
 - [x] Imported Hermes base into `E:\claude-projects\jeeves` (excluded build/, .git, APKs, graphify-out). Commit `8017806`.
 - [x] `git init` + initial import commit.
