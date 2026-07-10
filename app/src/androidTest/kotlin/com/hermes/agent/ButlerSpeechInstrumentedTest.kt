@@ -7,6 +7,7 @@ import com.sassybutler.alarm.ButlerSpeech
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withContext
+import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -40,20 +41,24 @@ class ButlerSpeechInstrumentedTest {
     fun speak_synthesizesAndPlaysToCompletion() = runBlocking {
         val speech = ButlerSpeech(context)
 
-        // speak() suspends until AudioTrack has drained; a false return means the caller
+        // speak() suspends until AudioTrack has drained; UNAVAILABLE means the caller
         // should fall back to the platform engine.
-        val spoke = speech.speak("Good morning. Your merged app appears to be working.")
+        val result = speech.speak("Good morning. Your merged app appears to be working.")
 
-        assertTrue("ButlerSpeech.speak returned false — no audio was produced", spoke)
+        assertEquals(
+            "ButlerSpeech.speak did not play — no audio was produced",
+            ButlerSpeech.SpeakResult.SPOKEN,
+            result,
+        )
         assertTrue(speech.isLoaded)
         speech.release()
     }
 
     @Test
-    fun speak_returnsFalseForBlankTextWithoutLoadingTheModel() = runBlocking {
+    fun speak_returnsUnavailableForBlankTextWithoutLoadingTheModel() = runBlocking {
         val speech = ButlerSpeech(context)
 
-        assertFalse(speech.speak("   "))
+        assertEquals(ButlerSpeech.SpeakResult.UNAVAILABLE, speech.speak("   "))
         assertFalse("blank text must not trigger a 92 MB model load", speech.isLoaded)
     }
 

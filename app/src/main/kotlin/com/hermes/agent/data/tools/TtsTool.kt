@@ -86,11 +86,18 @@ class TtsTool @Inject constructor(
         }
 
         // Butler's ONNX voice first, unless the caller asked for the platform engine.
-        // speak() suspends until playback finishes and returns false if it could not
-        // produce audio, in which case we fall through to the platform engine.
+        // speak() suspends until playback finishes. Only UNAVAILABLE falls through to the
+        // platform engine — STOPPED means the user silenced this utterance mid-flight, and
+        // re-speaking it with another engine is exactly what they asked us not to do.
         val requested = arguments["voice"].str()?.trim()?.lowercase() ?: "butler"
-        if (requested != "system" && butlerSpeech.speak(text)) {
-            return ToolResult.ok("Spoke aloud in Butler's voice: \"$text\"", System.currentTimeMillis() - start)
+        if (requested != "system") {
+            when (butlerSpeech.speak(text)) {
+                ButlerSpeech.SpeakResult.SPOKEN ->
+                    return ToolResult.ok("Spoke aloud in Butler's voice: \"$text\"", System.currentTimeMillis() - start)
+                ButlerSpeech.SpeakResult.STOPPED ->
+                    return ToolResult.ok("Speech was stopped before completion.", System.currentTimeMillis() - start)
+                ButlerSpeech.SpeakResult.UNAVAILABLE -> Unit // fall through to the platform engine
+            }
         }
 
         if (!ensureReady()) {

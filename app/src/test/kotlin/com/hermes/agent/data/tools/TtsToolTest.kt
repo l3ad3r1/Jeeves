@@ -38,7 +38,7 @@ class TtsToolTest {
 
     @Test
     fun `speaks with Butler's voice by default and never touches the platform engine`() = runTest {
-        coEvery { butlerSpeech.speak(any(), any()) } returns true
+        coEvery { butlerSpeech.speak(any(), any()) } returns ButlerSpeech.SpeakResult.SPOKEN
 
         val result = tool.execute(args("text" to "good morning"))
 
@@ -50,7 +50,7 @@ class TtsToolTest {
 
     @Test
     fun `falls back to the platform engine when the ONNX model cannot speak`() = runTest {
-        coEvery { butlerSpeech.speak(any(), any()) } returns false
+        coEvery { butlerSpeech.speak(any(), any()) } returns ButlerSpeech.SpeakResult.UNAVAILABLE
         platformSucceeds()
 
         val result = tool.execute(args("text" to "hello"))
@@ -58,6 +58,23 @@ class TtsToolTest {
         assertTrue(result.errorMessage, result.success)
         assertFalse("should not claim Butler's voice on fallback", result.output.contains("Butler"))
         verify { voiceOutput.speak("hello", any()) }
+    }
+
+    /**
+     * A stop() that lands while Butler is synthesizing must NOT route the same text to the
+     * platform engine: the user silenced this utterance, and "falling back" would speak it
+     * anyway. Only UNAVAILABLE may fall through.
+     */
+    @Test
+    fun `a stop during Butler synthesis does not fall back to the platform engine`() = runTest {
+        coEvery { butlerSpeech.speak(any(), any()) } returns ButlerSpeech.SpeakResult.STOPPED
+        platformSucceeds()
+
+        val result = tool.execute(args("text" to "hello"))
+
+        assertTrue(result.errorMessage, result.success)
+        assertTrue(result.output, result.output.contains("stopped", ignoreCase = true))
+        verify(exactly = 0) { voiceOutput.speak(any(), any()) }
     }
 
     @Test
@@ -73,7 +90,7 @@ class TtsToolTest {
 
     @Test
     fun `both engines fail cleanly when neither is available`() = runTest {
-        coEvery { butlerSpeech.speak(any(), any()) } returns false
+        coEvery { butlerSpeech.speak(any(), any()) } returns ButlerSpeech.SpeakResult.UNAVAILABLE
         every { voiceOutput.initialize(any()) } answers {
             firstArg<((Boolean) -> Unit)?>()?.invoke(false)
         }

@@ -311,9 +311,35 @@ irreversible, so nothing was pushed. To ship: create the remote, push `master`, 
 3. Close the last verification gap: an end-to-end LLM tool call with a real API key
    ("wake me at 7am" -> `set_alarm` -> alarm fires).
 
+### Post-Phase-7 code review — two bugs found and fixed
+An independent review pass over the session's new integration code found two real bugs,
+both fixed with regression tests proven red first:
+
+1. **`set_alarm` id collision (fixed, commit `f9c0cbc`).** Agent ids were `hour*100+minute`
+   (0–2359); Butler's UI assigns sequential ids via `AlarmStore.nextId()` (1, 2, 3, ...). The
+   ranges overlap in the midnight hour — "12:05am" produced id 5 and silently REPLACED the
+   user's fifth UI alarm (upsert and the PendingIntent request code both key on id). Agent ids
+   now live at `10000 + hour*100 + minute`, disjoint from the UI space, dedupe preserved.
+2. **`speak` stop→fallback leak (fixed).** `ButlerSpeech.speak()` returned a Boolean that
+   conflated "engine unavailable" with "user stopped it"; a stop during the multi-second
+   synthesis window made `TtsTool` fall through and read the whole text via platform TTS.
+   `speak()` now returns `SpeakResult { SPOKEN, STOPPED, UNAVAILABLE }` and only UNAVAILABLE
+   falls back. Both regression tests were proven to detect their bug (red) before the fix /
+   via mutation; instrumented suite re-run on device: 4/4.
+
+Review findings NOT fixed (accepted, low severity):
+- `ButlerSpeech` playback is not mutex-guarded: two concurrent `speak()` calls would overlap
+  two AudioTracks and `stop()` only halts the last (`track` is last-writer-wins). The
+  orchestrator serializes tool calls today; add a playback mutex if that changes.
+- The minified export verification ran against an empty DB, so `NoteEntity`'s reflective
+  serialization with real data was never exercised under R8 (the Room `@Entity { *; }` keep
+  rule covers it).
+- Agent alarm at a time where a UI alarm already exists = two alarms firing together
+  (different ids). Acceptable; by design.
+
 ## Deferred / noted
-- `DeviceControlAgent`'s prompt still describes `speak` without the new `voice` parameter; it is
-  granted the tool and will get Butler's voice by default. Harmless, but could be spelled out.
+- `DeviceControlAgent`'s and `CreativeAgent`'s prompts still describe `speak` without the new
+  `voice` parameter; both are granted the tool and get Butler's voice by default.
 - `ButlerSpeech` keeps the ONNX session warm after first use (reload costs seconds). `release()`
   exists for memory pressure but nothing calls it — consider wiring it to `MemoryPressureMonitor`.
 

@@ -38,6 +38,22 @@ import javax.inject.Singleton
 class ButlerSpeech @Inject constructor(
     @ApplicationContext private val context: Context,
 ) {
+    /**
+     * Outcome of [speak]. A plain Boolean conflated "the engine could not speak" with
+     * "the user stopped it", and callers that fall back to another engine on failure
+     * would then re-speak the very text the user just silenced.
+     */
+    enum class SpeakResult {
+        /** Audio was synthesized and played to completion. */
+        SPOKEN,
+
+        /** [stop] (or cancellation) interrupted the utterance. Do NOT speak this text another way. */
+        STOPPED,
+
+        /** No audio could be produced (model missing, synthesis or playback failure). Falling back is appropriate. */
+        UNAVAILABLE,
+    }
+
     private val engineMutex = Mutex()
 
     @Volatile private var engine: TtsEngine? = null
@@ -77,18 +93,16 @@ class ButlerSpeech @Inject constructor(
      *   It is resolved on [Dispatchers.IO], NOT as a Kotlin default argument: default arguments
      *   are evaluated at the call site, and `VoiceCatalog.selected()` reads SharedPreferences
      *   from disk — which would have run on the caller's thread, possibly the main thread.
-     * @return true if audio was produced and played; false if the caller should fall back to
-     *   another engine (model missing, synthesis failed, or empty text).
      */
     suspend fun speak(
         text: String,
         voiceName: String? = null,
-    ): Boolean {
-        if (text.isBlank()) return false
+    ): SpeakResult {
+        if (text.isBlank()) return SpeakResult.UNAVAILABLE
         stopped.set(false)
 
         return withContext(Dispatchers.IO) {
-            val tts = engine() ?: return@withContext false
+            val tts = engine() ?: return@withContext SpeakResult.UNAVAILABLE
             val voice = voiceName ?: VoiceCatalog.selected(context)
 
             val pcm = runCatching { tts.synthesize(text, voice) }
@@ -96,13 +110,15 @@ class ButlerSpeech @Inject constructor(
                 .getOrNull()
             if (pcm == null || pcm.isEmpty()) {
                 Log.w(TAG, "synthesis produced no samples")
-                return@withContext false
+                return@withContext SpeakResult.UNAVAILABLE
             }
-            if (stopped.get() || !currentCoroutineContext().isActive) return@withContext false
+            // Synthesis takes seconds; a stop() that arrived during it means the user
+            // silenced this utterance — that is not a failure to fall back from.
+            if (stopped.get() || !currentCoroutineContext().isActive) return@withContext SpeakResult.STOPPED
 
             runCatching { playPcm(pcm) }
-                .onFailure { Log.e(TAG, "playback failed", it); return@withContext false }
-            true
+                .onFailure { Log.e(TAG, "playback failed", it); return@withContext SpeakResult.UNAVAILABLE }
+            if (stopped.get()) SpeakResult.STOPPED else SpeakResult.SPOKEN
         }
     }
 
