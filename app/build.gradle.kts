@@ -163,7 +163,10 @@ kotlin {
 }
 
 dependencies {
-    // --- Feature modules (empty scaffolds until Phase 3) ---
+    // The one settings store, shared with both feature modules.
+    implementation(project(":core:settings"))
+
+    // --- Feature modules ---
     implementation(project(":feature:jotter"))
     implementation(project(":feature:butler"))
 

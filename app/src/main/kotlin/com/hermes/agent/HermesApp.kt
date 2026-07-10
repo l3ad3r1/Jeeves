@@ -14,7 +14,11 @@ import com.hermes.agent.work.SkillImprovementWorker
 import com.hermes.agent.data.log.FileLogTree
 import com.hermes.agent.data.log.LogManager
 import com.hermes.agent.data.performance.MemoryPressureMonitor
+import com.l3ad3r1.octojotter.data.local.ThemePreferences
 import dagger.hilt.android.HiltAndroidApp
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 import timber.log.Timber
 import java.util.concurrent.TimeUnit
 import javax.inject.Inject
@@ -55,9 +59,23 @@ class HermesApp : Application(), Configuration.Provider {
         // initializer already started it via Hilt EntryPoint, this is a
         // no-op; otherwise we start it now that Hilt is initialized.
         memoryPressureMonitor.start()
+        migrateLegacyThemeSetting()
         scheduleMemoryConsolidation()
         scheduleSkillImprovement()
         scheduleOtaUpdateCheck()
+    }
+
+    /**
+     * Jotter's theme used to live in its own `theme_settings` DataStore. It now lives in
+     * JeevesSettings with everything else, but DataStore has no synchronous read, so — unlike
+     * Butler's SharedPreferences — it cannot migrate on first touch. Do it here, off the main
+     * thread, before any Activity can observe the theme. It is a no-op once migrated.
+     */
+    private fun migrateLegacyThemeSetting() {
+        CoroutineScope(Dispatchers.IO).launch {
+            runCatching { ThemePreferences(this@HermesApp).migrateLegacyTheme() }
+                .onFailure { Timber.tag("Migration").w(it, "legacy theme migration failed") }
+        }
     }
 
     override val workManagerConfiguration: Configuration

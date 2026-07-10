@@ -42,6 +42,9 @@ android {
 }
 
 dependencies {
+    // The one settings store shared with :app and :feature:jotter.
+    implementation(project(":core:settings"))
+
     // --- Hilt (contributes ButlerModule to the host's single object graph) ---
     implementation(libs.hilt.android)
     ksp(libs.hilt.compiler)

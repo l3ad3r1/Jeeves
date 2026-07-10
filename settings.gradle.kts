@@ -38,5 +38,6 @@ dependencyResolutionManagement {
 
 rootProject.name = "Jeeves"
 include(":app")
+include(":core:settings")
 include(":feature:jotter")
 include(":feature:butler")

@@ -77,16 +77,13 @@ object VoiceCatalog {
         Voice("pm_santa",      "🇧🇷 Santa — Portuguese male"),
     )
 
-    private const val PREFS = "voice_prefs"
-    private const val KEY_VOICE = "voice_name"
-
+    // The selection now lives in the one settings store (which migrates the old
+    // `voice_prefs` file on first touch); TtsEngine.DEFAULT_VOICE remains the default.
     fun selected(context: Context): String =
-        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
-            .getString(KEY_VOICE, TtsEngine.DEFAULT_VOICE) ?: TtsEngine.DEFAULT_VOICE
+        com.jeeves.core.settings.JeevesSettings.voiceName(context, TtsEngine.DEFAULT_VOICE)
 
     fun select(context: Context, voiceName: String) {
-        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
-            .edit().putString(KEY_VOICE, voiceName).apply()
+        com.jeeves.core.settings.JeevesSettings.setVoiceName(context, voiceName)
     }
 
     fun indexOf(voiceName: String): Int =
