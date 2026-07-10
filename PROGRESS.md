@@ -131,9 +131,32 @@ exit APK. **Always measure APK size from a clean build.** No regression; nothing
 3. Phase 6: the payoff — `create_note` / `set_alarm` agent tools (each needs all 3 wiring
    steps), and Butler's `TtsEngine` exposed so Hermes can speak agent replies.
 
+## Verified at runtime: the FileProvider export fix (Phase 3a)
+Tested on the Pixel_7 emulator via Jotter Settings -> "Export Database to JSON" ->
+"Share backup file", which calls `getUriForFile` on `filesDir/exports/`.
+
+- **With the fix** (host `file_paths.xml` carrying Jotter's 3 roots): the share sheet opens
+  ("Sharing 1 file - octojotter_backup_*.json"), the process stays alive, and the URI
+  `content://com.jeeves.app.debug.fileprovider/exports/octojotter_backup_*.json` is built.
+  The `/exports/` segment can only come from the merged `files-path name="exports"` root.
+- **Counterfactual (fix removed, rebuilt, reinstalled)**: the same tap hard-crashes:
+  `FATAL EXCEPTION: main / java.lang.IllegalArgumentException: Failed to find configured
+  root that contains /data/data/com.jeeves.app.debug/files/exports/octojotter_backup_*.json`
+  at `FileProvider$SimplePathStrategy.getUriForFile` <- `NoteApp.kt:3871`.
+  Fix restored, rebuilt, re-tested green.
+
+So the latent crash was real, and the fix both necessary and sufficient. This is the class
+of bug that a build and a unit-test suite cannot catch.
+
+**NOTED (pre-existing, not a merge regression):** the share sheet logs
+`ChooserPreview: Could not read content://... stream types ... call Intent#setClipData()`.
+Jotter's share block never calls `setClipData`; the ported source is byte-identical to
+upstream, which has the same omission. Only the chooser's *preview* thumbnail is affected —
+the share itself works. Fix upstream if it ever matters.
+
 ## Not yet exercised at runtime
 - Jotter: creating/saving a note, Gist sync, biometric app-lock, share-target intent,
-  and the FileProvider export path (the `file_paths.xml` merge fix is unverified at runtime).
+  and the in-app updater's `jotter-updates` FileProvider root.
 - Butler: scheduling a real alarm and firing the lock-screen `AlarmActivity`; boot re-registration.
 - Hermes: agent chat / cron / foreground service after the toolchain upgrade.
 
