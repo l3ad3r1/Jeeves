@@ -156,11 +156,25 @@ class AlarmForegroundService : LifecycleService() {
             return
         }
         scope.launch {
-            // Stop when the parting shot has actually finished playing —
-            // a fixed delay truncates it when synthesis runs slow. The
-            // timeout is a safety net against TTS hanging.
-            withTimeoutOrNull(20_000) {
-                audioEngine.dismissWithReaction()
+            val preGenBriefing = ButlerPrefs.preGeneratedBriefing(this@AlarmForegroundService)
+            val preGenTimestamp = ButlerPrefs.preGeneratedBriefingTimestamp(this@AlarmForegroundService)
+            val isValid = (System.currentTimeMillis() - preGenTimestamp) < 2 * 60 * 60 * 1000L // Valid for 2 hours
+
+            if (!preGenBriefing.isNullOrBlank() && isValid) {
+                Log.i(TAG, "Playing pre-generated morning briefing")
+                // Clear so it isn't repeated tomorrow if the pre-generation fails
+                ButlerPrefs.setPreGeneratedBriefing(this@AlarmForegroundService, null)
+                // Briefings can be up to 90 seconds long; give it 3 minutes to synthesize and play
+                withTimeoutOrNull(180_000) {
+                    audioEngine.speak(preGenBriefing)
+                }
+            } else {
+                // Stop when the parting shot has actually finished playing —
+                // a fixed delay truncates it when synthesis runs slow. The
+                // timeout is a safety net against TTS hanging.
+                withTimeoutOrNull(20_000) {
+                    audioEngine.dismissWithReaction()
+                }
             }
             stopSelf()
         }

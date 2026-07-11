@@ -72,4 +72,7 @@ dependencies {
 
     // On-device TTS inference (Kokoro/KittenTTS ONNX models in src/main/assets/tts).
     implementation(libs.onnxruntime.android)
+
+    // WorkManager
+    implementation(libs.androidx.work.runtime.ktx)
 }

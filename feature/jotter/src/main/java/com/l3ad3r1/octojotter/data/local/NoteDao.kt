@@ -17,6 +17,9 @@ interface NoteDao {
     @Query("SELECT * FROM notes WHERE deletedAt IS NOT NULL ORDER BY deletedAt DESC")
     fun getTrashNotesFlow(): Flow<List<NoteEntity>>
 
+    @Query("SELECT * FROM notes WHERE deletedAt IS NULL AND lastModifiedLocally >= :sinceMillis ORDER BY lastModifiedLocally DESC")
+    suspend fun getRecentNotes(sinceMillis: Long): List<NoteEntity>
+
     @Query("SELECT * FROM notes WHERE id = :id")
     suspend fun getNoteById(id: Int): NoteEntity?
 

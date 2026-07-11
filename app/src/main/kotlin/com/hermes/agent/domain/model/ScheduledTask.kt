@@ -18,6 +18,7 @@ object CronPresets {
     const val HOURLY        = "0 * * * *"
     const val DAILY_MORNING = "0 8 * * *"
     const val DAILY_EVENING = "0 18 * * *"
+    const val EVENING_WIND_DOWN = "0 21 * * *"
     const val WEEKDAYS      = "0 8 * * 1-5"
     const val WEEKLY        = "0 8 * * 1"
 
@@ -25,6 +26,7 @@ object CronPresets {
         "Every hour"         to HOURLY,
         "Daily at 8 am"      to DAILY_MORNING,
         "Daily at 6 pm"      to DAILY_EVENING,
+        "Evening Wind-Down (9 pm)" to EVENING_WIND_DOWN,
         "Weekdays at 8 am"   to WEEKDAYS,
         "Weekly (Mon 8 am)"  to WEEKLY,
     )

@@ -57,6 +57,10 @@ class NoteRepository(
         return noteDao.getNoteById(id)
     }
 
+    suspend fun getRecentNotes(sinceMillis: Long): List<NoteEntity> {
+        return noteDao.getRecentNotes(sinceMillis)
+    }
+
     suspend fun insertNote(note: NoteEntity): Long {
         val id = noteDao.insert(note)
         scanAndExtractTags(id.toInt(), note.content)

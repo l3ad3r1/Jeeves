@@ -38,6 +38,11 @@ data class AlarmSettings(
     val snoozeCommentary: Boolean = true,
     val haptics: Boolean = false,
     val voiceName: String = TtsEngine.DEFAULT_VOICE,
+    val briefingCalendar: Boolean = true,
+    val briefingWeather: Boolean = true,
+    val briefingTodos: Boolean = true,
+    val briefingNotes: Boolean = true,
+    val briefingHeadlines: Boolean = true,
 ) {
     val voiceLabel: String
         get() = VoiceCatalog.VOICES.firstOrNull { it.name == voiceName }?.label ?: voiceName
@@ -108,6 +113,11 @@ class SettingsViewModel @Inject constructor(
         snoozeCommentary = JeevesSettings.snoozeCommentary(appContext),
         haptics = JeevesSettings.haptics(appContext),
         voiceName = JeevesSettings.voiceName(appContext, TtsEngine.DEFAULT_VOICE),
+        briefingCalendar = JeevesSettings.briefingCalendar(appContext),
+        briefingWeather = JeevesSettings.briefingWeather(appContext),
+        briefingTodos = JeevesSettings.briefingTodos(appContext),
+        briefingNotes = JeevesSettings.briefingNotes(appContext),
+        briefingHeadlines = JeevesSettings.briefingHeadlines(appContext),
     )
 
     /** Re-read after every write so this screen and Butler's sheet never drift apart. */
@@ -121,6 +131,11 @@ class SettingsViewModel @Inject constructor(
     fun setSnoozeCommentary(value: Boolean) { JeevesSettings.setSnoozeCommentary(appContext, value); refreshAlarmSettings() }
     fun setHaptics(value: Boolean) { JeevesSettings.setHaptics(appContext, value); refreshAlarmSettings() }
     fun setVoiceName(value: String) { JeevesSettings.setVoiceName(appContext, value); refreshAlarmSettings() }
+    fun setBriefingCalendar(value: Boolean) { JeevesSettings.setBriefingCalendar(appContext, value); refreshAlarmSettings() }
+    fun setBriefingWeather(value: Boolean) { JeevesSettings.setBriefingWeather(appContext, value); refreshAlarmSettings() }
+    fun setBriefingTodos(value: Boolean) { JeevesSettings.setBriefingTodos(appContext, value); refreshAlarmSettings() }
+    fun setBriefingNotes(value: Boolean) { JeevesSettings.setBriefingNotes(appContext, value); refreshAlarmSettings() }
+    fun setBriefingHeadlines(value: Boolean) { JeevesSettings.setBriefingHeadlines(appContext, value); refreshAlarmSettings() }
 
     val settings: StateFlow<UserSettings> = settingsRepository.observe()
         .stateIn(

@@ -45,6 +45,15 @@ object JeevesSettings {
     const val KEY_SNOOZE_COMMENTARY = "snooze_commentary"
     const val KEY_VOICE_NAME = "voice_name"
 
+    // Briefing
+    const val KEY_PRE_GENERATED_BRIEFING = "pre_generated_briefing"
+    const val KEY_PRE_GENERATED_BRIEFING_TIMESTAMP = "pre_generated_briefing_timestamp"
+    const val KEY_BRIEFING_CALENDAR = "briefing_calendar"
+    const val KEY_BRIEFING_WEATHER = "briefing_weather"
+    const val KEY_BRIEFING_TODOS = "briefing_todos"
+    const val KEY_BRIEFING_NOTES = "briefing_notes"
+    const val KEY_BRIEFING_HEADLINES = "briefing_headlines"
+
     /** Bumped if a future migration must run again. */
     private const val KEY_MIGRATED = "migrated_v1"
 
@@ -119,6 +128,34 @@ object JeevesSettings {
 
     fun setVoiceName(context: Context, value: String) =
         prefs(context).edit().putString(KEY_VOICE_NAME, value).apply()
+
+    // Briefing toggles & storage
+    fun preGeneratedBriefing(context: Context): String? =
+        prefs(context).getString(KEY_PRE_GENERATED_BRIEFING, null)
+
+    fun setPreGeneratedBriefing(context: Context, value: String?) =
+        prefs(context).edit().putString(KEY_PRE_GENERATED_BRIEFING, value).apply()
+
+    fun preGeneratedBriefingTimestamp(context: Context): Long =
+        prefs(context).getLong(KEY_PRE_GENERATED_BRIEFING_TIMESTAMP, 0L)
+
+    fun setPreGeneratedBriefingTimestamp(context: Context, value: Long) =
+        prefs(context).edit().putLong(KEY_PRE_GENERATED_BRIEFING_TIMESTAMP, value).apply()
+
+    fun briefingCalendar(context: Context): Boolean = prefs(context).getBoolean(KEY_BRIEFING_CALENDAR, true)
+    fun setBriefingCalendar(context: Context, value: Boolean) = prefs(context).edit().putBoolean(KEY_BRIEFING_CALENDAR, value).apply()
+
+    fun briefingWeather(context: Context): Boolean = prefs(context).getBoolean(KEY_BRIEFING_WEATHER, true)
+    fun setBriefingWeather(context: Context, value: Boolean) = prefs(context).edit().putBoolean(KEY_BRIEFING_WEATHER, value).apply()
+
+    fun briefingTodos(context: Context): Boolean = prefs(context).getBoolean(KEY_BRIEFING_TODOS, true)
+    fun setBriefingTodos(context: Context, value: Boolean) = prefs(context).edit().putBoolean(KEY_BRIEFING_TODOS, value).apply()
+
+    fun briefingNotes(context: Context): Boolean = prefs(context).getBoolean(KEY_BRIEFING_NOTES, true)
+    fun setBriefingNotes(context: Context, value: Boolean) = prefs(context).edit().putBoolean(KEY_BRIEFING_NOTES, value).apply()
+
+    fun briefingHeadlines(context: Context): Boolean = prefs(context).getBoolean(KEY_BRIEFING_HEADLINES, true)
+    fun setBriefingHeadlines(context: Context, value: Boolean) = prefs(context).edit().putBoolean(KEY_BRIEFING_HEADLINES, value).apply()
 
     // ─── Flows for the settings UI ──────────────────────────────────────────
 

@@ -69,6 +69,23 @@ class AlarmScheduler(private val context: Context) {
         )
         setExact(triggerAt, pendingIntent)
         Log.i(TAG, "Alarm ${alarm.id} '${alarm.label}' scheduled (triggerAt=$triggerAt)")
+        
+        // Enqueue pre-generation worker 15 minutes before the alarm fires
+        val preGenTime = triggerAt - 15 * 60 * 1000L
+        if (preGenTime > System.currentTimeMillis()) {
+            val delay = preGenTime - System.currentTimeMillis()
+            val workRequest = androidx.work.OneTimeWorkRequestBuilder<PreGenerateBriefingWorker>()
+                .setInitialDelay(delay, java.util.concurrent.TimeUnit.MILLISECONDS)
+                .build()
+            androidx.work.WorkManager.getInstance(context)
+                .enqueueUniqueWork(
+                    "pregen_briefing_${alarm.id}",
+                    androidx.work.ExistingWorkPolicy.REPLACE,
+                    workRequest
+                )
+            Log.i(TAG, "Briefing pre-generation scheduled for $preGenTime (delay=$delay ms)")
+        }
+
         return alarm.id
     }
 
@@ -104,6 +121,7 @@ class AlarmScheduler(private val context: Context) {
         )
         alarmManager.cancel(pendingIntent)
         pendingIntent.cancel()
+        androidx.work.WorkManager.getInstance(context).cancelUniqueWork("pregen_briefing_$alarmId")
         Log.i(TAG, "Alarm $alarmId cancelled")
     }
 

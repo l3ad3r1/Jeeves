@@ -79,6 +79,11 @@ fun AlarmSettingsScreen(
                 onSnoozeCommentary = viewModel::setSnoozeCommentary,
                 onHaptics = viewModel::setHaptics,
                 onVoiceName = viewModel::setVoiceName,
+                onBriefingCalendar = viewModel::setBriefingCalendar,
+                onBriefingWeather = viewModel::setBriefingWeather,
+                onBriefingTodos = viewModel::setBriefingTodos,
+                onBriefingNotes = viewModel::setBriefingNotes,
+                onBriefingHeadlines = viewModel::setBriefingHeadlines,
             )
         }
     }
@@ -97,6 +102,11 @@ private fun AlarmSettingsSection(
     onSnoozeCommentary: (Boolean) -> Unit,
     onHaptics: (Boolean) -> Unit,
     onVoiceName: (String) -> Unit,
+    onBriefingCalendar: (Boolean) -> Unit,
+    onBriefingWeather: (Boolean) -> Unit,
+    onBriefingTodos: (Boolean) -> Unit,
+    onBriefingNotes: (Boolean) -> Unit,
+    onBriefingHeadlines: (Boolean) -> Unit,
 ) {
     var voiceMenuOpen by remember { mutableStateOf(false) }
     val honorifics = listOf("Sir", "Madam", "Boss")
@@ -203,6 +213,39 @@ private fun AlarmSettingsSection(
                 subtitle = "Vibrate while the alarm sounds.",
                 checked = state.haptics,
                 onCheckedChange = onHaptics,
+            )
+
+            SectionHeader("Morning Briefing Sections")
+
+            ToggleRow(
+                title = "Calendar",
+                subtitle = "Include today's calendar events.",
+                checked = state.briefingCalendar,
+                onCheckedChange = onBriefingCalendar,
+            )
+            ToggleRow(
+                title = "Weather",
+                subtitle = "Include the current weather forecast.",
+                checked = state.briefingWeather,
+                onCheckedChange = onBriefingWeather,
+            )
+            ToggleRow(
+                title = "Pending Todos",
+                subtitle = "Include unfinished tasks.",
+                checked = state.briefingTodos,
+                onCheckedChange = onBriefingTodos,
+            )
+            ToggleRow(
+                title = "Recent Notes",
+                subtitle = "Include notes modified in the last 24h.",
+                checked = state.briefingNotes,
+                onCheckedChange = onBriefingNotes,
+            )
+            ToggleRow(
+                title = "Top Headlines",
+                subtitle = "Include a few global news headlines.",
+                checked = state.briefingHeadlines,
+                onCheckedChange = onBriefingHeadlines,
             )
         }
     }

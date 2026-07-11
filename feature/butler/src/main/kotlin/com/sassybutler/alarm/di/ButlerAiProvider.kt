@@ -11,6 +11,14 @@ interface ButlerAiProvider {
         honorific: String,
         sassLevel: Int
     ): String?
+
+    suspend fun generateBriefing(
+        contextData: String,
+        honorific: String,
+        sassLevel: Int
+    ): String?
+
+    suspend fun preGenerateBriefing(context: android.content.Context)
 }
 
 @EntryPoint

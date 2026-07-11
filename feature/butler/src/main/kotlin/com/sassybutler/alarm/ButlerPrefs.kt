@@ -55,4 +55,16 @@ object ButlerPrefs {
 
     fun setSnoozeCommentary(context: Context, value: Boolean) =
         JeevesSettings.setSnoozeCommentary(context, value)
+
+    fun preGeneratedBriefing(context: Context): String? = JeevesSettings.preGeneratedBriefing(context)
+    fun setPreGeneratedBriefing(context: Context, value: String?) = JeevesSettings.setPreGeneratedBriefing(context, value)
+
+    fun preGeneratedBriefingTimestamp(context: Context): Long = JeevesSettings.preGeneratedBriefingTimestamp(context)
+    fun setPreGeneratedBriefingTimestamp(context: Context, value: Long) = JeevesSettings.setPreGeneratedBriefingTimestamp(context, value)
+
+    fun briefingCalendar(context: Context): Boolean = JeevesSettings.briefingCalendar(context)
+    fun briefingWeather(context: Context): Boolean = JeevesSettings.briefingWeather(context)
+    fun briefingTodos(context: Context): Boolean = JeevesSettings.briefingTodos(context)
+    fun briefingNotes(context: Context): Boolean = JeevesSettings.briefingNotes(context)
+    fun briefingHeadlines(context: Context): Boolean = JeevesSettings.briefingHeadlines(context)
 }

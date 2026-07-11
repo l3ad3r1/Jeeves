@@ -43,4 +43,65 @@ class ButlerAiProviderImpl @Inject constructor(
         val response = cloudLlmProvider.complete(messages)
         return response.content.replace(Regex("[^a-zA-Z0-9 '.,?!-]"), "").trim()
     }
+
+    override suspend fun generateBriefing(
+        contextData: String,
+        honorific: String,
+        sassLevel: Int
+    ): String? {
+        val sassInstruction = when {
+            sassLevel < 20 -> "Be helpful, clear, and perfectly polite."
+            sassLevel < 40 -> "Be helpful but slightly dry."
+            sassLevel < 60 -> "Be helpful but occasionally make a sarcastic quip about their schedule."
+            sassLevel < 80 -> "Be highly sarcastic, framing their tasks as mildly amusing burdens."
+            else -> "Be completely insufferable, acting as though reading this briefing is a waste of your massive intellect."
+        }
+
+        val prompt = """
+            You are Jeeves, a highly intelligent and articulate personal butler.
+            Write a morning briefing script for $honorific to be spoken out loud.
+            
+            Here is the context data for the morning:
+            $contextData
+            
+            Instruction: $sassInstruction
+            
+            Requirements:
+            - The script MUST be spoken out loud by a text-to-speech engine.
+            - DO NOT use complex formatting, emojis, markdown, or unpronounceable symbols.
+            - Keep it concise. It should take under 90 seconds to read out loud.
+            - Summarize smoothly rather than reading raw lists. Do not sound robotic.
+            - Start the briefing directly. No meta-commentary or <thought> blocks.
+        """.trimIndent()
+
+        val messages = listOf(
+            com.hermes.agent.data.llm.LlmMessage(role = "system", content = prompt)
+        )
+        val response = cloudLlmProvider.complete(messages)
+        // Strip out most special characters to ensure TTS doesn't stumble
+        return response.content.replace(Regex("[^a-zA-Z0-9 '.,?!-]"), "").trim()
+    }
+
+    override suspend fun preGenerateBriefing(context: android.content.Context) {
+        val composer = dagger.hilt.android.EntryPointAccessors.fromApplication(
+            context,
+            BriefingComposerEntryPoint::class.java
+        ).getBriefingComposer()
+
+        val contextData = composer.composeContext(context)
+        val honorific = com.sassybutler.alarm.ButlerPrefs.honorific(context)
+        val sassLevel = com.sassybutler.alarm.ButlerPrefs.sassLevel(context)
+
+        val briefing = generateBriefing(contextData, honorific, sassLevel)
+        if (!briefing.isNullOrBlank()) {
+            com.sassybutler.alarm.ButlerPrefs.setPreGeneratedBriefing(context, briefing)
+            com.sassybutler.alarm.ButlerPrefs.setPreGeneratedBriefingTimestamp(context, System.currentTimeMillis())
+        }
+    }
+}
+
+@dagger.hilt.EntryPoint
+@dagger.hilt.InstallIn(dagger.hilt.components.SingletonComponent::class)
+interface BriefingComposerEntryPoint {
+    fun getBriefingComposer(): BriefingComposer
 }
