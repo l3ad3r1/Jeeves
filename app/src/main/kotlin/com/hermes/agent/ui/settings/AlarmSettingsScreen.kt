@@ -52,7 +52,7 @@ fun AlarmSettingsScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Alarms") },
+                title = { Text("Daybook") },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Navigate back")

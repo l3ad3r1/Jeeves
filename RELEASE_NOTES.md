@@ -1,6 +1,32 @@
 # Release Notes
 
-## Version 1.1.0 - The Jeeves Update
+## Version 0.9.4 - Icon, Notes & Daybook fixes
+
+Fixes to regressions introduced by the v0.9.2/v0.9.3 UI overhaul, plus a rename for
+the Alarms module now that it carries weather and calendar alongside wake-ups.
+
+*   **New launcher icon:** replaced the placeholder mark with the tuxedo/bow-tie icon.
+*   **Notes:** the hamburger button opens the folder drawer again (the drawer wrapper
+    was dropped during the Notesnook-style redesign, leaving the button connected to
+    nothing); the editor now has a visible Edit/Preview toggle — previously there was
+    no way back into edit mode once a note opened in read-only preview.
+*   **Daybook (formerly "Alarms"):** renamed to reflect that it now covers wake-ups,
+    weather, and calendar, not just alarms. Weather, today's calendar, and scheduled
+    alarms are now three distinct cards instead of one crowded block; the "Prefs"
+    button is a settings cog; the header no longer misaligns when the greeting wraps
+    to two lines.
+*   **Add Alarm sheet:** the day-of-week selector no longer clips on narrower screens
+    (seven fixed-size circles could add up to wider than the sheet itself).
+*   **Versioning:** `versionCode`/`versionName` had been stuck at 60/0.9.0 since the
+    v0.9.0 tag despite three releases (v0.9.1-v0.9.3) shipping on top of it — the
+    in-app "About" version and OTA User-Agent were wrong for all of them. Fixed going
+    forward.
+
+## Version 0.9.2 - The Jeeves Update
+
+*(Originally logged here as "1.1.0" - that didn't match the versionName scheme used
+by every git tag and GitHub release; corrected to the version this actually shipped
+as.)*
 
 Welcome to the largest update to our AI assistant yet! This update completely revamps the application's user interface, navigation, and settings, while introducing a major rebranding to **Jeeves**.
 

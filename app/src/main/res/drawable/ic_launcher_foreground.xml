@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Jeeves launcher mark: bow tie + tuxedo lapels + three buttons.
+     Each lapel has a straight inner edge converging to a shared point at the
+     bottom (the shirt's V-neck) and a round convex outer bulge - not a
+     teardrop pinched at the top, which an earlier pass got wrong.
+     Geometry is kept inside the ~72dp adaptive-icon safe zone (18dp margin
+     on a 108dp canvas) so it survives circle/squircle launcher masks. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <path
+        android:fillColor="#F5F0E6"
+        android:fillType="nonZero"
+        android:pathData="
+            M 25.2,20.8 L 54,29.4 L 82.8,20.8 L 82.8,33.7 L 54,29.4 L 25.2,33.7 Z
+            M 48.2,38.2
+              C 28.8,41.0 20.9,54.0 23.8,64.1
+              C 26.6,74.2 38.2,81.4 54,84.2
+              L 48.2,38.2
+              Z
+            M 59.8,38.2
+              C 79.2,41.0 87.1,54.0 84.2,64.1
+              C 81.4,74.2 69.8,81.4 54,84.2
+              L 59.8,38.2
+              Z
+            M 56.2,46 A 2.2,2.2 0 1,1 51.8,46 A 2.2,2.2 0 1,1 56.2,46 Z
+            M 56.2,54 A 2.2,2.2 0 1,1 51.8,54 A 2.2,2.2 0 1,1 56.2,54 Z
+            M 56.2,62 A 2.2,2.2 0 1,1 51.8,62 A 2.2,2.2 0 1,1 56.2,62 Z
+        " />
+</vector>

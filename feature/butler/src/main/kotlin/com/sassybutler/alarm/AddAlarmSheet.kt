@@ -47,6 +47,7 @@ fun AddAlarmSheet(
                 text = if (existing != null) "Amend Appointment" else "A New Appointment",
                 style = MaterialTheme.typography.titleLarge
             )
+            Spacer(modifier = Modifier.height(4.dp))
             Text(
                 text = if (existing != null) "Adjust your alarm details below." else "When shall Jeeves wake you?",
                 style = MaterialTheme.typography.bodyMedium,
@@ -89,15 +90,19 @@ fun AddAlarmSheet(
             }
 
             Text("Days", style = MaterialTheme.typography.titleMedium, modifier = Modifier.padding(bottom = 12.dp))
+            // Seven fixed 48dp circles with SpaceBetween used to add up to more than
+            // the available sheet width on narrow screens, clipping the last day(s).
+            // weight(1f) + aspectRatio makes each circle share the width evenly.
             Row(
                 modifier = Modifier.fillMaxWidth().padding(bottom = 32.dp),
-                horizontalArrangement = Arrangement.SpaceBetween
+                horizontalArrangement = Arrangement.spacedBy(6.dp)
             ) {
                 Alarm.DAY_ORDER.forEach { day ->
                     val isSelected = day in selectedDays
                     Box(
                         modifier = Modifier
-                            .size(48.dp)
+                            .weight(1f)
+                            .aspectRatio(1f)
                             .clip(CircleShape)
                             .background(
                                 if (isSelected) MaterialTheme.colorScheme.primary

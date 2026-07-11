@@ -168,8 +168,8 @@ fun HomeScreen(
         Spacer(Modifier.height(11.dp))
         Row(horizontalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.fillMaxWidth()) {
             QuickAction(
-                title = "Notes",
-                subtitle = "Capture ideas",
+                title = "AI Notes",
+                subtitle = "Capture & summarize",
                 modifier = Modifier.weight(1f),
                 onClick = {
                     val intent = Intent(context, com.l3ad3r1.octojotter.MainActivity::class.java).apply {
@@ -180,8 +180,8 @@ fun HomeScreen(
                 },
             )
             QuickAction(
-                title = "Alarms",
-                subtitle = "Wake-ups & reminders",
+                title = "Daybook",
+                subtitle = "Alarms, weather & calendar",
                 modifier = Modifier.weight(1f),
                 onClick = {
                     val intent = Intent(context, com.sassybutler.alarm.MainAlarmSetupActivity::class.java).apply {

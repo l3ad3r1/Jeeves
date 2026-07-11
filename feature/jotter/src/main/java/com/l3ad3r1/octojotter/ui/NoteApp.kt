@@ -164,6 +164,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.filled.Folder
 import androidx.compose.material.icons.filled.FolderOpen
+import androidx.compose.material.icons.filled.CreateNewFolder
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
@@ -518,6 +519,180 @@ fun NotesListScreen(
         }
     }
 
+    // The hamburger button opens this drawer; the drawer wrapper was lost in the
+    // Notesnook-style redesign, leaving drawerState attached to nothing.
+    ModalNavigationDrawer(
+        drawerState = drawerState,
+        drawerContent = {
+            ModalDrawerSheet {
+                Spacer(modifier = Modifier.height(12.dp))
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 8.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = "Notebook Folders",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.primary
+                    )
+                    IconButton(
+                        onClick = { showCreateFolderDialog = true },
+                        modifier = Modifier.testTag("drawer_add_folder_button")
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.CreateNewFolder,
+                            contentDescription = "Create folder",
+                            tint = MaterialTheme.colorScheme.primary
+                        )
+                    }
+                }
+                HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
+
+                NavigationDrawerItem(
+                    icon = { Icon(Icons.AutoMirrored.Filled.Notes, contentDescription = null) },
+                    label = { Text("All Notes") },
+                    selected = selectedFolder == null,
+                    onClick = {
+                        viewModel.selectFolder(null)
+                        scope.launch { drawerState.close() }
+                    },
+                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp).testTag("folder_item_all")
+                )
+
+                NavigationDrawerItem(
+                    icon = { Icon(Icons.Default.FolderOpen, contentDescription = null) },
+                    label = { Text("Uncategorized") },
+                    selected = selectedFolder == "Uncategorized",
+                    onClick = {
+                        viewModel.selectFolder("Uncategorized")
+                        scope.launch { drawerState.close() }
+                    },
+                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp).testTag("folder_item_uncategorized")
+                )
+
+                NavigationDrawerItem(
+                    icon = { Icon(Icons.Default.Delete, contentDescription = null) },
+                    label = { Text("Trash (${syncHealth.trash})") },
+                    selected = false,
+                    onClick = {
+                        scope.launch { drawerState.close() }
+                        onNavigateToTrash()
+                    },
+                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp).testTag("folder_item_trash")
+                )
+
+                NavigationDrawerItem(
+                    icon = { Icon(Icons.Default.CheckBox, contentDescription = null) },
+                    label = { Text("Task Board") },
+                    selected = false,
+                    onClick = {
+                        scope.launch { drawerState.close() }
+                        onNavigateToTaskBoard()
+                    },
+                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp).testTag("folder_item_task_board")
+                )
+
+                HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
+
+                // Nested folder tree - repos nest into their folders. Built from
+                // all notes' locationPath, plus any empty custom folders.
+                val drawerTree = remember(allNotesForFolders, customFolders) {
+                    buildFolderTree(allNotesForFolders).also { root ->
+                        customFolders.forEach { name ->
+                            root.children.getOrPut(name) { FolderTreeNode(name, name) }
+                        }
+                    }
+                }
+                val drawerRows = remember(drawerTree, drawerFolderExpanded.toMap()) {
+                    mutableListOf<FolderTreeRow>().also {
+                        flattenFolderTree(drawerTree, 0, drawerFolderExpanded, it)
+                    }
+                }
+                LazyColumn(
+                    modifier = Modifier.fillMaxWidth().weight(1f),
+                    verticalArrangement = Arrangement.spacedBy(2.dp)
+                ) {
+                    items(
+                        drawerRows.filterIsInstance<FolderRow>(),
+                        key = { "drawer_${it.node.path}" }
+                    ) { row ->
+                        val hasChildren = row.node.children.isNotEmpty()
+                        val isSelected = selectedFolder == row.node.path
+                        val isCustomTop = row.depth == 0 && row.node.path in customFolders
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(start = (12 + row.depth * 16).dp, end = 12.dp)
+                                .clip(RoundedCornerShape(12.dp))
+                                .background(
+                                    if (isSelected) MaterialTheme.colorScheme.secondaryContainer
+                                    else Color.Transparent
+                                )
+                                .clickable {
+                                    viewModel.selectFolder(row.node.path)
+                                    scope.launch { drawerState.close() }
+                                }
+                                .padding(vertical = 8.dp, horizontal = 8.dp)
+                                .testTag("folder_item_${row.node.path}"),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            if (hasChildren) {
+                                IconButton(
+                                    onClick = { drawerFolderExpanded[row.node.path] = !row.expanded },
+                                    modifier = Modifier.size(28.dp)
+                                ) {
+                                    Icon(
+                                        imageVector = if (row.expanded) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
+                                        contentDescription = if (row.expanded) "Collapse" else "Expand"
+                                    )
+                                }
+                            } else {
+                                Spacer(modifier = Modifier.width(28.dp))
+                            }
+                            Icon(
+                                imageVector = if (row.expanded && hasChildren) Icons.Default.FolderOpen else Icons.Default.Folder,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier.size(20.dp)
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(
+                                text = row.node.name,
+                                style = MaterialTheme.typography.bodyMedium,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
+                                modifier = Modifier.weight(1f)
+                            )
+                            if (row.node.noteCount > 0) {
+                                Text(
+                                    text = "${row.node.noteCount}",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                            if (isCustomTop && row.node.noteCount == 0) {
+                                IconButton(
+                                    onClick = { viewModel.deleteFolder(row.node.name) },
+                                    modifier = Modifier.size(28.dp).testTag("delete_folder_${row.node.name}")
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.Delete,
+                                        contentDescription = "Delete Folder",
+                                        modifier = Modifier.size(18.dp),
+                                        tint = MaterialTheme.colorScheme.error
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    ) {
         Scaffold(
             snackbarHost = { SnackbarHost(snackbarHostState) },
             topBar = {
@@ -1078,6 +1253,7 @@ fun NotesListScreen(
                 }
             }
         }
+    }
     }
 
     notePendingDelete?.let { note ->
@@ -2022,6 +2198,18 @@ fun EditorScreen(
                     }
                 },
                 actions = {
+                    // Preview is read-only (MarkdownPreview has no text input), so this
+                    // toggle is the only way into edit mode - it must always be visible.
+                    IconButton(
+                        onClick = { isEditing = !isEditing },
+                        modifier = Modifier.testTag("editor_edit_preview_toggle")
+                    ) {
+                        Icon(
+                            imageVector = if (isEditing) Icons.Default.Visibility else Icons.Default.Edit,
+                            contentDescription = if (isEditing) "Preview note" else "Edit note",
+                            tint = MaterialTheme.colorScheme.primary
+                        )
+                    }
                     IconButton(onClick = { /* TODO: Undo */ }) {
                         Icon(Icons.AutoMirrored.Filled.Undo, contentDescription = "Undo", tint = MaterialTheme.colorScheme.onSurfaceVariant)
                     }

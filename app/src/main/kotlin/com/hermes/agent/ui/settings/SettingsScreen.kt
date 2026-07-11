@@ -73,8 +73,8 @@ fun SettingsScreen(
                     HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp))
                     NavRow(
                         icon = Icons.Outlined.Alarm,
-                        title = "Alarms",
-                        subtitle = "Sassy Butler wake-up preferences",
+                        title = "Daybook",
+                        subtitle = "Wake-ups, weather & calendar",
                         onClick = { onNavigate("settings_alarms") },
                     )
                     HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp))

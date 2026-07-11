@@ -10,15 +10,24 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.CalendarMonth
+import androidx.compose.material.icons.filled.Cloud
+import androidx.compose.material.icons.filled.PlayCircleOutline
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.lifecycleScope
 import com.sassybutler.alarm.ui.ButlerTheme
@@ -38,11 +47,13 @@ class MainAlarmSetupActivity : AppCompatActivity() {
 
     private val calendarPermission = registerForActivityResult(
         ActivityResultContracts.RequestMultiplePermissions()
-    ) { _ -> }
+    ) { _ -> refreshCalendar() }
 
     private var weatherState by mutableStateOf<WeatherService.Weather?>(null)
     private var alarmsState by mutableStateOf(emptyList<Alarm>())
     private var honorificState by mutableStateOf("Sir")
+    private var calendarEventsState by mutableStateOf<List<CalendarSyncManager.TodayEvent>>(emptyList())
+    private var calendarPermissionGrantedState by mutableStateOf(false)
 
     override fun onCreate(savedInstanceState: Bundle?) {
         val isEmbedded = intent.getBooleanExtra("EXTRA_EMBEDDED", false)
@@ -64,10 +75,12 @@ class MainAlarmSetupActivity : AppCompatActivity() {
                     MainAlarmScreen(
                         alarms = alarmsState,
                         weather = weatherState,
+                        calendarEvents = calendarEventsState,
+                        calendarPermissionGranted = calendarPermissionGrantedState,
                         honorific = honorificState,
                         onToggle = { toggleAlarm(it) },
                         onDelete = { deleteAlarm(it) },
-                        onEdit = { alarm -> 
+                        onEdit = { alarm ->
                             if (alarm != null) showAddAlarm = alarm else isAddingNewAlarm = true
                         },
                         onPrefs = {
@@ -111,7 +124,9 @@ class MainAlarmSetupActivity : AppCompatActivity() {
             locationPermission.launch(android.Manifest.permission.ACCESS_COARSE_LOCATION)
         }
 
-        if (checkSelfPermission(android.Manifest.permission.READ_CALENDAR) != android.content.pm.PackageManager.PERMISSION_GRANTED) {
+        if (CalendarSyncManager.hasReadPermission(this)) {
+            refreshCalendar()
+        } else {
             calendarPermission.launch(
                 arrayOf(
                     android.Manifest.permission.READ_CALENDAR,
@@ -119,6 +134,11 @@ class MainAlarmSetupActivity : AppCompatActivity() {
                 )
             )
         }
+    }
+
+    private fun refreshCalendar() {
+        calendarPermissionGrantedState = CalendarSyncManager.hasReadPermission(this)
+        calendarEventsState = CalendarSyncManager.todayEvents(this)
     }
 
     private fun refreshWeather() {
@@ -180,6 +200,8 @@ class MainAlarmSetupActivity : AppCompatActivity() {
 fun MainAlarmScreen(
     alarms: List<Alarm>,
     weather: WeatherService.Weather?,
+    calendarEvents: List<CalendarSyncManager.TodayEvent>,
+    calendarPermissionGranted: Boolean,
     honorific: String,
     onToggle: (Alarm) -> Unit,
     onDelete: (Alarm) -> Unit,
@@ -189,9 +211,9 @@ fun MainAlarmScreen(
 ) {
     var currentTime by remember { mutableStateOf(Date()) }
     var alarmToDelete by remember { mutableStateOf<Alarm?>(null) }
-    
+
     LaunchedEffect(Unit) {
-        while(true) {
+        while (true) {
             currentTime = Date()
             delay(1000)
         }
@@ -226,36 +248,59 @@ fun MainAlarmScreen(
         }
     ) { innerPadding ->
         LazyColumn(
-            modifier = Modifier.fillMaxSize().padding(innerPadding).padding(horizontal = 24.dp),
-            contentPadding = PaddingValues(top = 24.dp, bottom = 80.dp)
+            modifier = Modifier.fillMaxSize().padding(innerPadding).padding(horizontal = 20.dp),
+            contentPadding = PaddingValues(top = 20.dp, bottom = 88.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
             item {
-                // Header
+                // Header — label + greeting share one text block so a two-line
+                // greeting stays left-aligned under the label instead of drifting
+                // under the cog button (SpaceBetween previously fought this).
                 Row(
-                    modifier = Modifier.fillMaxWidth().padding(bottom = 24.dp),
+                    modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
+                    verticalAlignment = Alignment.Top
                 ) {
-                    Column {
+                    Column(modifier = Modifier.weight(1f).padding(end = 12.dp)) {
                         Text(
-                            text = "JEEVES ALARMS",
+                            text = "JEEVES DAYBOOK",
                             style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            maxLines = 1
                         )
+                        Spacer(modifier = Modifier.height(2.dp))
                         Text(
                             text = greetingFor(honorific),
                             style = MaterialTheme.typography.titleLarge,
-                            color = MaterialTheme.colorScheme.onSurface
+                            color = MaterialTheme.colorScheme.onSurface,
+                            maxLines = 2,
+                            overflow = TextOverflow.Ellipsis
                         )
                     }
-                    Button(onClick = onPrefs) {
-                        Text("Prefs")
+                    Box(
+                        modifier = Modifier
+                            .size(44.dp)
+                            .clip(CircleShape)
+                            .background(MaterialTheme.colorScheme.surfaceVariant)
+                            .border(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.4f), CircleShape)
+                            .clickable(onClick = onPrefs),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Settings,
+                            contentDescription = "Preferences",
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.size(22.dp)
+                        )
                     }
                 }
+            }
 
-                // Live Clock
+            item {
+                // Clock card — time and date only; weather and calendar are their
+                // own cards below so each source of truth reads independently.
                 Card(
-                    modifier = Modifier.fillMaxWidth().padding(bottom = 24.dp),
+                    modifier = Modifier.fillMaxWidth(),
                     colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
                 ) {
                     Row(
@@ -282,40 +327,174 @@ fun MainAlarmScreen(
                                 text = SimpleDateFormat("d MMM", Locale.UK).format(currentTime),
                                 style = MaterialTheme.typography.bodyMedium
                             )
-                            if (weather != null) {
-                                Text(
-                                    text = "${weather.tempC}° · ${weather.label}",
-                                    style = MaterialTheme.typography.labelSmall,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                        }
+                    }
+                }
+            }
+
+            item {
+                WeatherCard(weather = weather)
+            }
+
+            item {
+                CalendarCard(events = calendarEvents, permissionGranted = calendarPermissionGranted)
+            }
+
+            item {
+                // Alarms card — header (count + preview action) and list share one
+                // card boundary instead of floating loose against the screen edge.
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
+                ) {
+                    Column(modifier = Modifier.padding(16.dp)) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                text = "${alarms.size} ALARM${if (alarms.size == 1) "" else "S"} SCHEDULED",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                modifier = Modifier.clickable { onPreview() }
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.PlayCircleOutline,
+                                    contentDescription = null,
+                                    tint = MaterialTheme.colorScheme.primary,
+                                    modifier = Modifier.size(16.dp)
                                 )
+                                Spacer(modifier = Modifier.width(4.dp))
+                                Text(
+                                    text = "Preview Wake-Up",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = MaterialTheme.colorScheme.primary
+                                )
+                            }
+                        }
+                        if (alarms.isEmpty()) {
+                            Text(
+                                text = "No appointments yet. Tap + to add one.",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.padding(vertical = 12.dp)
+                            )
+                        } else {
+                            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                                alarms.forEach { alarm ->
+                                    AlarmItem(
+                                        alarm = alarm,
+                                        onToggle = onToggle,
+                                        onDeleteRequest = { alarmToDelete = alarm },
+                                        onClick = { onEdit(alarm) }
+                                    )
+                                }
                             }
                         }
                     }
                 }
-
-                // Alarms Header
-                Row(
-                    modifier = Modifier.fillMaxWidth().padding(bottom = 12.dp),
-                    horizontalArrangement = Arrangement.SpaceBetween
-                ) {
-                    Text("${alarms.size} SCHEDULED", style = MaterialTheme.typography.labelSmall)
-                    Text(
-                        text = "Preview Wake-Up →",
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.primary,
-                        modifier = Modifier.clickable { onPreview() }
-                    )
-                }
             }
+        }
+    }
+}
 
-            // Alarms List
-            items(alarms, key = { it.id }) { alarm ->
-                AlarmItem(
-                    alarm = alarm,
-                    onToggle = onToggle,
-                    onDeleteRequest = { alarmToDelete = alarm },
-                    onClick = { onEdit(alarm) }
+@Composable
+fun WeatherCard(weather: WeatherService.Weather?) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
+    ) {
+        Row(
+            modifier = Modifier.padding(16.dp).fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Icon(
+                imageVector = Icons.Default.Cloud,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.size(24.dp)
+            )
+            Spacer(modifier = Modifier.width(12.dp))
+            if (weather != null) {
+                Text(
+                    text = "${weather.tempC}° · ${weather.label}",
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = MaterialTheme.colorScheme.onSurface
                 )
+            } else {
+                Text(
+                    text = "Weather unavailable — check location permission",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+        }
+    }
+}
+
+@Composable
+fun CalendarCard(events: List<CalendarSyncManager.TodayEvent>, permissionGranted: Boolean) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
+    ) {
+        Column(modifier = Modifier.padding(16.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(
+                    imageVector = Icons.Default.CalendarMonth,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.size(24.dp)
+                )
+                Spacer(modifier = Modifier.width(12.dp))
+                Text(
+                    text = "Today",
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+            }
+            Spacer(modifier = Modifier.height(8.dp))
+            when {
+                !permissionGranted -> Text(
+                    text = "Calendar access needed to show today's events.",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                events.isEmpty() -> Text(
+                    text = "Nothing on the calendar today.",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                else -> Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                    events.take(3).forEach { event ->
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Text(
+                                text = if (event.allDay) "All day" else
+                                    SimpleDateFormat("HH:mm", Locale.UK).format(Date(event.startMillis)),
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier.width(52.dp)
+                            )
+                            Text(
+                                text = event.title,
+                                style = MaterialTheme.typography.bodyMedium,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
+                            )
+                        }
+                    }
+                    if (events.size > 3) {
+                        Text(
+                            text = "+ ${events.size - 3} more",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
             }
         }
     }

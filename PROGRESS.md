@@ -2,10 +2,12 @@
 
 **What this is:** the merged "super app" (working name **Jeeves**) that unifies three
 existing Android apps — **Hermes Agent** (base), **Octo Jotter**, and **Sassy Butler** —
-into a single sideloaded, multi-module APK. Roadmap: `docs/SUPER_APP_ROADMAP.md`.
+into a single sideloaded, multi-module APK. Merge roadmap (done): `docs/SUPER_APP_ROADMAP.md`.
+What's next (digital-butler evolution): `docs/DIGITAL_BUTLER_ROADMAP.md`.
 
 The base is the Hermes Agent app (`com.hermes.agent` namespace), imported here as a fresh
-repo. Octo Jotter and Sassy Butler are NOT yet imported (Phase 3).
+repo. All three apps are merged and shipping (`:app` + `:feature:jotter` + `:feature:butler`).
+**Published:** GitHub remote `l3ad3r1/jeeves`, releases v0.9.0 through v0.9.4 live.
 
 ## Build env
 - JAVA_HOME = `C:\Program Files\Android\Android Studio\jbr` (JBR 21.0.10)
@@ -15,6 +17,44 @@ repo. Octo Jotter and Sassy Butler are NOT yet imported (Phase 3).
 - Debug APK: `./gradlew :app:assembleDebug`
 
 ## Status log (newest first)
+
+### Icon, Notes, Daybook fixes + version drift correction — 2026-07-11
+- [x] **PROGRESS.md was stale since v0.9.0** (claimed "no remote / publishing not done" through
+      three subsequent releases). Corrected against `git log` and GitHub releases: the repo is
+      published (`l3ad3r1/jeeves`, v0.9.0-v0.9.3 before this entry) and all three apps are merged.
+- [x] **New launcher icon** — `app/src/main/res/drawable/ic_launcher_foreground.xml`, a vector
+      tuxedo/bow-tie mark (bow tie + two lapels + three buttons), replacing the raster foreground.
+      Both `mipmap-anydpi-v26/ic_launcher*.xml` now point at the vector drawable and declare a
+      `<monochrome>` variant for Android 13+ themed icons. Old per-density raster PNGs left in
+      place but are unused (minSdk 29 > 26, so every device resolves the anydpi-v26 XML).
+- [x] **Notes hamburger menu fixed** — the Notesnook-style redesign (`baa4940`) dropped the
+      `ModalNavigationDrawer` wrapper while keeping the button that opens `drawerState`, so the
+      button did nothing. Restored the drawer (folders, All Notes, Uncategorized, Trash, Task
+      Board) around the existing `Scaffold` in `NoteApp.kt`.
+- [x] **Notes editor: no way into edit mode** — `EditorScreen`'s `isEditing` flag started false
+      and nothing ever set it true, so a note always opened in read-only `MarkdownPreview` with
+      no visible affordance to edit it. Added an Edit/Preview toggle icon to the top bar.
+- [x] **Daybook redesign** (renamed from "Alarms" — it now covers wake-ups, weather, and
+      calendar). `MainAlarmSetupActivity.kt`: header realigned (label + greeting share one
+      `Column`, cog `IconButton` replaces the "Prefs" button); the single crowded clock+weather
+      card is now three cards (clock, weather, calendar); alarms list moved into its own card
+      with an empty state. Added `CalendarSyncManager.todayEvents()` (read-only, gated on
+      `READ_CALENDAR`) to back the new calendar card — previously that permission was requested
+      but nothing ever read from it.
+- [x] **Add Alarm sheet day selector** — seven fixed 48dp circles with `SpaceBetween` add up to
+      wider than the sheet on narrower screens (336dp of circles vs. ~312dp available), clipping
+      the last day(s). Switched to `weight(1f)` + `aspectRatio(1f)` so it always fits.
+- [x] **Sub-app renames** — Home screen cards: "Notes" -> "AI Notes" (`subtitle`: "Capture &
+      summarize"), "Alarms" -> "Daybook" (`subtitle`: "Alarms, weather & calendar"). Matching
+      Settings section and `AlarmSettingsScreen` top bar also renamed to "Daybook".
+- [x] **`:feature:butler` gained an icon dependency** (`androidx.compose.material.icons.core`/
+      `.extended`) — it previously had zero `Icons.*` usage; the redesign needed them.
+- [x] **Version drift fixed.** `jeeves.versionCode`/`versionName` had been stuck at 60/0.9.0
+      since the v0.9.0 tag despite v0.9.1, v0.9.2, and v0.9.3 all shipping on top of it — every
+      one of those APKs' in-app "About" version and OTA `User-Agent` header read "0.9.0". Bumped
+      to versionCode 64 / versionName 0.9.4 (61-63 treated as consumed by the unrecorded prior
+      releases). `RELEASE_NOTES.md`'s "1.1.0" entry (never matched the tag scheme) corrected to
+      0.9.2, the version it actually shipped as, and a 0.9.4 entry added for this pass.
 
 ### Page-by-page UI/UX re-audit — 2026-07-11
 - [x] Re-checked every host destination plus the embedded Notes and Alarms pages against the
@@ -330,17 +370,22 @@ dex 7.6 MB, resources 3.6 MB. R8 + resource shrinking cut 69 MB off the debug bu
   5. Community Plugins renders the fetched registry ("Ocean Dark", "Rose Light") -> the
      reflective `RegistryIndex`/`PluginManifest` adapters survive minification.
 
-**NOT DONE — publishing.** The repo has **no git remote**, and publishing a GitHub release is
-irreversible, so nothing was pushed. To ship: create the remote, push `master`, then
-`gh release create v0.9.0 --latest` with the signed APKs, verifying the signer once more first.
+**Publishing status (corrected 2026-07-11 — this section previously said "not done" and was
+stale by four releases):** the repo has a remote (`l3ad3r1/jeeves`) and GitHub releases
+v0.9.0 through v0.9.4 are live. `gradle.properties`' `jeeves.versionCode`/`versionName` were
+left at 60/0.9.0 for v0.9.1-v0.9.3 despite three releases shipping on top of it (fixed in the
+0.9.4 bump — see the 2026-07-11 status entry above).
 
 ## Next steps
-1. Publish (needs an explicit go-ahead): create the GitHub remote, push, cut release `v0.9.0`
-   marked `--latest` with the signed APKs. Standing rule: verify signer `99255c31...` before publish.
-2. Optional size work: download-on-first-use for the 115 MB TTS models would take the arm64 APK
-   from 145 MB to ~30 MB. Bigger change — the models are currently required at build time.
+1. Cut and publish the v0.9.4 release (signed, ABI-split APK) once this session's fixes are
+   verified. Standing rule: verify signer `99255c31...` before publish.
+2. Optional size work: download-on-first-use for the TTS models (`VoiceDownloader` already
+   proves the pattern for extra voices; extending it to the bundled base model would take the
+   arm64 APK from ~117 MB to ~30 MB).
 3. Close the last verification gap: an end-to-end LLM tool call with a real API key
    ("wake me at 7am" -> `set_alarm` -> alarm fires).
+4. Device validation matrix (TalkBack, Switch Access, 200% font, reduced motion) still never
+   run on hardware — see `docs/DIGITAL_BUTLER_ROADMAP.md` Phase B0.
 
 ### Post-Phase-7 code review — two bugs found and fixed
 An independent review pass over the session's new integration code found two real bugs,

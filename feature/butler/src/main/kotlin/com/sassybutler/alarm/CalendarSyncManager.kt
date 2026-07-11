@@ -2,16 +2,62 @@ package com.sassybutler.alarm
 
 import android.content.ContentValues
 import android.content.Context
+import android.content.pm.PackageManager
 import android.net.Uri
 import android.provider.CalendarContract
 import android.content.ContentUris
+import androidx.core.content.ContextCompat
 import java.util.Calendar
 import java.util.TimeZone
 
 object CalendarSyncManager {
-    
+
     // We map our Alarm ID to a Calendar Event ID stored in SharedPreferences
     private const val PREFS_NAME = "calendar_sync_prefs"
+
+    data class TodayEvent(val title: String, val startMillis: Long, val allDay: Boolean)
+
+    fun hasReadPermission(context: Context): Boolean =
+        ContextCompat.checkSelfPermission(context, android.Manifest.permission.READ_CALENDAR) ==
+            PackageManager.PERMISSION_GRANTED
+
+    /** Today's events from every visible calendar, earliest first. Empty if permission is missing. */
+    fun todayEvents(context: Context): List<TodayEvent> {
+        if (!hasReadPermission(context)) return emptyList()
+
+        val dayStart = Calendar.getInstance().apply {
+            set(Calendar.HOUR_OF_DAY, 0); set(Calendar.MINUTE, 0)
+            set(Calendar.SECOND, 0); set(Calendar.MILLISECOND, 0)
+        }.timeInMillis
+        val dayEnd = dayStart + 24 * 60 * 60 * 1000L
+
+        val projection = arrayOf(
+            CalendarContract.Instances.TITLE,
+            CalendarContract.Instances.BEGIN,
+            CalendarContract.Instances.ALL_DAY,
+        )
+        val uri = CalendarContract.Instances.CONTENT_URI.buildUpon().apply {
+            ContentUris.appendId(this, dayStart)
+            ContentUris.appendId(this, dayEnd)
+        }.build()
+
+        val events = mutableListOf<TodayEvent>()
+        try {
+            context.contentResolver.query(uri, projection, null, null, CalendarContract.Instances.BEGIN)
+                ?.use { cursor ->
+                    while (cursor.moveToNext()) {
+                        events += TodayEvent(
+                            title = cursor.getString(0) ?: "Untitled event",
+                            startMillis = cursor.getLong(1),
+                            allDay = cursor.getInt(2) != 0,
+                        )
+                    }
+                }
+        } catch (e: SecurityException) {
+            // Permission not granted
+        }
+        return events
+    }
 
     fun syncAlarmToCalendar(context: Context, alarm: Alarm) {
         if (!alarm.enabled) {
