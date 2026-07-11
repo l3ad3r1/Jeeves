@@ -1,252 +1,180 @@
-# Jeeves Roadmap — Features & Updates from v0.9.6 to 1.0
+# Jeeves Roadmap — Features & Updates from v0.9.9 to 1.0
 
-**Status:** Plan of record, revised against **v0.9.6** (2026-07-11).
-Successor to `SUPER_APP_ROADMAP.md` (merge — complete) and the v0.9.3 revision of this
-document. Each milestone below is a shippable release with a hard verification gate;
-work top-to-bottom, don't batch milestones.
+**Status:** Plan of record, revised against **v0.9.9** (2026-07-11, third baseline today —
+the codebase moved that fast). Predecessors: `SUPER_APP_ROADMAP.md` (merge, complete) and
+the v0.9.6 revision of this file.
 
-**The question this roadmap answers:** Jeeves is now *one product* — one brand, one
-theme, one settings store, one backup, one update channel, published and updatable.
-What's left is making it a *butler*: proactive, ambient, knowing, and accountable.
+**What changed since the last revision:** the v0.9.6 plan sequenced features
+v0.9.7 → v1.0. In one day, releases v0.9.7–v0.9.9 shipped code from FOUR of those
+milestones out of order — the morning-briefing composer (was v0.10), the entire One
+Memory layer (was v0.12), ambient-access scaffolding (was v0.11), and tool-confirmation
+gates (was v0.14). Almost none of it has passed a device gate, and two of the three
+releases shipped bugs a single manual test would have caught (v0.9.7's dead repo sync;
+v0.9.5's invisible icon earlier).
+
+**Therefore this revision inverts the priority: the bottleneck is no longer writing
+features — two AI agents are producing them faster than they're being verified. The
+bottleneck is verification, and the roadmap now treats it as the product.**
 
 ---
 
-## 1. Baseline — where v0.9.6 stands (don't re-plan these)
+## 1. Baseline — what exists at v0.9.9
 
-Shipped and verified as of today:
+### Shipped and reviewed (code-verified; device status noted)
 
-- **One app, published:** `l3ad3r1/Jeeves`, releases v0.9.0 → v0.9.6, single arm64
-  APK (~122 MB), OTA channel working with a real numeric version compare, version
-  drift fixed (bump-per-release rule enforced twice now).
-- **One backup:** GitHub Gist bundle covers memories, skills, settings, crons, notes,
-  and alarms; restore schedules alarms, dedupes notes, and reports counts.
-- **Agent core:** 5 role agents, 22 tools (incl. cross-module `create_note`,
-  `set_alarm`, Butler-voiced `speak`), RAG + dual-store memory, skills + evolution
-  workers, cron scheduler, local OpenAI-compatible API server, Telegram + webhooks,
-  SSH/Termux.
-- **Daybook:** clock/weather/calendar/alarms as separate cards; calendar read + alarm
-  → calendar mirroring; on-device ONNX TTS wake-ups with sass tiers.
-- **Notes:** folder drawer, editor with undo/redo + IME-safe toolbar, hashtag tags,
-  NotebookLM actions (summary/flashcards/audio/chat) with real error surfacing.
-- **Fixed this cycle:** invisible-icon regression, silent alarm restore, NotebookLM
-  silent failures, note-restore duplication, clock baseline, screen-off download stall.
-
-### Debt carried into this roadmap (from `REVIEW_ANTIGRAVITY_2026-07-11.md` + audits)
-
-| Item | Severity |
+| Area | State |
 |---|---|
-| Backup/restore never exercised with a real PAT end-to-end | Verify |
-| Device-validation matrix (TalkBack, Switch Access, 200% font, reduced motion) never run | Verify |
-| End-to-end LLM tool call ("wake me at 7am" → alarm fires) never proven with a real key | Verify |
-| Memory restore duplicates on repeat (M3) | Medium |
-| OTA download dies if user leaves the Updates screen (keep-screen-on is foreground-only) | Medium |
-| Editor "Options" (⋮) button is a dead TODO (L4) | Low |
-| Restored alarms not mirrored to calendar (L5); note timestamps lost in backup (L6); title edits not undoable (L7) | Low |
-| `VoiceDownloader` verifies no checksum on downloaded voices | Low (grows with B7) |
+| One app, one backup, one update channel | ✅ Mature. Unified gist backup (memories/skills/settings/crons/notes/alarms, schema v4), OTA via foreground service, version discipline holding since 0.9.4 |
+| **One Memory** (old v0.12) | ✅ Code complete + reviewed: `search_notes` (3-step wired), `NoteIndexer` (live sync, evicts locked/trashed), relevance-scored injection, conversation summaries (fixed — was dead code), habit snapshots (fixed — was duplicating). **Device gate NOT run** |
+| **Morning briefing** (old v0.10) | ⚠ `BriefingComposer` + `PreGenerateBriefingWorker` + settings shipped in v0.9.7. **Never heard on a device**; offline path, PhonemeEncoder pronunciation, post-dismiss timing all unproven |
+| **Ambient access** (old v0.11) | ⚠ Scaffolding only: assist-role services, QS tile, 2 widgets, share target, shortcuts, notification quick-reply. Compiles; **flagged experimental; zero device testing** |
+| **Autonomy gates** (old v0.14, partial) | ⚠ Tool allowlist enforced; Allow/Deny confirmation dialog with 60 s deny-timeout. No background delegation, no ledger yet |
+| Security | ✅ All secrets (cloud/aux keys, PAT, API-server key, SSH password) keystore-encrypted at rest; PAT masked in UI |
+| Trust & a11y | ✅ Per-permission onboarding, reduced-motion, screen-reader chat semantics, loading/error states. **Accessibility matrix still never run on hardware** |
+
+### Debt ledger (every unverified claim, in one place)
+
+| # | Item | Owed since |
+|---|---|---|
+| D1 | Backup+restore round-trip with a real PAT on device | v0.9.4 |
+| D2 | E2E LLM tool call ("wake me at 7am" → alarm fires) with a real key | v0.9.0 |
+| D3 | Accessibility matrix: TalkBack, Switch Access, 200% font, reduced motion | 07-10 audit |
+| D4 | Briefing heard on a device (incl. network-off pre-generated path) | v0.9.7 |
+| D5 | One Memory device gate: note-grounded answer with citation | v0.9.8 |
+| D6 | Repo sync E2E with a `repo`-scoped token (picker fix shipped in 0.9.9; sync itself unproven) | v0.9.9 |
+| D7 | Ambient surfaces: every entry point smoke-tested or feature-flagged off | v0.9.8 |
+| D8 | Memory-restore dedupe (restore still duplicates memories) | R1 review |
+| D9 | Confirmation service single-slot race (concurrent turns overwrite the pending request) | R2 review |
+| D10 | Vault-repo pattern hardcoded as picker *ordering* heuristic → should be a setting | v0.9.9 |
+| D11 | No CI — nothing runs the 252-test suite on push; unreviewed agent commits reach master unguarded | always |
 
 ---
 
-## 2. North star
+## 2. North star (unchanged)
 
-A butler is judged on five qualities, in order:
+A butler is judged on five qualities, in order: **trustworthy** (no surprises),
+**proactive** (briefs and nudges), **ambient** (≤ 1 gesture away), **knowing** (one
+memory across chat/notes/alarms/habits), **accountable** (background work with receipts
+and approval gates). Butler value beats desktop parity.
 
-1. **Trustworthy** — never surprises you with a permission, a deletion, or a leaked secret.
-2. **Proactive** — briefs you in the morning, nudges you about commitments, digests noise.
-3. **Ambient** — reachable in ≤ 1 gesture from anywhere on the device.
-4. **Knows you** — one unified memory across chat, notes, alarms, and habits.
-5. **Acts autonomously, accountably** — does multi-step work in the background, shows
-   receipts, asks before anything irreversible.
-
-Principle for scope calls: **butler value beats desktop parity.** Items from
-`FEATURE_GAP_ANALYSIS.md` (kanban dispatcher, CLI slash commands, Slack) enter only when
-a milestone below needs them.
+**New standing rule, earned twice today:** *no release without a review pass, and no
+milestone claimed without its device gate.* Antigravity ships code fast and well — but
+v0.9.5 and v0.9.7 both went out unreviewed and both shipped user-visible breakage.
+Review is not overhead; it is currently the highest-value work in the project.
 
 ---
 
 ## 3. Milestones
 
-### v0.9.7 — Hardening & debt (Effort: S–M)
+### v0.10.0 — The Great Verification (Effort: M — mostly device time, not code)
 
-**Goal:** clear the review debt and prove the things that have only ever been claimed.
+**Goal:** every feature that exists either passes its gate on hardware or gets
+feature-flagged off. The debt ledger empties. This milestone is deliberately
+feature-frozen: the fastest way to a trustworthy butler right now is proving the one
+we already built.
 
-- [ ] **OTA download → foreground service** (`dataSync` type already declared): survives
-      screen-off AND navigation away; notification shows progress. Supersedes the
-      keep-screen-on stopgap.
-- [ ] **Memory restore dedupe** (exact-content skip, same shape as the note fix).
-- [ ] Backup schema v4: carry note timestamps (L6); mirror restored alarms to calendar (L5).
-- [ ] Wire or remove the editor "Options" button (L4); title edits in the undo stack (L7).
-- [ ] **Verification sweep, on a real device:** backup+restore round-trip with a real PAT;
-      "wake me at 7am" e2e through the LLM with a real key; the accessibility matrix
-      (TalkBack, Switch Access, 200% font, reduced motion) — record results per page.
-- [ ] Delete the orphaned v0.9.5 GitHub release (ships the invisible-icon build).
+- [ ] **CI first (D11):** GitHub Action — `:app:testDebugUnitTest` + compile of all
+      modules on every push to master. Agents can't merge red.
+- [ ] **Device sweep, one session, results recorded in `PROGRESS.md`:**
+      D1 real-PAT backup round-trip · D2 e2e alarm-by-chat · D4 briefing (with airplane
+      mode at wake) · D5 note-grounded answer · D6 repo sync with a repo-scoped token ·
+      D7 each ambient surface (tile, both widgets, share target, quick-reply, assist
+      role in the system picker).
+- [ ] **D3 accessibility matrix** per page; file or fix what it finds.
+- [ ] Code debt while the device is out: D8 memory-restore dedupe, D9 confirmation
+      race (queue or per-turn key), D10 vault pattern → Notes setting.
+- [ ] Anything failing its gate ships OFF (settings toggle or build flag), not broken.
 
-**Gate:** every "Verify" row in the debt table above flips to evidence recorded in
-`PROGRESS.md`; release cut.
+**Gate:** debt ledger empty or explicitly deferred with a toggle; CI green badge;
+release cut.
 
-### v0.10 — The signature moment: the morning briefing (Effort: M)
+### v0.11.0 — Ambient access, finished (Effort: M)
 
-**Goal:** waking up to Jeeves is *the* demo. Every ingredient already exists — alarm
-pipeline, LLM bridge (`ButlerAiProviderImpl`), cached weather, calendar read, on-device
-TTS — but the wake-up still doesn't tell you about *your day*.
+**Goal:** promote the scaffolding from "experimental" to the product's front door.
 
-- [ ] **`BriefingComposer`:** today's calendar + weather (cached) + pending todos + notes
-      flagged today + optional 2-3 headlines (`WebSearchTool`) → ≤ 90-second spoken
-      script. Any missing source is skipped, never blocks the alarm.
-- [ ] `ButlerAiProvider.generateBriefing(context)`; sass greeting at alarm-fire, full
-      briefing speaks **after dismiss**.
-- [ ] **Pre-generate at alarm-minus-15-min** via WorkManager so the briefing plays
-      offline at wake; fall back to today's `ButlerScript.greeting()` if it failed.
-- [ ] Watch the `PhonemeEncoder` lexicon constraint: LLM text hits the letter-rule
-      fallback — evaluate pronunciation, extend the lexicon generator if needed.
-- [ ] Briefing sections/sass/honorific configurable in Daybook settings; **evening
-      wind-down** cron template (off by default).
+- [ ] Voice-interaction session UX: long-press-power opens chat with voice armed,
+      spoken reply via `ButlerSpeech`; latency measured (sentence-streaming landed
+      in 0.9.8 — verify it holds under real network).
+- [ ] Widgets actually update: briefing widget refreshes after pre-generation;
+      quick-jot round-trips into Notes.
+- [ ] Tile → voice capture → spoken answer, from lock screen where policy allows.
+- [ ] Share-sheet target: summarize / save note / remind flows complete.
+- [ ] Polish pass on notification quick-reply threading.
 
-**Gate (device):** alarm fires with network OFF → dismiss → Jeeves speaks calendar +
-weather + todos via ONNX TTS (pre-generated path proven). Unit: composer section-skip,
-staleness regeneration.
+**Gate (device):** lock screen → spoken answer ≤ 2 gestures, measured; every surface
+demo-able cold.
 
-### v0.11 — Ambient access: one gesture to Jeeves (Effort: M)
+### v0.12.0 — Proactive engine (Effort: L)
 
-**Goal:** reachable the way Google Assistant is — without hunting for an icon.
+Unchanged in content from the previous revision (triggers framework, opt-in
+notification digest with the injection boundary through the skills-guard, commitment
+nudges via the consolidator, daily digest template) — **plus the annoyance budget ships
+in the same release**: hard N-pings/day cap, DND-honoring quiet hours, one-tap "less of
+this". Trigger types default off except time-based.
 
-- [ ] **Digital-assistant role** (`ACTION_ASSIST` + `VoiceInteractionService`):
-      long-press power / corner-swipe opens chat with voice armed.
-- [ ] **Quick-settings tile:** tap → voice capture → spoken reply via `ButlerSpeech`.
-- [ ] **Widgets:** briefing summary + tap-to-chat; "quick jot" straight into Notes.
-- [ ] **Share-sheet target on the agent:** share text/URL → summarize / save note /
-      remind me.
-- [ ] **App shortcuts** (long-press icon): New note · Set alarm · Ask Jeeves · Briefing.
-- [ ] **Notification quick-reply:** agent replies as messaging-style notifications with
-      inline reply.
-- [ ] **Voice latency:** stream TTS sentence-by-sentence instead of whole-reply synthesis.
+**Gate (device):** each trigger fires; budget suppression unit-tested; consent per
+capability.
 
-**Gate (device):** lock screen → spoken answer in ≤ 2 gestures, measured; Jeeves appears
-in Android's default-assistant picker; every entry point smoke-tested.
+### v0.13.0 — Autonomy with accountability (Effort: L)
 
-### v0.12 — One memory: the agent knows what you know (Effort: L)
+Builds on the 0.9.8 gates (allowlist + confirmation dialog + timeout):
 
-**Goal:** a butler that files your notes but can't recall them is a filing clerk.
+- [ ] Background delegation: subagents on isolated scopes with filtered tool subsets;
+      `DelegateTool` → WorkManager; results as chat message + notification.
+- [ ] Context-aware confirmation policy: interactive chat = dialog (exists);
+      background/proactive = notification-based approval; never-autonomous class for
+      `ShellTool`/`TermuxTool`/SMS/device-settings from headless contexts.
+- [ ] Activity ledger: `util/audit` surfaced as "What Jeeves did".
+- [ ] Fix D9 properly here if deferred: per-request confirmation keys.
 
-- [ ] **`search_notes` tool** via the existing `FeatureBridge` (3-step wiring rule:
-      `ToolsModule` + `AgentToolAccess` + system prompts).
-- [ ] **Index notes into the RAG pipeline** on save/sync (chunk + embed, tagged by
-      source); one relevance scorer across chat memory AND notes. Index, don't migrate —
-      the two Room DBs stay.
-- [ ] **Relevance-scored cross-session injection** instead of blanket injection.
-- [ ] **LLM conversation summarization** on session close, feeding the user model.
-- [ ] **Habit signals:** wake times from `AlarmStore`, note topics, recurring crons —
-      "you usually wake at 6:30 on weekdays" is butler knowledge.
-- [ ] Privacy stance in-app: all on-device; only the composed prompt reaches the
-      configured LLM endpoint.
+**Gate (device):** delegate → pocket the phone → completed note + notification; a
+background shell call blocks on approval; ledger shows the trace.
 
-**Gate:** a question answerable only from a note gets the right answer with the note
-cited; index lifecycle unit-tested (edit → re-index, delete → evict); suite stays green.
+### v0.14.0 — Reach & interop (Effort: M)
 
-### v0.13 — Proactive engine: anticipate, don't just answer (Effort: L)
+Unchanged: Discord + WhatsApp connectors (Telegram is the template), provider
+registry + credential pooling, Tasker/intent surface behind the local API token,
+documented local API examples.
 
-**Goal:** Jeeves initiates — inside a strict annoyance budget.
-
-- [ ] **Trigger framework** generalizing `CronScheduler`: time, charging/battery,
-      calendar-event proximity ("meeting in 15 min"), optional geofence.
-- [ ] **NotificationListenerService** (opt-in, own consent screen): digest noisy apps,
-      surface "looks important". Notification text is DATA, not instructions — through
-      the skills-guard scrubber; never auto-act on it.
-- [ ] **Commitment tracking:** consolidator-extracted "remind me / I need to…" →
-      `TodoTool` + follow-up nudge.
-- [ ] **Daily digest** cron template: notifications + todo deltas + tomorrow preview.
-- [ ] **Proactivity budget:** hard cap N pings/day, quiet hours honoring DND, one-tap
-      "less of this" feedback into the user model.
-
-**Gate (device):** each trigger fires; digest renders from real notifications; budget
-suppression unit-tested (N+1th ping suppressed); every trigger type has its own toggle,
-default off except time-based.
-
-### v0.14 — Autonomy with accountability (Effort: L)
-
-**Goal:** "research X and file a note" works with the phone pocketed — and you can
-always see what he did.
-
-- [ ] **Background delegation:** subagents on isolated scopes with *filtered*
-      `ToolRegistry` subsets; `DelegateTool` → WorkManager for long tasks; results
-      delivered as chat message + notification.
-- [ ] **Approval gates:** tools classified safe / confirm / never-autonomous.
-      `ShellTool`, `TermuxTool`, SMS, `DeviceSettingsTool` require in-notification
-      approval from background/proactive contexts.
-- [ ] **Activity ledger:** `util/audit` surfaced as a "What Jeeves did" screen — every
-      background tool call, timestamped, with outcome.
-- [ ] **Kanban as the long-task queue** (repo + UI already exist): jobs are tickets;
-      failures auto-block after N retries instead of silent loops.
-
-**Gate (device):** delegate a research task, kill the UI, receive the completed note +
-notification; a background shell call blocks on approval; ledger shows the full trace.
-
-### v0.15 — Reach & interop (Effort: M)
-
-**Goal:** Jeeves answers wherever you are, not just on the phone.
-
-- [ ] Discord and WhatsApp connectors (Telegram is the template); per-platform session
-      isolation; message fanout.
-- [ ] **Provider registry + credential pooling:** multiple keys, rotation, OAuth device
-      flow where supported.
-- [ ] **Intent/Tasker API** guarded by the local API token; document the local API
-      server with example scripts (the desktop bridge).
-
-**Gate:** message from Discord → reply with tool use; two providers with rotation
-exercised in tests; a Tasker task triggers a briefing.
+**Gate:** Discord message → tool-using reply; two providers rotating in tests; Tasker
+triggers a briefing.
 
 ### v1.0 — Fit & finish (Effort: M)
 
-**Goal:** the install funnel and daily feel match the capability.
+Unchanged: TTS base model download-on-first-use with **checksum + resume**
+(~122 MB APK → ~30 MB), audit re-run to zero High findings, persona/copy unification,
+cold-start + battery pass, `ButlerSpeech.release()` on memory pressure.
 
-- [ ] **Base TTS model download-on-first-use:** extend the `VoiceDownloader` pattern to
-      the bundled 89 MB model → **~30 MB APK**. Checksum verification + resume required
-      (today's downloader verifies nothing); platform-TTS fallback until installed.
-- [ ] Audit re-run + sweep of surviving H-items (don't assume the old list — re-audit
-      against what actually shipped in 0.9.x).
-- [ ] Persona polish: one voice/tone across host/Notes/Daybook copy; expressive-eyes
-      consistency; honorifics everywhere.
-- [ ] Performance pass: cold-start budget; `ButlerSpeech.release()` wired to
-      `MemoryPressureMonitor`; battery audit of the foreground services + triggers.
-
-**Gate (device):** clean install from GitHub release: ~30 MB APK → onboard → verified
-voice-pack download → briefing works; audit shows 0 High findings.
+**Gate (device):** clean install ≤ 35 MB → onboard → verified voice pack → briefing
+works; 0 High findings.
 
 ---
 
-## 4. Sequencing rationale & risks
-
-**Why this order:** 0.9.7 is small but non-negotiable — unverified claims rot (this
-cycle proved it twice: the "fixed" consent flow that wasn't, and the versionCode that sat
-still through three releases). 0.10 is the identity feature and mostly wires existing
-parts. 0.11 multiplies usage of everything after it. 0.12 before 0.13 because proactive
-messages are only smart if memory is unified. 0.14 needs 0.12's context and the consent
-patterns. 0.15/1.0 are expansion and polish on a proven core.
+## 4. Risks
 
 | Risk | Impact | Mitigation |
 |---|---|---|
-| Sensitive permissions (assistant role, notification access) mishandled | High | Reuse the shipped lazy-permission pattern; default off; own consent screens |
-| Proactivity becomes annoyance | High | Budget + quiet hours + one-tap feedback ship WITH 0.13, not after |
-| Prompt injection via notifications/notes into an agent with shell access | High | 0.14 approval gates land before/with the 0.13 listener; skills-guard scrubs third-party text; background contexts never get `ShellTool` unattended |
-| Unverified downloads (voice packs, base model) | Medium | Checksum + resume are gate conditions for 1.0's size work |
-| LLM briefing text vs. `PhonemeEncoder` lexicon → degraded pronunciation | Medium | 0.10 evaluates the fallback; extend the lexicon generator if needed |
-| Background work vs. Doze | Medium | Foreground service for downloads (0.9.7); pre-generation instead of exact-time network (0.10); battery audit (1.0) |
-| Multi-agent tools (Antigravity et al.) committing unreviewed regressions | Medium | Every external contribution gets a review pass before release — this cycle's review caught 1 critical + 2 high |
-| Scope creep toward desktop parity | Medium | Gap-analysis items enter only via a milestone's need |
+| **Agents outrun verification** (the defining risk of this codebase — 2 broken releases in one day) | High | v0.10.0 is feature-frozen; CI gate (D11); standing review-before-release rule |
+| Ambient surfaces advertised before they work | High | "Experimental" label stays until the 0.11 gate; flags default off |
+| Prompt injection via notifications/notes into an agent with shell access | High | 0.13's context-aware policy lands before/with 0.12's listener; skills-guard scrubs third-party text |
+| Proactivity becomes annoyance | High | Budget ships WITH 0.12, not after |
+| Sensitive permissions (assist role, notification access) | Med | Per-capability consent pattern (shipped in 0.9.8's onboarding) reused everywhere |
+| Unverified downloads | Med | Checksum+resume are 1.0 gate conditions |
+| Hardcoded personal conventions creeping into product code ("second brain") | Med | D10; review flags any user-specific literal |
 
-**Standing rules:** 3-step tool wiring (`ToolsModule` + `AgentToolAccess` + prompts);
-commit per discrete step; update `PROGRESS.md` per milestone; never move
-`hermes-release.jks`; verify signer `99255c31…` before every release; every release bumps
-`gradle.properties` **in the same commit set** and ships a signed `--latest` GitHub
-release.
+**Standing rules:** 3-step tool wiring; commit per step; `PROGRESS.md` per milestone;
+never move `hermes-release.jks`; signer `99255c31…` verified before every release;
+version bumped in `gradle.properties` in the same change-set as the release; **review
+pass before any release; device gate before any milestone claim.**
 
 ## 5. Success metrics
 
-| Quality | Metric | v0.9.6 today | 1.0 target |
+| Quality | Metric | v0.9.9 today | 1.0 target |
 |---|---|---|---|
-| Trustworthy | Audit P0/High findings verified on device | Fixes shipped, matrix never run | 0 / 0, evidence recorded |
-| Proactive | Useful proactive touches/day | Wake greeting only | 2–4 within budget |
-| Ambient | Gestures from lock screen to spoken answer | ~4 | ≤ 2 |
-| Knows you | Agent answers from notes/habits with citation | No | Yes (0.12 gate) |
-| Autonomous | Background task with ledger + approval gating | Partial | Yes (0.14 gate) |
-| Installable | Release APK size | 122 MB | ~30 MB + verified voice pack |
-| Reliable | Backup round-trip proven with real PAT | Never | Routinely, per release |
+| Verified | Debt-ledger items open | 11 | 0 |
+| Trustworthy | Releases shipped with a user-visible regression (rolling) | 2 of last 5 | 0 |
+| Proactive | Useful proactive touches/day | Briefing (unproven) | 2–4 in budget |
+| Ambient | Lock screen → spoken answer | ~4 gestures | ≤ 2, measured |
+| Knowing | Note-grounded answer with citation | Code yes, device unproven | Gate passed |
+| Accountable | Background task with ledger + gated approval | Gates only | Full loop |
+| Installable | Release APK | 122 MB | ~30 MB + voice pack |
