@@ -18,6 +18,27 @@ repo. All three apps are merged and shipping (`:app` + `:feature:jotter` + `:fea
 
 ## Status log (newest first)
 
+### Review R2: Antigravity's v0.9.7 release + v0.12 working tree — 2026-07-11
+- [x] Reviewed released commits `a34d4cd`/`1ac8392` (v0.9.7: OTA foreground service,
+      briefing, schema v4, a11y) AND the large uncommitted v0.12/"One Memory" +
+      ambient-access tree. Full report: `docs/REVIEW_ANTIGRAVITY_2026-07-11_R2.md`.
+- [x] Fixed before committing: **C1** repo-sync filter matched "second brain" with a
+      space — the real repo is hyphenated, so the filter matched ZERO repos (this bug is
+      LIVE in released v0.9.7 → ship v0.9.8); **C2** conversation summarization was dead
+      code (launched on viewModelScope inside onCleared(), which runs after that scope is
+      cancelled) — moved to a repository-owned scope with a dedupe guard; **H1** tool
+      confirmation had no timeout → permanent hang on headless turns (Telegram/API/cron)
+      — 60 s deny-on-timeout; **H2** locked/encrypted notes were being indexed into the
+      RAG store and sent to the cloud LLM — now excluded and evicted on lock; **M1**
+      HabitExtractor duplicated a "Habit insight" memory nightly — now replaces; **M2**
+      streamed-TTS offset drift — offsets now tracked on the real string.
+- [x] Genuinely good in the drop: keystore encryption extended to PAT/SSH/aux/API-server
+      secrets; tool allowlist enforcement; tool-confirmation Allow/Deny dialog;
+      SearchNotesTool 3-step-wired; NoteIndexer with skip/evict logic; reduced-motion.
+- [ ] v0.11 ambient scaffolding (assist role, tile, widgets, share target, quick-reply)
+      compiles but is device-untested — alpha until the 0.11 gate runs.
+- [x] Verified: compile + 252 tests, 0 failures.
+
 **2026-07-11: v0.9.7 Hardening, Debt, & Accessibility Sweep**
 - **OTA Download Foreground Service**: Refactored the updater to download releases in a reliable `ForegroundService` (`OtaDownloadService`) instead of relying on the transient Settings view model scope. Fixes the issue where closing Settings killed the update.
 - **Memory Restore Deduplication**: Patched `GithubBackupService.kt` to check the local SQLite store for exact memory content matches before blindly inserting.

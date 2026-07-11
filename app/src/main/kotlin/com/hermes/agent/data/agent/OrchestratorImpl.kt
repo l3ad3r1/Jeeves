@@ -58,9 +58,11 @@ class OrchestratorImpl @Inject constructor(
     private val dispatchers: DispatcherProvider,
     private val memoryRepository: MemoryRepository,
     private val conversationLearner: ConversationLearner,
+    private val toolConfirmationService: com.hermes.agent.domain.tool.ToolConfirmationService,
     private val autonomousSkillCreator: AutonomousSkillCreator,
     private val userModelService: UserModelService,
     private val skillMatcher: SkillMatcher,
+    private val ragPipeline: com.hermes.agent.domain.rag.RagPipeline,
 ) : Orchestrator {
 
     // Supervisor scope for fire-and-forget post-turn learning tasks.
@@ -86,8 +88,13 @@ class OrchestratorImpl @Inject constructor(
         emit(OrchestratorEvent.PlanReady(plan))
 
         // 3. Load memories + user model and inject into system prompt.
-        val memories = runCatching { memoryRepository.searchMemories("", limit = 30) }
+        // Use vector similarity search with the user message to find relevant memories
+        val memories = runCatching { memoryRepository.searchMemories(userMessage, limit = 15) }
             .getOrDefault(emptyList())
+
+        // Also retrieve from RAG pipeline if available
+        val ragContext = runCatching { ragPipeline.buildContext(userMessage, maxChars = 3000) }
+            .getOrDefault("")
 
         val userModel = runCatching { userModelService.currentModel() }.getOrNull()
 
@@ -103,6 +110,11 @@ class OrchestratorImpl @Inject constructor(
                 regularMemories.forEach { m -> append("- ${m.content}\n") }
                 append("\nUse this context naturally. ")
                 append("Save any new personal facts with the memory tool (action='add').")
+            }
+            if (ragContext.isNotBlank()) {
+                append("\n\n## Relevant Personal Documents\n")
+                append(ragContext)
+                append("\nUse this context to inform your answers when asked about the user's notes or documents.")
             }
         }
 
@@ -128,9 +140,13 @@ class OrchestratorImpl @Inject constructor(
             // Pin a single text tool-call format so models that don't use
             // structured tool_calls (Gemma's ```tool_code```, Nemotron's
             // <TOOLCALL>) emit the <tool_call> JSON the parser recovers.
+            val previousContext = if (aggregator.isNotEmpty()) {
+                "\n\n## Context from previous agents\n$aggregator"
+            } else ""
+
             val toolInstruction = if (tools.isNotEmpty()) ToolCallPrompt.INSTRUCTION else ""
             val llmMessages = buildList {
-                add(LlmMessage(role = "system", content = agent.systemPrompt + memoryBlock + skillBlock + toolInstruction))
+                add(LlmMessage(role = "system", content = agent.systemPrompt + memoryBlock + skillBlock + previousContext + toolInstruction))
                 addAll(recentMessages)
                 if (recentMessages.none { it.role == "user" && it.content == userMessage }) {
                     add(LlmMessage(role = "user", content = userMessage))
@@ -149,7 +165,11 @@ class OrchestratorImpl @Inject constructor(
 
             val (finalReply, stepTools) = runToolLoop(provider, llmMessages, tools) { call, requiresConfirmation ->
                 emit(OrchestratorEvent.ToolCallRequested(call, requiresConfirmation))
-                true
+                if (requiresConfirmation) {
+                    toolConfirmationService.awaitConfirmation(call)
+                } else {
+                    true
+                }
             }
 
             if (finalReply == null) {
@@ -226,6 +246,16 @@ class OrchestratorImpl @Inject constructor(
 
             for (call in response.toolCalls) {
                 toolsInvoked += call.name
+                
+                // Enforce Tool Allowlist (Security Audit fix)
+                if (tools.none { it.name == call.name }) {
+                    val errorResult = com.hermes.agent.domain.tool.ToolResult.error("unauthorized tool: ${call.name}")
+                    messages = messages.toMutableList().apply {
+                        add(LlmMessage(role = "tool", content = errorResult.errorMessage!!, toolCallId = call.id))
+                    }
+                    continue
+                }
+                
                 val requiresConfirmation =
                     toolRegistry.byName(call.name)?.descriptor?.requiresConfirmation ?: false
                 val approved = confirmationGate?.confirm(call, requiresConfirmation) ?: true

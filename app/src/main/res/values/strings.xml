@@ -60,6 +60,16 @@
     <string name="a11y_tool_call_success">Tool %1$s succeeded</string>
     <string name="a11y_tool_call_failed">Tool %1$s failed: %2$s</string>
 
+    <!-- App Shortcuts -->
+    <string name="shortcut_new_note_short">New Note</string>
+    <string name="shortcut_new_note_long">Create a new note</string>
+    <string name="shortcut_set_alarm_short">Set Alarm</string>
+    <string name="shortcut_set_alarm_long">Set a new alarm</string>
+    <string name="shortcut_ask_jeeves_short">Ask Jeeves</string>
+    <string name="shortcut_ask_jeeves_long">Chat with your assistant</string>
+    <string name="shortcut_briefing_short">Briefing</string>
+    <string name="shortcut_briefing_long">Play morning briefing</string>
+
     <!-- Onboarding (Phase 4) -->
     <string name="onboarding_continue">Continue</string>
     <string name="onboarding_skip">Skip onboarding</string>

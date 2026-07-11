@@ -38,6 +38,7 @@ import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -88,6 +89,7 @@ fun ChatScreen(
     val listState = rememberLazyListState()
     val snackbarHostState = remember { SnackbarHostState() }
     var planDrawerOpen by remember { mutableStateOf(false) }
+    val pendingConfirmation by viewModel.pendingToolConfirmation.collectAsStateWithLifecycle()
 
     // Auto-scroll only when the user is already near the bottom of the list.
     // This prevents pulling users away from earlier content they're reading.
@@ -212,8 +214,41 @@ fun ChatScreen(
                         }
                     }
                 }
+            } // closes Column
+        } // closes Scaffold
+    } // closes ModalNavigationDrawer
+
+    pendingConfirmation?.let { call ->
+        androidx.compose.material3.AlertDialog(
+            onDismissRequest = { viewModel.submitToolConfirmation(false) },
+            title = { Text("Approve Action") },
+            text = {
+                Column {
+                    Text("Jeeves wants to run the following tool:")
+                    Spacer(Modifier.height(8.dp))
+                    Text(
+                        text = call.name,
+                        style = MaterialTheme.typography.bodyMedium,
+                        fontWeight = FontWeight.Bold
+                    )
+                    Text(
+                        text = call.arguments.entries.joinToString("\n") { "${it.key}: ${it.value}" },
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = { viewModel.submitToolConfirmation(true) }) {
+                    Text("Allow")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { viewModel.submitToolConfirmation(false) }) {
+                    Text("Deny")
+                }
             }
-        }
+        )
     }
 }
 

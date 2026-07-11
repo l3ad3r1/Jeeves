@@ -23,6 +23,7 @@ import kotlinx.coroutines.launch
 import timber.log.Timber
 import java.util.concurrent.TimeUnit
 import javax.inject.Inject
+import javax.inject.Provider
 
 /**
  * Hermes Application entry point.
@@ -48,6 +49,11 @@ class HermesApp : Application(), Configuration.Provider {
     @Inject
     lateinit var logManager: LogManager
 
+    @Inject
+    lateinit var noteIndexerProvider: Provider<com.hermes.agent.data.rag.NoteIndexer>
+
+    private val applicationScope = CoroutineScope(Dispatchers.Default)
+
     override fun onCreate() {
         super.onCreate()
         // Capture logs to a file (all build types) so the user can pull them
@@ -56,6 +62,15 @@ class HermesApp : Application(), Configuration.Provider {
         if (BuildConfig.DEBUG) {
             Timber.plant(Timber.DebugTree())
         }
+
+        // Constructing NoteIndexer also constructs Jotter's encrypted token store and
+        // database. Keep that work off the application injection/startup path so an
+        // unavailable optional integration cannot prevent the rest of Jeeves starting.
+        applicationScope.launch {
+            runCatching { noteIndexerProvider.get().start(applicationScope) }
+                .onFailure { Timber.tag("NoteIndexer").w(it, "note indexing unavailable") }
+        }
+
         // Phase 4: start memory pressure polling. If the App Startup
         // initializer already started it via Hilt EntryPoint, this is a
         // no-op; otherwise we start it now that Hilt is initialized.

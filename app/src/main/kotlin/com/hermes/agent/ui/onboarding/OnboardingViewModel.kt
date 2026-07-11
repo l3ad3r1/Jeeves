@@ -122,6 +122,7 @@ class OnboardingViewModel @Inject constructor(
     companion object {
         const val WELCOME = 0
         const val PROFILE = 1
-        const val DEVICE = 2
+        const val PERMISSIONS = 2
+        const val DEVICE = 3
     }
 }

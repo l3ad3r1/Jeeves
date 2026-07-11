@@ -19,6 +19,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.flowOf
+import com.hermes.agent.domain.tool.ToolConfirmationService
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.advanceUntilIdle
@@ -86,6 +87,7 @@ class ChatViewModelTest {
         clarificationBus = ClarificationBus(),
         todoStore = TodoStore(),
         settingsRepository = settingsRepository,
+        toolConfirmationService = mockk<ToolConfirmationService>(relaxed = true),
     )
 
     @Before

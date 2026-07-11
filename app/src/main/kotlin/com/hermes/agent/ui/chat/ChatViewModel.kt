@@ -40,9 +40,16 @@ class ChatViewModel @Inject constructor(
     private val clarificationBus: ClarificationBus,
     private val todoStore: TodoStore,
     private val settingsRepository: SettingsRepository,
+    private val toolConfirmationService: com.hermes.agent.domain.tool.ToolConfirmationService,
 ) : ViewModel() {
 
     val conversationId: String = checkNotNull(savedStateHandle["conversationId"])
+
+    val pendingToolConfirmation = toolConfirmationService.pendingRequest
+
+    fun submitToolConfirmation(approved: Boolean) {
+        toolConfirmationService.submitConfirmation(approved)
+    }
 
     private val _ephemeral = MutableStateFlow(ChatEphemeralState())
 
@@ -136,6 +143,9 @@ class ChatViewModel @Inject constructor(
         }
     }
 
+    private var spokenTextLength = 0
+    private val sentenceRegex = Regex("(?<=[.!?])\\s+")
+
     private fun handleOrchestratorEvent(event: OrchestratorEvent) {
         when (event) {
             is OrchestratorEvent.PlanReady -> {
@@ -164,10 +174,7 @@ class ChatViewModel @Inject constructor(
                 val updated = _ephemeral.value.plan?.let { plan ->
                     val idx = plan.currentStepIndex
                     val newSteps = plan.steps.mapIndexed { i, s ->
-                        when {
-                            i == idx -> s.copy(status = if (event.success) StepStatus.SUCCEEDED else StepStatus.FAILED)
-                            else -> s
-                        }
+                        if (i == idx) s.copy(status = if (event.success) StepStatus.SUCCEEDED else StepStatus.FAILED) else s
                     }
                     plan.copy(steps = newSteps, currentStepIndex = (idx + 1).coerceAtMost(plan.steps.lastIndex))
                 }
@@ -198,6 +205,23 @@ class ChatViewModel @Inject constructor(
             is OrchestratorEvent.ReplyToken -> {
                 val acc = _ephemeral.value.streamingText.orEmpty() + event.text
                 _ephemeral.value = _ephemeral.value.copy(streamingText = acc)
+
+                // If voice is active and we have new complete sentences, speak them
+                // immediately. Offsets are tracked against the REAL accumulated
+                // string: rebuilding the text with joinToString(" ") replaced the
+                // original separators (newlines, double spaces), so the byte count
+                // drifted and later substrings repeated or swallowed words.
+                val alreadySpoke = _ephemeral.value.toolCalls.any { it.name == "speak" }
+                if (!alreadySpoke && voiceOutputManager.isAvailable()) {
+                    val unreadText = acc.substring(spokenTextLength)
+                    val lastBoundary = sentenceRegex.findAll(unreadText).lastOrNull()
+                    if (lastBoundary != null) {
+                        val completeEnd = lastBoundary.range.last + 1
+                        val toSpeak = unreadText.substring(0, completeEnd).trim()
+                        if (toSpeak.isNotBlank()) speakReply(toSpeak)
+                        spokenTextLength += completeEnd
+                    }
+                }
             }
             is OrchestratorEvent.ReplyComplete -> {
                 // If the agent already used the `speak` tool this turn, it has
@@ -205,13 +229,21 @@ class ChatViewModel @Inject constructor(
                 // on top of it (that caused the text to be spoken twice).
                 val alreadySpoke = _ephemeral.value.toolCalls.any { it.name == "speak" }
                 _ephemeral.value = ChatEphemeralState()
-                if (!alreadySpoke) speakReply(event.finalText)
+                
+                if (!alreadySpoke) {
+                    val unreadText = event.finalText.substring(spokenTextLength.coerceAtMost(event.finalText.length))
+                    if (unreadText.isNotBlank()) {
+                        speakReply(unreadText)
+                    }
+                }
+                spokenTextLength = 0
             }
             is OrchestratorEvent.Failed -> {
                 Timber.tag("ChatVM").w("orchestration failed: %s", event.message)
                 _ephemeral.value = ChatEphemeralState(
                     errorMessage = event.message,
                 )
+                spokenTextLength = 0
             }
             is OrchestratorEvent.StateChanged -> { /* no-op */ }
         }
@@ -302,7 +334,15 @@ class ChatViewModel @Inject constructor(
 
     override fun onCleared() {
         super.onCleared()
-        voiceOutputManager.shutdown()
+        sendJob?.cancel()
+        listenJob?.cancel()
+        voiceOutputManager.stop()
+        
+        // Trigger summarization when the chat session ends. Plain call, not
+        // viewModelScope.launch: onCleared() runs after viewModelScope is
+        // already cancelled, so a coroutine launched here would never run.
+        // The repository does the work on its own singleton scope.
+        chatRepository.summarizeConversation(conversationId)
     }
 }
 

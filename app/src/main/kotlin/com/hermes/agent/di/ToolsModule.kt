@@ -68,6 +68,7 @@ object ToolsModule {
         // Cross-feature tools: reach into :feature:jotter and :feature:butler
         // through the unified Hilt graph (JotterModule / ButlerModule).
         createNoteTool: CreateNoteTool,
+        searchNotesTool: com.hermes.agent.data.tools.SearchNotesTool,
         setAlarmTool: SetAlarmTool,
     ): ToolRegistry {
         val registry = com.hermes.agent.data.tool.ToolRegistryImpl()
@@ -92,6 +93,7 @@ object ToolsModule {
             delegateTool,
             imageGenerationTool,
             createNoteTool,
+            searchNotesTool,
             setAlarmTool,
         ).forEach(registry::register)
         return registry

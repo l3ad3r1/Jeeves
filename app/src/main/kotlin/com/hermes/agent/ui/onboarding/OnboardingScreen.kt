@@ -30,6 +30,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -88,6 +89,7 @@ fun OnboardingScreen(
                 when (step) {
                     OnboardingViewModel.WELCOME -> WelcomeStep()
                     OnboardingViewModel.PROFILE -> ProfileStep(viewModel)
+                    OnboardingViewModel.PERMISSIONS -> PermissionsStep()
                     else -> DeviceStep(viewModel)
                 }
             }
@@ -263,8 +265,21 @@ private fun SpecRow(label: String, value: String) {
 }
 
 @Composable
-private fun PermissionRow(title: String, why: String) {
+private fun PermissionRow(title: String, why: String, permission: String) {
     val scheme = MaterialTheme.colorScheme
+    val context = androidx.compose.ui.platform.LocalContext.current
+    var isGranted by androidx.compose.runtime.remember {
+        androidx.compose.runtime.mutableStateOf(
+            androidx.core.content.ContextCompat.checkSelfPermission(context, permission) == android.content.pm.PackageManager.PERMISSION_GRANTED
+        )
+    }
+    
+    val launcher = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { granted ->
+        isGranted = granted
+    }
+
     Column(
         modifier = Modifier
             .fillMaxWidth()
@@ -273,8 +288,49 @@ private fun PermissionRow(title: String, why: String) {
             .border(1.dp, scheme.outline.copy(alpha = 0.2f), MaterialTheme.shapes.small)
             .padding(horizontal = 13.dp, vertical = 11.dp),
     ) {
-        Text(title, fontWeight = FontWeight.SemiBold, fontSize = 14.sp, color = scheme.onSurface)
-        Text(why, fontSize = 12.5.sp, color = scheme.onSurfaceVariant)
+        Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
+            Column(modifier = Modifier.weight(1f)) {
+                Text(title, fontWeight = FontWeight.SemiBold, fontSize = 14.sp, color = scheme.onSurface)
+                Text(why, fontSize = 12.5.sp, color = scheme.onSurfaceVariant)
+            }
+            if (isGranted) {
+                Text("Granted", color = scheme.primary, fontWeight = FontWeight.Medium, fontSize = 13.sp)
+            } else {
+                TextButton(onClick = { launcher.launch(permission) }) {
+                    Text("Allow")
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun PermissionsStep() {
+    val scheme = MaterialTheme.colorScheme
+
+    StepHeader("Permissions", "Grant what Jeeves needs to help — you can change these later in system settings.")
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .verticalScroll(rememberScrollState()),
+        verticalArrangement = Arrangement.spacedBy(9.dp),
+    ) {
+        Spacer(Modifier.height(76.dp))
+        PermissionRow("Microphone", "Voice input and commands", Manifest.permission.RECORD_AUDIO)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            PermissionRow("Notifications", "Proactive reminders and task updates", Manifest.permission.POST_NOTIFICATIONS)
+        }
+        PermissionRow("Location", "Location-aware answers and reminders", Manifest.permission.ACCESS_FINE_LOCATION)
+        PermissionRow("Contacts", "Look up and message people you name", Manifest.permission.READ_CONTACTS)
+        PermissionRow("Calendar", "Read and schedule events", Manifest.permission.READ_CALENDAR)
+        PermissionRow("Camera", "Capture and analyze images on request", Manifest.permission.CAMERA)
+        PermissionRow("Termux Commands", "Let Jeeves run the full agent in Termux", "com.termux.permission.RUN_COMMAND")
+        Spacer(Modifier.height(6.dp))
+        Text(
+            "Each is requested separately — approve the ones you're comfortable with.",
+            style = MaterialTheme.typography.labelSmall,
+            color = scheme.outline,
+        )
     }
 }
 

@@ -105,20 +105,41 @@ class ButlerSpeech @Inject constructor(
             val tts = engine() ?: return@withContext SpeakResult.UNAVAILABLE
             val voice = voiceName ?: VoiceCatalog.selected(context)
 
-            val pcm = runCatching { tts.synthesize(text, voice) }
-                .onFailure { Log.e(TAG, "synthesis threw", it) }
-                .getOrNull()
-            if (pcm == null || pcm.isEmpty()) {
-                Log.w(TAG, "synthesis produced no samples")
-                return@withContext SpeakResult.UNAVAILABLE
-            }
-            // Synthesis takes seconds; a stop() that arrived during it means the user
-            // silenced this utterance — that is not a failure to fall back from.
-            if (stopped.get() || !currentCoroutineContext().isActive) return@withContext SpeakResult.STOPPED
+            // Split into sentences for streaming synthesis
+            val sentences = text.split(Regex("(?<=[.!?])\\s+"))
+            var overallResult = SpeakResult.SPOKEN
 
-            runCatching { playPcm(pcm) }
-                .onFailure { Log.e(TAG, "playback failed", it); return@withContext SpeakResult.UNAVAILABLE }
-            if (stopped.get()) SpeakResult.STOPPED else SpeakResult.SPOKEN
+            for (sentence in sentences) {
+                if (sentence.isBlank()) continue
+                if (stopped.get() || !currentCoroutineContext().isActive) {
+                    overallResult = SpeakResult.STOPPED
+                    break
+                }
+
+                val pcm = runCatching { tts.synthesize(sentence, voice) }
+                    .onFailure { Log.e(TAG, "synthesis threw", it) }
+                    .getOrNull()
+                
+                if (pcm == null || pcm.isEmpty()) {
+                    Log.w(TAG, "synthesis produced no samples for sentence: $sentence")
+                    continue
+                }
+
+                if (stopped.get() || !currentCoroutineContext().isActive) {
+                    overallResult = SpeakResult.STOPPED
+                    break
+                }
+
+                runCatching { playPcm(pcm) }
+                    .onFailure { 
+                        Log.e(TAG, "playback failed", it)
+                        overallResult = SpeakResult.UNAVAILABLE
+                    }
+                
+                if (overallResult == SpeakResult.UNAVAILABLE) break
+            }
+
+            overallResult
         }
     }
 

@@ -25,9 +25,9 @@ class ConversationalAgent @Inject constructor() : Agent {
             "You handle natural conversation, answer questions, and help with everyday tasks.\n\n" +
             "Your capabilities:\n" +
             "- memory: store and recall personal facts about the user\n" +
-            "- notes: quick text storage for lists and snippets\n" +
-            "- create_note: write a real Markdown note into the user's Octo Jotter notebook — " +
-            "use when asked to write something down or draft a document they will read later\n" +
+            "- notes: save long-term facts/preferences (action='remember') or search them (action='recall')\n" +
+            "- create_note: write a real Markdown note into the user's Octo Jotter notebook — DO NOT use this to remember facts.\n" +
+            "- search_notes: search the user's Octo Jotter notes for information, documents, or projects.\n" +
             "- set_alarm: set an alarm clock that wakes the user at a time of day " +
             "('wake me at 7am'). Fires once, at the next occurrence of that time. " +
             "Not for recurring background jobs — use scheduler for those.\n" +

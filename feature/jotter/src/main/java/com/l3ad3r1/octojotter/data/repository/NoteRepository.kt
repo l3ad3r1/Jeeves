@@ -385,7 +385,15 @@ class NoteRepository(
                     break  // partial results are still useful
                 }
                 val batch = response.body().orEmpty()
-                names += batch.map { it.fullName }.filter { it.contains("second brain", ignoreCase = true) }
+                // Only offer note-vault repos in the sync picker. Normalize
+                // separators before matching: the real repo is named with
+                // hyphens ("...-second-brain"), so a literal "second brain"
+                // (space) match returned ZERO repos and broke repo sync.
+                // TODO: make the vault-repo pattern a setting instead of a
+                // hardcoded convention.
+                names += batch.map { it.fullName }.filter {
+                    it.replace(Regex("[-_]"), " ").contains("second brain", ignoreCase = true)
+                }
                 if (batch.size < 100) break  // last page
                 page++
             }
