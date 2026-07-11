@@ -118,6 +118,9 @@ import androidx.compose.material.icons.filled.MenuBook
 import androidx.compose.material.icons.filled.Tag
 import androidx.compose.material.icons.filled.DarkMode
 import androidx.compose.material.icons.filled.FormatUnderlined
+import androidx.compose.material.icons.filled.Code
+import androidx.compose.material.icons.filled.Title
+import androidx.compose.material.icons.filled.FormatListBulleted
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Remove
 import androidx.compose.material.icons.filled.Undo
@@ -1926,16 +1929,16 @@ fun EditorScreen(
     // Each entry is a full-text snapshot (one per keystroke), so an uncapped
     // stack grows O(n²) with note length over a long editing session.
     val MAX_UNDO_STEPS = 100
-    var undoStack by remember { mutableStateOf(listOf<TextFieldValue>()) }
-    var redoStack by remember { mutableStateOf(listOf<TextFieldValue>()) }
+    var undoStack by remember { mutableStateOf(listOf<Pair<String, TextFieldValue>>()) }
+    var redoStack by remember { mutableStateOf(listOf<Pair<String, TextFieldValue>>()) }
 
     fun performUndo() {
         if (undoStack.isNotEmpty()) {
             val last = undoStack.last()
             undoStack = undoStack.dropLast(1)
-            redoStack = redoStack + textFieldValue
-            textFieldValue = last
-            viewModel.onNoteTextChanged(editorTitle, last.text)
+            redoStack = redoStack + Pair(editorTitle, textFieldValue)
+            textFieldValue = last.second
+            viewModel.onNoteTextChanged(last.first, last.second.text)
         }
     }
 
@@ -1943,9 +1946,9 @@ fun EditorScreen(
         if (redoStack.isNotEmpty()) {
             val last = redoStack.last()
             redoStack = redoStack.dropLast(1)
-            undoStack = undoStack + textFieldValue
-            textFieldValue = last
-            viewModel.onNoteTextChanged(editorTitle, last.text)
+            undoStack = undoStack + Pair(editorTitle, textFieldValue)
+            textFieldValue = last.second
+            viewModel.onNoteTextChanged(last.first, last.second.text)
         }
     }
 
@@ -1991,7 +1994,7 @@ fun EditorScreen(
             newSelectionStart
         }
         
-        undoStack = (undoStack + textFieldValue).takeLast(MAX_UNDO_STEPS)
+        undoStack = (undoStack + Pair(editorTitle, textFieldValue)).takeLast(MAX_UNDO_STEPS)
         redoStack = emptyList()
         
         textFieldValue = TextFieldValue(
@@ -2008,7 +2011,7 @@ fun EditorScreen(
         val end = selection.end
         val newText = text.substring(0, start) + insertedText + text.substring(end)
         val cursor = start + insertedText.length
-        undoStack = (undoStack + textFieldValue).takeLast(MAX_UNDO_STEPS)
+        undoStack = (undoStack + Pair(editorTitle, textFieldValue)).takeLast(MAX_UNDO_STEPS)
         redoStack = emptyList()
         
         textFieldValue = TextFieldValue(
@@ -2214,6 +2217,24 @@ fun EditorScreen(
                     IconButton(onClick = { insertMarkdown("<u>", "</u>") }) {
                         Icon(Icons.Default.FormatUnderlined, contentDescription = "Format Underlined", tint = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
+                    IconButton(onClick = { insertMarkdown("~~") }) {
+                        Icon(Icons.Default.FormatStrikethrough, contentDescription = "Format Strikethrough", tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
+                    IconButton(onClick = { insertMarkdown("`") }) {
+                        Icon(Icons.Default.Code, contentDescription = "Code", tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
+                    IconButton(onClick = { insertMarkdown("> ") }) {
+                        Icon(Icons.Default.FormatQuote, contentDescription = "Format Quote", tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
+                    IconButton(onClick = { insertMarkdown("# ") }) {
+                        Icon(Icons.Default.Title, contentDescription = "Heading", tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
+                    IconButton(onClick = { insertMarkdown("- ") }) {
+                        Icon(Icons.Default.FormatListBulleted, contentDescription = "Bullet List", tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
+                    IconButton(onClick = { insertMarkdown("1. ") }) {
+                        Icon(Icons.Default.FormatListNumbered, contentDescription = "Numbered List", tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
                 }
             }
         }
@@ -2250,9 +2271,6 @@ fun EditorScreen(
                     }
                     IconButton(onClick = { insertTextAtCursor("#") }) {
                         Icon(Icons.Default.LocalOffer, contentDescription = "Tag", tint = MaterialTheme.colorScheme.onSurface)
-                    }
-                    IconButton(onClick = { /* TODO: Options */ }) {
-                        Icon(Icons.Default.MoreVert, contentDescription = "Options", tint = MaterialTheme.colorScheme.onSurface)
                     }
                     IconButton(onClick = { showAiActions = true }) {
                         Icon(androidx.compose.material.icons.Icons.Default.AutoAwesome, contentDescription = "AI Actions", tint = MaterialTheme.colorScheme.primary)
@@ -2317,18 +2335,21 @@ fun EditorScreen(
                         .fillMaxSize()
                         .padding(innerPadding)
                         .background(MaterialTheme.colorScheme.background)
-                        .imePadding()
                         .padding(16.dp)
                 ) {
                     EditorInputs(
                         title = editorTitle,
                         textFieldValue = textFieldValue,
                         onTitleChanged = { newValue ->
+                            if (editorTitle != newValue) {
+                                undoStack = (undoStack + Pair(editorTitle, textFieldValue)).takeLast(MAX_UNDO_STEPS)
+                                redoStack = emptyList()
+                            }
                             viewModel.onNoteTextChanged(newValue, textFieldValue.text)
                         },
                         onContentChanged = { newValue ->
                             if (textFieldValue.text != newValue.text) {
-                                undoStack = (undoStack + textFieldValue).takeLast(MAX_UNDO_STEPS)
+                                undoStack = (undoStack + Pair(editorTitle, textFieldValue)).takeLast(MAX_UNDO_STEPS)
                                 redoStack = emptyList()
                             }
                             textFieldValue = newValue

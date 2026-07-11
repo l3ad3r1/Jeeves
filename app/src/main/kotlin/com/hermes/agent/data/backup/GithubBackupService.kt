@@ -126,6 +126,8 @@ class GithubBackupService @Inject constructor(
                         tags = it.tags,
                         folder = it.folder,
                         locked = it.locked,
+                        createdAt = it.lastModifiedLocally,
+                        modifiedAt = it.lastModifiedLocally,
                     )
                 }
 
@@ -206,7 +208,14 @@ class GithubBackupService @Inject constructor(
             var notesImported = 0
             var alarmsImported = 0
 
+            val existingMemories = runCatching { memoryRepository.observeMemories().first() }.getOrDefault(emptyList())
+            val existingMemoryContents = existingMemories.map { it.content }.toSet()
+
             for (m in backupData.memories) {
+                if (existingMemoryContents.contains(m.content)) {
+                    Timber.tag("GithubBackup").d("Skipping duplicate memory: ${m.content.take(20)}...")
+                    continue
+                }
                 runCatching { memoryRepository.addMemory(m.content) }
                     .onSuccess { memoriesImported++ }
                     .onFailure { Timber.tag("GithubBackup").w(it, "import memory") }
@@ -295,6 +304,7 @@ class GithubBackupService @Inject constructor(
                         tags = n.tags,
                         folder = n.folder,
                         locked = n.locked,
+                        lastModifiedLocally = n.modifiedAt,
                     )
                     noteRepository.insertNote(entity)
                 }
@@ -318,6 +328,11 @@ class GithubBackupService @Inject constructor(
                     )
                     AlarmStore.upsert(context, alarm)
                     if (alarm.enabled) alarmScheduler.schedule(alarm)
+                    
+                    // L5: Mirror restored alarms to calendar if permission is granted
+                    if (androidx.core.content.ContextCompat.checkSelfPermission(context, android.Manifest.permission.WRITE_CALENDAR) == android.content.pm.PackageManager.PERMISSION_GRANTED) {
+                        com.sassybutler.alarm.CalendarSyncManager.syncAlarmToCalendar(context, alarm)
+                    }
                 }
                     .onSuccess { alarmsImported++ }
                     .onFailure { Timber.tag("GithubBackup").w(it, "import alarm ${a.label}") }

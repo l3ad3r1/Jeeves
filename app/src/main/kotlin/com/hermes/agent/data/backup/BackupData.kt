@@ -4,7 +4,7 @@ import kotlinx.serialization.Serializable
 
 @Serializable
 data class BackupData(
-    val schemaVersion: Int = 3,
+    val schemaVersion: Int = 4,
     val exportedAt: Long = System.currentTimeMillis(),
     val memories: List<MemoryBackup> = emptyList(),
     val skills: List<SkillBackup> = emptyList(),
@@ -71,6 +71,8 @@ data class NoteBackup(
     val tags: List<String> = emptyList(),
     val folder: String? = null,
     val locked: Boolean = false,
+    val createdAt: Long = System.currentTimeMillis(),
+    val modifiedAt: Long = System.currentTimeMillis(),
 )
 
 @Serializable

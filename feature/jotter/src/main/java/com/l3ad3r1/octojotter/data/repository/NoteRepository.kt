@@ -381,7 +381,7 @@ class NoteRepository(
                     break  // partial results are still useful
                 }
                 val batch = response.body().orEmpty()
-                names += batch.map { it.fullName }
+                names += batch.map { it.fullName }.filter { it.contains("second brain", ignoreCase = true) }
                 if (batch.size < 100) break  // last page
                 page++
             }

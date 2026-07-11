@@ -83,6 +83,12 @@
             android:exported="false"
             android:foregroundServiceType="dataSync" />
 
+        <!-- OTA download foreground service -->
+        <service
+            android:name=".data.update.OtaDownloadService"
+            android:exported="false"
+            android:foregroundServiceType="dataSync" />
+
         <!-- Restarts the agent service after device reboot. -->
         <receiver
             android:name=".service.BootReceiver"

@@ -266,18 +266,9 @@ class SettingsViewModel @Inject constructor(
         if (!com.hermes.agent.BuildConfig.OTA_ENABLED) return
         val available = _updateState.value as? UpdateUiState.UpdateAvailable ?: return
         if (available.apkUrl.isBlank()) return
-        _updateState.value = UpdateUiState.Downloading(available.version, 0)
-        viewModelScope.launch {
-            val result = otaInstaller.downloadAndInstall(available.apkUrl) { percent ->
-                _updateState.value = UpdateUiState.Downloading(available.version, percent)
-            }
-            _updateState.value = if (result.isFailure) {
-                UpdateUiState.Error(result.exceptionOrNull()?.message ?: "Download failed")
-            } else {
-                // System installer has taken over — reset the panel.
-                UpdateUiState.Idle
-            }
-        }
+        
+        otaInstaller.startDownloadService(available.apkUrl)
+        _updateState.value = UpdateUiState.Idle
     }
 
     fun dismissUpdateState() {

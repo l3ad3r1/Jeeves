@@ -18,6 +18,18 @@ repo. All three apps are merged and shipping (`:app` + `:feature:jotter` + `:fea
 
 ## Status log (newest first)
 
+**2026-07-11: v0.9.7 Hardening, Debt, & Accessibility Sweep**
+- **OTA Download Foreground Service**: Refactored the updater to download releases in a reliable `ForegroundService` (`OtaDownloadService`) instead of relying on the transient Settings view model scope. Fixes the issue where closing Settings killed the update.
+- **Memory Restore Deduplication**: Patched `GithubBackupService.kt` to check the local SQLite store for exact memory content matches before blindly inserting.
+- **Backup Schema v4**: Added timestamps (`createdAt`, `modifiedAt`) to `NoteBackup` allowing accurate syncing. Modified the `GithubBackupService` alarm restoration logic to dynamically re-mirror enabled alarms to the Android device's default Calendar if permissions are present.
+- **Editor Polish**: Stripped the obsolete (⋮) Options button from the top app bar in `NoteApp.kt`. Wired dynamic `editorTitle` updates natively into the Jotter undo stack via an `EditorStateSnapshot` paradigm to avoid losing title progress.
+- **Accessibility/UX Sweep (`com.hermes.agent`)**:
+    - Addressed bundling/semantics (UX-001/006).
+    - Reduced motion compatibility and theme integrations (UX-008).
+    - Hardened Loading/Error bounds for MainActivity and Onboarding loops (UX-011/013).
+    - Stripped splash screen lag using an embedding flag over native intents (UX-009).
+    - Fully unified global project typographies back into `core:theme` (UX-010).
+
 ### Review of Antigravity's v0.9.5 commits + fixes — 2026-07-11
 - [x] Reviewed `1d88108`/`5aca482`/`9f57163` (unified 3-module gist backup, editor
       undo/redo + IME fix, Daybook cleanup, version bump 65/0.9.5). Full report with
