@@ -2245,6 +2245,9 @@ fun EditorScreen(
                     IconButton(onClick = { performRedo() }) {
                         Icon(Icons.AutoMirrored.Filled.Redo, contentDescription = "Redo", tint = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
+                    IconButton(onClick = { insertTextAtCursor("#") }) {
+                        Icon(Icons.Default.LocalOffer, contentDescription = "Tag", tint = MaterialTheme.colorScheme.onSurface)
+                    }
                     IconButton(onClick = { /* TODO: Options */ }) {
                         Icon(Icons.Default.MoreVert, contentDescription = "Options", tint = MaterialTheme.colorScheme.onSurface)
                     }
