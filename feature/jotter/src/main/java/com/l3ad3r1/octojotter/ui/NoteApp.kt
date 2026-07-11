@@ -2278,7 +2278,7 @@ fun EditorScreen(
                     if (showAiActions) {
                         androidx.compose.material3.ModalBottomSheet(onDismissRequest = { showAiActions = false }) {
                             Column(modifier = Modifier.padding(16.dp)) {
-                                Text("NotebookLM Actions", style = MaterialTheme.typography.titleLarge)
+                                Text("Note AI Actions", style = MaterialTheme.typography.titleLarge)
                                 Spacer(modifier = Modifier.height(16.dp))
                                 androidx.compose.material3.ListItem(
                                     headlineContent = { Text("Document Chat") },
@@ -2382,16 +2382,12 @@ fun EditorScreen(
         val isGeneratingAi by viewModel.isGeneratingAi.collectAsState()
         val aiResult by viewModel.aiResult.collectAsState()
 
-        if (aiResult != null || isGeneratingAi) {
+        if (aiResult != null) {
             androidx.compose.material3.AlertDialog(
                 onDismissRequest = { viewModel.clearAiResult() },
-                title = { Text(if (isGeneratingAi) "AI is thinking..." else "NotebookLM") },
+                title = { Text("Note AI") },
                 text = {
                     Column(modifier = Modifier.verticalScroll(rememberScrollState())) {
-                        if (isGeneratingAi) {
-                            androidx.compose.material3.LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
-                            Spacer(modifier = Modifier.height(16.dp))
-                        }
                         Text(aiResult ?: "", style = MaterialTheme.typography.bodyMedium)
                     }
                 },

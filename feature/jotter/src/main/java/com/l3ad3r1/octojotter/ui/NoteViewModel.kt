@@ -181,7 +181,15 @@ class NoteViewModel(application: Application) : AndroidViewModel(application) {
             result
                 .onSuccess { repos ->
                     _availableRepos.value = repos
-                    if (repos.isEmpty()) _syncMessage.value = "No repositories found for this account."
+                    if (repos.isEmpty()) {
+                        // GitHub returns only PUBLIC repos to a classic token without
+                        // the `repo` scope (and a fine-grained token returns only the
+                        // repos it was granted) — a private vault repo simply won't be
+                        // in the response. Say so, or this looks like a broken picker.
+                        _syncMessage.value = "No repositories found. If your repo is " +
+                            "private, the GitHub token needs the 'repo' scope " +
+                            "(fine-grained tokens: grant access to the repo explicitly)."
+                    }
                 }
                 .onFailure { _syncMessage.value = it.message }
         }

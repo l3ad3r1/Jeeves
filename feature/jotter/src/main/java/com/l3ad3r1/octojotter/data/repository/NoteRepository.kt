@@ -385,22 +385,28 @@ class NoteRepository(
                     break  // partial results are still useful
                 }
                 val batch = response.body().orEmpty()
-                // Only offer note-vault repos in the sync picker. Normalize
-                // separators before matching: the real repo is named with
-                // hyphens ("...-second-brain"), so a literal "second brain"
-                // (space) match returned ZERO repos and broke repo sync.
-                // TODO: make the vault-repo pattern a setting instead of a
-                // hardcoded convention.
-                names += batch.map { it.fullName }.filter {
-                    it.replace(Regex("[-_]"), " ").contains("second brain", ignoreCase = true)
-                }
+                names += batch.map { it.fullName }
                 if (batch.size < 100) break  // last page
                 page++
             }
-            Result.success(names.distinct().sorted())
+            // Don't HIDE repos behind a vault-name filter — that made the picker
+            // silently empty whenever the vault repo wasn't visible to the token
+            // (e.g. a private repo with a gist-only PAT) or was named slightly
+            // differently. Instead, float vault-looking repos to the top and
+            // keep everything else selectable below.
+            val sorted = names.distinct().sortedWith(
+                compareByDescending<String> { looksLikeVault(it) }.thenBy { it.lowercase() }
+            )
+            Result.success(sorted)
         } catch (e: Exception) {
             Result.failure(e)
         }
+    }
+
+    /** Heuristic used only for picker ORDERING, never for hiding entries. */
+    private fun looksLikeVault(fullName: String): Boolean {
+        val normalized = fullName.replace(Regex("[-_]"), " ").lowercase()
+        return "second brain" in normalized || "vault" in normalized || "notes" in normalized
     }
 
     /**

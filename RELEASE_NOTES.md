@@ -1,5 +1,23 @@
 # Release Notes
 
+## Version 0.9.9 - Repo picker shows all repositories
+
+v0.9.8's repo-sync fix corrected the name matching but kept a filter that HID
+every repository except vault-named ones - so when the vault repo wasn't visible
+to the token (a private repo with a gist-only PAT returns nothing from GitHub),
+the picker looked broken with no explanation.
+
+*   **The picker now lists every repository the token can access** - vault-looking
+    repos (second-brain / vault / notes) float to the top, nothing is hidden.
+*   **Clear empty-state message:** if the list is empty, the app now says why -
+    private repos need a token with the `repo` scope (or, for fine-grained
+    tokens, explicit access to that repository).
+
+> If your vault repo still doesn't appear: it's private and your saved GitHub
+> token only has the `gist` scope (enough for Gist backup, not for private
+> repos). Create a classic PAT with `repo` + `gist` scopes (or a fine-grained
+> token granting the vault repo) and paste it in Notes → Settings.
+
 ## Version 0.9.8 - One Memory, repo-sync fix, smarter context
 
 Jeeves now actually knows what you know: your notes feed the agent's memory, and
