@@ -1,5 +1,45 @@
 # Release Notes
 
+## Version 0.9.8 - One Memory, repo-sync fix, smarter context
+
+Jeeves now actually knows what you know: your notes feed the agent's memory, and
+every reply is grounded in the most relevant context. Plus an urgent fix for repo
+sync, which v0.9.7 broke.
+
+### Fixed
+*   **Repo sync works again** (broken in v0.9.7): the repository picker filter
+    matched "second brain" with a space, but real repos are hyphenated - it
+    matched nothing. Separators are now normalized before matching.
+*   **Locked notes stay private:** notes behind the biometric app-lock are never
+    indexed into the agent's memory or sent to the cloud LLM - and locking a note
+    now removes it from the index.
+*   **Tool approvals can't hang the agent:** confirmation requests time out after
+    60 seconds (denied by default) so Telegram/API/scheduled turns never stall.
+*   **Spoken replies no longer stutter:** sentence-streamed speech tracked its
+    place incorrectly and could repeat or swallow words.
+
+### One Memory (new)
+*   **The agent can search your notes** (`search_notes` tool) and cites them when
+    answering questions about your projects and documents.
+*   **Live note indexing:** creating, editing, or deleting a note updates the
+    agent's memory immediately.
+*   **Relevance-scored context:** every reply pulls the most relevant memories and
+    note passages for your actual message, instead of a generic memory dump.
+*   **Conversation summaries:** leaving a chat saves a concise summary to long-term
+    memory (once per conversation - no duplicates).
+*   **Habit signals:** nightly analysis of your alarms and note tags keeps a
+    rolling snapshot of your routines in memory.
+
+### Security & polish
+*   API keys, GitHub PAT, API-server key, and SSH password are now encrypted at
+    rest with the hardware keystore (previously only the cloud key was).
+*   Tools the current agent isn't granted are refused outright (allowlist).
+*   Sensitive tools now show an Allow/Deny dialog in chat before running.
+*   Onboarding asks for each permission individually, with an explanation.
+*   Reduced-motion setting disables the blinking eyes and typing animations.
+*   Early scaffolding for assistant-role/tile/widgets/share-target shipped but
+    still experimental - full ambient access lands in a later release.
+
 ## Version 0.9.6 - Unified backup, working editor, reliable updates
 
 One backup for the whole app, a Notes editor that behaves, and update downloads
