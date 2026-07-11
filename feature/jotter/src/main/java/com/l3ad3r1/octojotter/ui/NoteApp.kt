@@ -1923,6 +1923,29 @@ fun EditorScreen(
         )
     }
 
+    var undoStack by remember { mutableStateOf(listOf<TextFieldValue>()) }
+    var redoStack by remember { mutableStateOf(listOf<TextFieldValue>()) }
+
+    fun performUndo() {
+        if (undoStack.isNotEmpty()) {
+            val last = undoStack.last()
+            undoStack = undoStack.dropLast(1)
+            redoStack = redoStack + textFieldValue
+            textFieldValue = last
+            viewModel.onNoteTextChanged(editorTitle, last.text)
+        }
+    }
+
+    fun performRedo() {
+        if (redoStack.isNotEmpty()) {
+            val last = redoStack.last()
+            redoStack = redoStack.dropLast(1)
+            undoStack = undoStack + textFieldValue
+            textFieldValue = last
+            viewModel.onNoteTextChanged(editorTitle, last.text)
+        }
+    }
+
     LaunchedEffect(editorContent) {
         if (textFieldValue.text != editorContent) {
             textFieldValue = textFieldValue.copy(
@@ -1965,6 +1988,9 @@ fun EditorScreen(
             newSelectionStart
         }
         
+        undoStack = undoStack + textFieldValue
+        redoStack = emptyList()
+        
         textFieldValue = TextFieldValue(
             text = newText,
             selection = androidx.compose.ui.text.TextRange(newSelectionStart, newSelectionEnd)
@@ -1979,6 +2005,9 @@ fun EditorScreen(
         val end = selection.end
         val newText = text.substring(0, start) + insertedText + text.substring(end)
         val cursor = start + insertedText.length
+        undoStack = undoStack + textFieldValue
+        redoStack = emptyList()
+        
         textFieldValue = TextFieldValue(
             text = newText,
             selection = TextRange(cursor)
@@ -2159,7 +2188,7 @@ fun EditorScreen(
             color = MaterialTheme.colorScheme.surface,
             contentColor = MaterialTheme.colorScheme.onSurface,
             tonalElevation = 0.dp,
-            modifier = Modifier.fillMaxWidth()
+            modifier = Modifier.fillMaxWidth().imePadding()
         ) {
             Row(
                 modifier = Modifier
@@ -2210,14 +2239,11 @@ fun EditorScreen(
                             tint = MaterialTheme.colorScheme.primary
                         )
                     }
-                    IconButton(onClick = { /* TODO: Undo */ }) {
+                    IconButton(onClick = { performUndo() }) {
                         Icon(Icons.AutoMirrored.Filled.Undo, contentDescription = "Undo", tint = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
-                    IconButton(onClick = { /* TODO: Redo */ }) {
+                    IconButton(onClick = { performRedo() }) {
                         Icon(Icons.AutoMirrored.Filled.Redo, contentDescription = "Redo", tint = MaterialTheme.colorScheme.onSurfaceVariant)
-                    }
-                    IconButton(onClick = { /* TODO: Tag */ }) {
-                        Icon(Icons.Default.LocalOffer, contentDescription = "Tag", tint = MaterialTheme.colorScheme.onSurface)
                     }
                     IconButton(onClick = { /* TODO: Options */ }) {
                         Icon(Icons.Default.MoreVert, contentDescription = "Options", tint = MaterialTheme.colorScheme.onSurface)
@@ -2291,21 +2317,16 @@ fun EditorScreen(
                     EditorInputs(
                         title = editorTitle,
                         textFieldValue = textFieldValue,
-                        onTitleChanged = { newTitle ->
-                            viewModel.onNoteTextChanged(newTitle, textFieldValue.text)
+                        onTitleChanged = { newValue ->
+                            viewModel.onNoteTextChanged(newValue, textFieldValue.text)
                         },
                         onContentChanged = { newValue ->
+                            if (textFieldValue.text != newValue.text) {
+                                undoStack = undoStack + textFieldValue
+                                redoStack = emptyList()
+                            }
                             textFieldValue = newValue
                             viewModel.onNoteTextChanged(editorTitle, newValue.text)
-                        },
-                        tags = note?.tags ?: emptyList(),
-                        onTagsChanged = { newTags ->
-                            viewModel.updateTags(newTags)
-                        },
-                        currentFolder = note?.folder,
-                        availableFolders = availableFolders,
-                        onFolderChanged = { folder ->
-                            note?.let { viewModel.setNoteFolder(it, folder) }
                         },
                         backlinksSection = backlinksSection
                     )
@@ -2564,11 +2585,6 @@ fun EditorInputs(
     textFieldValue: TextFieldValue,
     onTitleChanged: (String) -> Unit,
     onContentChanged: (TextFieldValue) -> Unit,
-    tags: List<String>,
-    onTagsChanged: (List<String>) -> Unit,
-    currentFolder: String?,
-    availableFolders: List<String>,
-    onFolderChanged: (String?) -> Unit,
     backlinksSection: @Composable (() -> Unit)? = null
 ) {
     Column(modifier = Modifier.fillMaxSize()) {
@@ -2591,205 +2607,7 @@ fun EditorInputs(
         )
         Spacer(modifier = Modifier.height(4.dp))
 
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 4.dp, vertical = 4.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            Icon(
-                imageVector = Icons.AutoMirrored.Filled.Label,
-                contentDescription = "Tags",
-                tint = MaterialTheme.colorScheme.primary,
-                modifier = Modifier.size(18.dp)
-            )
-            
-            var showAddTagDialog by remember { mutableStateOf(false) }
-            
-            LazyRow(
-                horizontalArrangement = Arrangement.spacedBy(6.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                modifier = Modifier.weight(1f)
-            ) {
-                items(tags) { tag ->
-                    InputChip(
-                        selected = true,
-                        // Chip body is a no-op; only the trailing x removes the tag,
-                        // so an accidental tap can't silently delete it.
-                        onClick = { },
-                        label = { Text(tag, style = MaterialTheme.typography.labelSmall) },
-                        trailingIcon = {
-                            Icon(
-                                imageVector = Icons.Default.Close,
-                                contentDescription = "Remove $tag",
-                                modifier = Modifier
-                                    .size(18.dp)
-                                    .clip(CircleShape)
-                                    .clickable { onTagsChanged(tags - tag) }
-                                    .testTag("remove_tag_${tag}")
-                            )
-                        },
-                        modifier = Modifier.testTag("editor_tag_chip_$tag")
-                    )
-                }
-                
-                item {
-                    IconButton(
-                        onClick = { showAddTagDialog = true },
-                        modifier = Modifier
-                            .testTag("add_tag_button")
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.Add,
-                            contentDescription = "Add Tag",
-                            tint = MaterialTheme.colorScheme.primary,
-                            modifier = Modifier.size(20.dp)
-                        )
-                    }
-                }
-            }
-            
-            if (showAddTagDialog) {
-                var newTagText by remember { mutableStateOf("") }
-                AlertDialog(
-                    onDismissRequest = { showAddTagDialog = false },
-                    title = { Text("Add Tag") },
-                    text = {
-                        OutlinedTextField(
-                            value = newTagText,
-                            onValueChange = { newTagText = it.trim().lowercase() },
-                            placeholder = { Text("e.g. work, personal, idea") },
-                            singleLine = true,
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .testTag("add_tag_text_input")
-                        )
-                    },
-                    confirmButton = {
-                        TextButton(
-                            onClick = {
-                                if (newTagText.isNotEmpty() && !tags.contains(newTagText)) {
-                                    onTagsChanged(tags + newTagText)
-                                }
-                                showAddTagDialog = false
-                            },
-                            modifier = Modifier.testTag("add_tag_confirm_button")
-                        ) {
-                            Text("Add")
-                        }
-                    },
-                    dismissButton = {
-                        TextButton(
-                            onClick = { showAddTagDialog = false }
-                        ) {
-                            Text("Cancel")
-                        }
-                    }
-                )
-            }
-        }
 
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 4.dp, vertical = 4.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            Icon(
-                imageVector = Icons.Default.Folder,
-                contentDescription = "Folder",
-                tint = MaterialTheme.colorScheme.primary,
-                modifier = Modifier.size(18.dp)
-            )
-            
-            var folderMenuExpanded by remember { mutableStateOf(false) }
-            var showNewFolderDialogInEditor by remember { mutableStateOf(false) }
-
-            Box {
-                SuggestionChip(
-                    onClick = { folderMenuExpanded = true },
-                    label = { Text(currentFolder ?: "Uncategorized", style = MaterialTheme.typography.labelSmall) },
-                    modifier = Modifier.testTag("editor_folder_chip")
-                )
-                
-                DropdownMenu(
-                    expanded = folderMenuExpanded,
-                    onDismissRequest = { folderMenuExpanded = false }
-                ) {
-                    DropdownMenuItem(
-                        text = { Text("Uncategorized") },
-                        onClick = {
-                            onFolderChanged(null)
-                            folderMenuExpanded = false
-                        },
-                        modifier = Modifier.testTag("editor_folder_item_uncategorized")
-                    )
-                    
-                    availableFolders.forEach { folder ->
-                        DropdownMenuItem(
-                            text = { Text(folder) },
-                            onClick = {
-                                onFolderChanged(folder)
-                                folderMenuExpanded = false
-                            },
-                            modifier = Modifier.testTag("editor_folder_item_$folder")
-                        )
-                    }
-                    
-                    HorizontalDivider()
-                    
-                    DropdownMenuItem(
-                        text = { Text("+ New Folder...") },
-                        onClick = {
-                            folderMenuExpanded = false
-                            showNewFolderDialogInEditor = true
-                        },
-                        modifier = Modifier.testTag("editor_folder_item_new")
-                    )
-                }
-            }
-
-            if (showNewFolderDialogInEditor) {
-                var newFolderNameText by remember { mutableStateOf("") }
-                AlertDialog(
-                    onDismissRequest = { showNewFolderDialogInEditor = false },
-                    title = { Text("Add Folder") },
-                    text = {
-                        OutlinedTextField(
-                            value = newFolderNameText,
-                            onValueChange = { newFolderNameText = it },
-                            placeholder = { Text("Folder Name") },
-                            singleLine = true,
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .testTag("editor_new_folder_input")
-                        )
-                    },
-                    confirmButton = {
-                        TextButton(
-                            onClick = {
-                                if (newFolderNameText.isNotBlank()) {
-                                    onFolderChanged(newFolderNameText.trim())
-                                }
-                                showNewFolderDialogInEditor = false
-                            },
-                            modifier = Modifier.testTag("editor_new_folder_confirm")
-                        ) {
-                            Text("Create")
-                        }
-                    },
-                    dismissButton = {
-                        TextButton(
-                            onClick = { showNewFolderDialogInEditor = false }
-                        ) {
-                            Text("Cancel")
-                        }
-                    }
-                )
-            }
-        }
 
         Box(
             modifier = Modifier

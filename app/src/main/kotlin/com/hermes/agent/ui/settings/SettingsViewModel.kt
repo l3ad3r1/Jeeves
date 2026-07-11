@@ -324,7 +324,8 @@ class SettingsViewModel @Inject constructor(
                     val settingsMsg = if (result.settingsRestored) "settings, " else ""
                     BackupUiState.Success(
                         "Restored $settingsMsg${result.memoriesImported} memories, " +
-                            "${result.skillsImported} skills, ${result.cronsImported} cron jobs."
+                            "${result.skillsImported} skills, ${result.cronsImported} cron jobs, " +
+                            "${result.notesImported} notes, and ${result.alarmsImported} alarms."
                     )
                 }
                 is GithubBackupService.RestoreResult.Failure ->

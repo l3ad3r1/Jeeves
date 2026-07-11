@@ -4,13 +4,15 @@ import kotlinx.serialization.Serializable
 
 @Serializable
 data class BackupData(
-    val schemaVersion: Int = 2,
+    val schemaVersion: Int = 3,
     val exportedAt: Long = System.currentTimeMillis(),
     val memories: List<MemoryBackup> = emptyList(),
     val skills: List<SkillBackup> = emptyList(),
     // schemaVersion 2+ — null/empty when restoring an older (v1) backup.
     val settings: SettingsBackup? = null,
     val crons: List<CronBackup> = emptyList(),
+    val notes: List<NoteBackup> = emptyList(),
+    val alarms: List<AlarmBackup> = emptyList(),
 )
 
 @Serializable
@@ -58,4 +60,25 @@ data class CronBackup(
     val cronExpression: String,
     val isEnabled: Boolean = true,
     val createdAt: Long = System.currentTimeMillis(),
+)
+
+@Serializable
+data class NoteBackup(
+    val title: String,
+    val content: String,
+    val gistId: String? = null,
+    val pinned: Boolean = false,
+    val tags: List<String> = emptyList(),
+    val folder: String? = null,
+    val locked: Boolean = false,
+)
+
+@Serializable
+data class AlarmBackup(
+    val id: Int,
+    val hour: Int,
+    val minute: Int,
+    val label: String,
+    val enabled: Boolean,
+    val days: Set<Int>,
 )

@@ -1,5 +1,6 @@
 package com.hermes.agent.data.backup
 
+import android.content.Context
 import com.hermes.agent.BuildConfig
 import com.hermes.agent.data.settings.SettingsRepository
 import com.hermes.agent.domain.model.ScheduledTask
@@ -7,6 +8,11 @@ import com.hermes.agent.domain.repository.CronRepository
 import com.hermes.agent.domain.repository.MemoryRepository
 import com.hermes.agent.domain.repository.SkillRepository
 import com.hermes.agent.work.CronScheduler
+import com.l3ad3r1.octojotter.data.local.NoteEntity
+import com.l3ad3r1.octojotter.data.repository.NoteRepository
+import com.sassybutler.alarm.Alarm
+import com.sassybutler.alarm.AlarmStore
+import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.withContext
@@ -41,6 +47,8 @@ class GithubBackupService @Inject constructor(
     private val settingsRepository: SettingsRepository,
     private val cronRepository: CronRepository,
     private val cronScheduler: CronScheduler,
+    private val noteRepository: NoteRepository,
+    @ApplicationContext private val context: Context,
     private val json: Json,
 ) {
 
@@ -55,6 +63,8 @@ class GithubBackupService @Inject constructor(
             val skillsImported: Int,
             val settingsRestored: Boolean,
             val cronsImported: Int,
+            val notesImported: Int,
+            val alarmsImported: Int,
         ) : RestoreResult()
         data class Failure(val message: String) : RestoreResult()
     }
@@ -105,12 +115,41 @@ class GithubBackupService @Inject constructor(
                     )
                 }
 
+            val notes = runCatching { noteRepository.getAllNotes() }
+                .getOrDefault(emptyList())
+                .map {
+                    NoteBackup(
+                        title = it.title,
+                        content = it.content,
+                        gistId = it.gistId,
+                        pinned = it.pinned,
+                        tags = it.tags,
+                        folder = it.folder,
+                        locked = it.locked,
+                    )
+                }
+
+            val alarms = runCatching { AlarmStore.all(context) }
+                .getOrDefault(emptyList())
+                .map {
+                    AlarmBackup(
+                        id = it.id,
+                        hour = it.hour,
+                        minute = it.minute,
+                        label = it.label,
+                        enabled = it.enabled,
+                        days = it.days,
+                    )
+                }
+
             val backupData = BackupData(
                 exportedAt = System.currentTimeMillis(),
                 memories = memories,
                 skills = skills,
                 settings = settingsBackup,
                 crons = crons,
+                notes = notes,
+                alarms = alarms,
             )
 
             val payload = buildGistPayload(json.encodeToString(backupData))
@@ -132,7 +171,7 @@ class GithubBackupService @Inject constructor(
             val request = Request.Builder()
                 .url("https://api.github.com/gists/$gistId")
                 .header("Authorization", "Bearer $pat")
-            .header("X-GitHub-Api-Version", "2022-11-28")
+                .header("X-GitHub-Api-Version", "2022-11-28")
                 .header("Accept", "application/vnd.github.v3+json")
                 .header("User-Agent", "Hermes-Agent-Android/${BuildConfig.VERSION_NAME}")
                 .get()
@@ -164,6 +203,8 @@ class GithubBackupService @Inject constructor(
 
             var memoriesImported = 0
             var skillsImported = 0
+            var notesImported = 0
+            var alarmsImported = 0
 
             for (m in backupData.memories) {
                 runCatching { memoryRepository.addMemory(m.content) }
@@ -235,11 +276,45 @@ class GithubBackupService @Inject constructor(
                     .onFailure { Timber.tag("GithubBackup").w(it, "import cron ${c.label}") }
             }
 
+            for (n in backupData.notes) {
+                runCatching {
+                    val entity = NoteEntity(
+                        title = n.title,
+                        content = n.content,
+                        gistId = n.gistId,
+                        pinned = n.pinned,
+                        tags = n.tags,
+                        folder = n.folder,
+                        locked = n.locked,
+                    )
+                    noteRepository.insertNote(entity)
+                }
+                    .onSuccess { notesImported++ }
+                    .onFailure { Timber.tag("GithubBackup").w(it, "import note ${n.title}") }
+            }
+
+            for (a in backupData.alarms) {
+                runCatching {
+                    val alarm = Alarm(
+                        id = a.id,
+                        hour = a.hour,
+                        minute = a.minute,
+                        label = a.label,
+                        enabled = a.enabled,
+                        days = a.days,
+                    )
+                    AlarmStore.upsert(context, alarm)
+                }
+                    .onSuccess { alarmsImported++ }
+                    .onFailure { Timber.tag("GithubBackup").w(it, "import alarm ${a.label}") }
+            }
+
             Timber.tag("GithubBackup").i(
                 "restored $memoriesImported memories, $skillsImported skills, " +
-                    "settings=$settingsRestored, $cronsImported crons",
+                    "settings=$settingsRestored, $cronsImported crons, " +
+                    "$notesImported notes, $alarmsImported alarms",
             )
-            RestoreResult.Success(memoriesImported, skillsImported, settingsRestored, cronsImported)
+            RestoreResult.Success(memoriesImported, skillsImported, settingsRestored, cronsImported, notesImported, alarmsImported)
         }
 
     private fun createGist(pat: String, body: okhttp3.RequestBody, ts: Long): BackupResult {

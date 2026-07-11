@@ -85,8 +85,7 @@ class MainAlarmSetupActivity : AppCompatActivity() {
                         },
                         onPrefs = {
                             showPrefs = true
-                        },
-                        onPreview = { previewWakeUp() }
+                        }
                     )
                 }
 
@@ -171,16 +170,7 @@ class MainAlarmSetupActivity : AppCompatActivity() {
         Toast.makeText(this, "Appointment struck from the ledger.", Toast.LENGTH_SHORT).show()
     }
 
-    private fun previewWakeUp() {
-        val intent = Intent(this, AlarmForegroundService::class.java).apply {
-            action = AlarmForegroundService.ACTION_START_ALARM
-            putExtra(AlarmReceiver.EXTRA_ALARM_ID, 999)
-            putExtra(AlarmReceiver.EXTRA_ALARM_HOUR, Calendar.getInstance().get(Calendar.HOUR_OF_DAY))
-            putExtra(AlarmReceiver.EXTRA_ALARM_MINUTE, Calendar.getInstance().get(Calendar.MINUTE))
-        }
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) startForegroundService(intent)
-        else startService(intent)
-    }
+
 
     private fun checkExactAlarmPermission(): Boolean {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
@@ -206,8 +196,7 @@ fun MainAlarmScreen(
     onToggle: (Alarm) -> Unit,
     onDelete: (Alarm) -> Unit,
     onEdit: (Alarm?) -> Unit,
-    onPrefs: () -> Unit,
-    onPreview: () -> Unit
+    onPrefs: () -> Unit
 ) {
     var currentTime by remember { mutableStateOf(Date()) }
     var alarmToDelete by remember { mutableStateOf<Alarm?>(null) }
@@ -313,9 +302,9 @@ fun MainAlarmScreen(
                         )
                         Text(
                             text = SimpleDateFormat(":ss", Locale.UK).format(currentTime),
-                            style = MaterialTheme.typography.titleMedium,
+                            style = MaterialTheme.typography.displayMedium,
                             color = MaterialTheme.colorScheme.primary,
-                            modifier = Modifier.padding(bottom = 8.dp, start = 4.dp)
+                            modifier = Modifier.padding(start = 4.dp)
                         )
                         Spacer(modifier = Modifier.weight(1f))
                         Column(horizontalAlignment = Alignment.End) {
@@ -358,23 +347,6 @@ fun MainAlarmScreen(
                                 style = MaterialTheme.typography.labelSmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
-                            Row(
-                                verticalAlignment = Alignment.CenterVertically,
-                                modifier = Modifier.clickable { onPreview() }
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Default.PlayCircleOutline,
-                                    contentDescription = null,
-                                    tint = MaterialTheme.colorScheme.primary,
-                                    modifier = Modifier.size(16.dp)
-                                )
-                                Spacer(modifier = Modifier.width(4.dp))
-                                Text(
-                                    text = "Preview Wake-Up",
-                                    style = MaterialTheme.typography.labelSmall,
-                                    color = MaterialTheme.colorScheme.primary
-                                )
-                            }
                         }
                         if (alarms.isEmpty()) {
                             Text(
