@@ -99,19 +99,13 @@ android {
         }
     }
 
-    // ONNX Runtime ships libonnxruntime.so for four ABIs — 73.8 MB of the release APK, of
-    // which x86/x86_64 (42.4 MB) are dead weight on a phone. Split per ABI so a device
-    // downloads only its own, and keep a universal APK for anyone who wants one artifact.
-    // x86_64 is retained because the emulator runs on it.
-    splits {
-        abi {
-            isEnable = true
-            reset()
-            include("arm64-v8a", "armeabi-v7a", "x86_64")
-            isUniversalApk = true
+    // Since the target device is a Galaxy S24 Ultra (arm64-v8a), only bundle the
+    // 64-bit ARM ABI to keep the APK size extremely lean.
+    defaultConfig {
+        ndk {
+            abiFilters.add("arm64-v8a")
         }
     }
-
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
