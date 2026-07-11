@@ -18,6 +18,28 @@ repo. All three apps are merged and shipping (`:app` + `:feature:jotter` + `:fea
 
 ## Status log (newest first)
 
+### CI gate + agent self-learning loop — 2026-07-11
+- [x] **CI (roadmap D11):** `.github/workflows/ci.yml` — compile of all 3 modules +
+      the unit suite on every push/PR to master. TTS assets aren't needed (gitignored;
+      only packaging reads them), local.properties absent → ANDROID_HOME env on runners.
+- [x] **Self-learning loop for coding agents (Antigravity et al.):**
+      `AGENTS.md` (root) — the 5-step protocol: read the ledger before coding, cite
+      applicable lesson IDs, run preflight before committing, mark unrun features
+      UNVERIFIED, append a new lesson after every review-found defect; hard limit:
+      agents never tag or release (L-017).
+      `docs/agents/LESSONS.md` — 17 seeded lessons, every one from a real defect this
+      repo shipped or nearly shipped (dead-scope onCleared coroutines, the "second
+      brain" filter, invisible icon, silent NotebookLM failures, locked-note RAG leak,
+      confirmation deadlock, offset drift, version drift, …), each with a mechanical
+      Check.
+      `tools/preflight.sh` — executable gate: ledger greps (L-002 dead onCleared
+      coroutines, L-004 personal identifiers in product code; L-009/L-017 warnings)
+      then compile + full test suite.
+- [x] Preflight self-test: first run correctly FAILED on its own L-002 grep (it caught
+      the fix's explanatory comment — grep now skips comment lines), then passed
+      end-to-end: exit 0, BUILD SUCCESSFUL, 252 tests.
+- [ ] UNVERIFIED: first GitHub Actions run pending this push (cold-cache runner build).
+
 ### Review R2: Antigravity's v0.9.7 release + v0.12 working tree — 2026-07-11
 - [x] Reviewed released commits `a34d4cd`/`1ac8392` (v0.9.7: OTA foreground service,
       briefing, schema v4, a11y) AND the large uncommitted v0.12/"One Memory" +
