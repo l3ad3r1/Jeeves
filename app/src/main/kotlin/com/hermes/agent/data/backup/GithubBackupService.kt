@@ -276,7 +276,16 @@ class GithubBackupService @Inject constructor(
                     .onFailure { Timber.tag("GithubBackup").w(it, "import cron ${c.label}") }
             }
 
+            // NoteEntity ids auto-generate, so a blind insert duplicates every note
+            // each time Restore is tapped. Skip notes that already exist (matched by
+            // gistId when present, else exact title+content).
+            val existingNotes = runCatching { noteRepository.getAllNotes() }.getOrDefault(emptyList())
             for (n in backupData.notes) {
+                val alreadyPresent = existingNotes.any {
+                    (n.gistId != null && it.gistId == n.gistId) ||
+                        (it.title == n.title && it.content == n.content)
+                }
+                if (alreadyPresent) continue
                 runCatching {
                     val entity = NoteEntity(
                         title = n.title,
@@ -293,6 +302,10 @@ class GithubBackupService @Inject constructor(
                     .onFailure { Timber.tag("GithubBackup").w(it, "import note ${n.title}") }
             }
 
+            // Persist AND schedule, mirroring the cron loop above and Butler's own
+            // AddAlarmSheet. AlarmStore.upsert alone leaves restored alarms silent
+            // until the next reboot (AlarmReceiver re-registers stored alarms then).
+            val alarmScheduler = com.sassybutler.alarm.AlarmScheduler(context)
             for (a in backupData.alarms) {
                 runCatching {
                     val alarm = Alarm(
@@ -304,6 +317,7 @@ class GithubBackupService @Inject constructor(
                         days = a.days,
                     )
                     AlarmStore.upsert(context, alarm)
+                    if (alarm.enabled) alarmScheduler.schedule(alarm)
                 }
                     .onSuccess { alarmsImported++ }
                     .onFailure { Timber.tag("GithubBackup").w(it, "import alarm ${a.label}") }

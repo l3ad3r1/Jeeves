@@ -5,15 +5,18 @@
      into two thick lapels meeting at a point at the bottom; a bow tie with
      a solid centre knot above the collar; three buttons down the V.
      Sized to fill the adaptive-icon safe zone (radius ~33 of centre 54,54)
-     so it reads boldly and survives the circular/squircle mask. Cream mark
-     on the navy ic_launcher_background; the V-neck shows the navy through. -->
+     so it reads boldly and survives the circular/squircle mask.
+     Colour: near-black mark on the white ic_launcher_background, matching
+     the reference artwork. (A review caught the background being switched
+     to white while the fill stayed cream #F5F0E6 - cream-on-white rendered
+     the icon invisible.) -->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
     android:width="108dp"
     android:height="108dp"
     android:viewportWidth="108"
     android:viewportHeight="108">
     <path
-        android:fillColor="#F5F0E6"
+        android:fillColor="#14181F"
         android:fillType="nonZero"
         android:pathData="
             M 44,23 L 44,35 L 52,32 L 52,26 Z

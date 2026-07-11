@@ -18,6 +18,21 @@ repo. All three apps are merged and shipping (`:app` + `:feature:jotter` + `:fea
 
 ## Status log (newest first)
 
+### Review of Antigravity's v0.9.5 commits + fixes — 2026-07-11
+- [x] Reviewed `1d88108`/`5aca482`/`9f57163` (unified 3-module gist backup, editor
+      undo/redo + IME fix, Daybook cleanup, version bump 65/0.9.5). Full report with
+      severity ranking: `docs/REVIEW_ANTIGRAVITY_2026-07-11.md`.
+- [x] Fixed the defects found: **C1** icon was cream-on-white (invisible) — fill now
+      near-black on white; **H1** restored alarms were persisted but never scheduled;
+      **H2** NotebookLM actions failed silently (null provider / uncaught LLM errors —
+      the "actions do nothing" complaint) — now surface actionable errors; **M1** note
+      restore duplicated notes on every tap — now deduped by gistId/title+content;
+      **M2** clock seconds aligned by baseline, day/date resized; plus undo-stack cap,
+      stale backup description, unused import.
+- [ ] Open: real-PAT backup/restore round-trip on device; memory-restore dedupe (M3);
+      dead "Options" editor button (L4); on-device icon check before releasing v0.9.5.
+- [x] Verified: 3 modules compile; 252 tests, 0 failures.
+
 ### Icon, Notes, Daybook fixes + version drift correction — 2026-07-11
 - [x] **PROGRESS.md was stale since v0.9.0** (claimed "no remote / publishing not done" through
       three subsequent releases). Corrected against `git log` and GitHub releases: the repo is

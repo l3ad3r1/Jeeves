@@ -1315,52 +1315,58 @@ class NoteViewModel(application: Application) : AndroidViewModel(application) {
         _aiResult.value = null
     }
 
-    fun generateSummary(content: String) {
-        val provider = aiProvider ?: return
+    /**
+     * Shared harness for the NotebookLM actions. Before this existed, a null
+     * provider made the buttons silently do nothing, and any LLM failure
+     * (no API key, no network, HTTP 401) escaped the launch and left the
+     * "AI is thinking..." dialog stuck forever. Failures now surface as the
+     * dialog's result text and always reset the in-progress flag.
+     */
+    private fun runAiAction(action: suspend (com.l3ad3r1.octojotter.domain.JotterAiProvider) -> Unit) {
+        val provider = aiProvider
+        if (provider == null) {
+            _aiResult.value = "AI features are unavailable — configure a Cloud LLM " +
+                "provider and API key in Jeeves Settings → Assistant."
+            return
+        }
         viewModelScope.launch {
             _isGeneratingAi.value = true
             _aiResult.value = ""
-            provider.generateSummary(content).collect { chunk ->
-                _aiResult.value = (_aiResult.value ?: "") + chunk
+            try {
+                action(provider)
+            } catch (e: Exception) {
+                android.util.Log.w(logTag, "NotebookLM action failed", e)
+                _aiResult.value = "AI request failed: ${e.message ?: "unknown error"}.\n\n" +
+                    "Check that a Cloud LLM provider and API key are configured in " +
+                    "Jeeves Settings → Assistant and that you're online."
+            } finally {
+                _isGeneratingAi.value = false
             }
-            _isGeneratingAi.value = false
         }
     }
 
-    fun generateFlashcards(content: String) {
-        val provider = aiProvider ?: return
-        viewModelScope.launch {
-            _isGeneratingAi.value = true
-            _aiResult.value = ""
-            provider.generateFlashcards(content).collect { chunk ->
-                _aiResult.value = (_aiResult.value ?: "") + chunk
-            }
-            _isGeneratingAi.value = false
+    fun generateSummary(content: String) = runAiAction { provider ->
+        provider.generateSummary(content).collect { chunk ->
+            _aiResult.value = (_aiResult.value ?: "") + chunk
         }
     }
 
-    fun generateAudioOverview(content: String) {
-        val provider = aiProvider ?: return
-        viewModelScope.launch {
-            _isGeneratingAi.value = true
-            _aiResult.value = ""
-            provider.generateAudioOverview(content).collect { chunk ->
-                _aiResult.value = chunk // this emits status strings, not stream chunks
-            }
-            _isGeneratingAi.value = false
+    fun generateFlashcards(content: String) = runAiAction { provider ->
+        provider.generateFlashcards(content).collect { chunk ->
+            _aiResult.value = (_aiResult.value ?: "") + chunk
         }
     }
 
-    fun chatWithNote(content: String, userMessage: String) {
-        val provider = aiProvider ?: return
-        viewModelScope.launch {
-            _isGeneratingAi.value = true
-            // if you want to keep previous chat history you'd append, but for simplicity here we just show the latest reply
-            _aiResult.value = ""
-            provider.chatWithNote(content, userMessage).collect { chunk ->
-                _aiResult.value = (_aiResult.value ?: "") + chunk
-            }
-            _isGeneratingAi.value = false
+    fun generateAudioOverview(content: String) = runAiAction { provider ->
+        provider.generateAudioOverview(content).collect { chunk ->
+            _aiResult.value = chunk // this emits status strings, not stream chunks
+        }
+    }
+
+    fun chatWithNote(content: String, userMessage: String) = runAiAction { provider ->
+        // if you want to keep previous chat history you'd append, but for simplicity here we just show the latest reply
+        provider.chatWithNote(content, userMessage).collect { chunk ->
+            _aiResult.value = (_aiResult.value ?: "") + chunk
         }
     }
 }

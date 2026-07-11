@@ -1923,6 +1923,9 @@ fun EditorScreen(
         )
     }
 
+    // Each entry is a full-text snapshot (one per keystroke), so an uncapped
+    // stack grows O(n²) with note length over a long editing session.
+    val MAX_UNDO_STEPS = 100
     var undoStack by remember { mutableStateOf(listOf<TextFieldValue>()) }
     var redoStack by remember { mutableStateOf(listOf<TextFieldValue>()) }
 
@@ -1988,7 +1991,7 @@ fun EditorScreen(
             newSelectionStart
         }
         
-        undoStack = undoStack + textFieldValue
+        undoStack = (undoStack + textFieldValue).takeLast(MAX_UNDO_STEPS)
         redoStack = emptyList()
         
         textFieldValue = TextFieldValue(
@@ -2005,7 +2008,7 @@ fun EditorScreen(
         val end = selection.end
         val newText = text.substring(0, start) + insertedText + text.substring(end)
         val cursor = start + insertedText.length
-        undoStack = undoStack + textFieldValue
+        undoStack = (undoStack + textFieldValue).takeLast(MAX_UNDO_STEPS)
         redoStack = emptyList()
         
         textFieldValue = TextFieldValue(
@@ -2325,7 +2328,7 @@ fun EditorScreen(
                         },
                         onContentChanged = { newValue ->
                             if (textFieldValue.text != newValue.text) {
-                                undoStack = undoStack + textFieldValue
+                                undoStack = (undoStack + textFieldValue).takeLast(MAX_UNDO_STEPS)
                                 redoStack = emptyList()
                             }
                             textFieldValue = newValue

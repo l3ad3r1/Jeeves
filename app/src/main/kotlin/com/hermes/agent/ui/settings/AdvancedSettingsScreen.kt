@@ -234,9 +234,9 @@ private fun BackupSection(
             }
             Text(
                 "Backs up Cloud LLM settings (including your API keys), memories, " +
-                    "skills and cron jobs to a private GitHub Gist — keep the PAT and " +
-                    "gist safe. To restore on a new install, paste the same PAT and " +
-                    "Gist ID below, then tap Restore.",
+                    "skills, cron jobs, notes, and alarms to a private GitHub Gist — " +
+                    "keep the PAT and gist safe. To restore on a new install, paste " +
+                    "the same PAT and Gist ID below, then tap Restore.",
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )

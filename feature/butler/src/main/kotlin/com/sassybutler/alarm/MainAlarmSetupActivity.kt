@@ -19,7 +19,6 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CalendarMonth
 import androidx.compose.material.icons.filled.Cloud
-import androidx.compose.material.icons.filled.PlayCircleOutline
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -296,25 +295,30 @@ fun MainAlarmScreen(
                         modifier = Modifier.padding(20.dp),
                         verticalAlignment = Alignment.Bottom
                     ) {
+                        // alignByBaseline, not box-bottom alignment: with two different
+                        // text sizes, Alignment.Bottom aligns descent boxes and the
+                        // smaller seconds visibly sag below the minutes' baseline.
                         Text(
                             text = SimpleDateFormat("HH:mm", Locale.UK).format(currentTime),
-                            style = MaterialTheme.typography.displayLarge
+                            style = MaterialTheme.typography.displayLarge,
+                            modifier = Modifier.alignByBaseline()
                         )
                         Text(
                             text = SimpleDateFormat(":ss", Locale.UK).format(currentTime),
-                            style = MaterialTheme.typography.displayMedium,
+                            style = MaterialTheme.typography.headlineMedium,
                             color = MaterialTheme.colorScheme.primary,
-                            modifier = Modifier.padding(start = 4.dp)
+                            modifier = Modifier.alignByBaseline().padding(start = 4.dp)
                         )
                         Spacer(modifier = Modifier.weight(1f))
                         Column(horizontalAlignment = Alignment.End) {
                             Text(
                                 text = SimpleDateFormat("EEE", Locale.UK).format(currentTime).uppercase(),
-                                style = MaterialTheme.typography.labelSmall
+                                style = MaterialTheme.typography.labelMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
                             Text(
                                 text = SimpleDateFormat("d MMM", Locale.UK).format(currentTime),
-                                style = MaterialTheme.typography.bodyMedium
+                                style = MaterialTheme.typography.titleMedium
                             )
                         }
                     }
