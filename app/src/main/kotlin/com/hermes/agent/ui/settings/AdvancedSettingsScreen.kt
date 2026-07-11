@@ -32,6 +32,7 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -39,6 +40,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -366,6 +368,19 @@ private fun UpdateSection(
     onOpenUrl: (String) -> Unit,
     onDismiss: () -> Unit,
 ) {
+    // Keep the screen awake while an update is downloading. The download runs
+    // in-app (OkHttp in the ViewModel, not DownloadManager/WorkManager), so
+    // when the screen sleeps Doze throttles the socket and the download stalls.
+    // View.keepScreenOn needs no permission and clears itself when the view
+    // detaches; the DisposableEffect also clears it if the user navigates away
+    // or the download finishes/fails.
+    val isDownloading = state is UpdateUiState.Downloading
+    val view = LocalView.current
+    DisposableEffect(isDownloading) {
+        if (isDownloading) view.keepScreenOn = true
+        onDispose { view.keepScreenOn = false }
+    }
+
     Card(modifier = Modifier.fillMaxWidth()) {
         Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -460,6 +475,11 @@ private fun UpdateSection(
                     LinearProgressIndicator(
                         progress = { state.percent / 100f },
                         modifier = Modifier.fillMaxWidth(),
+                    )
+                    Text(
+                        "The screen will stay awake until the download finishes.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                 }
             }
