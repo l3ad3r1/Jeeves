@@ -37,8 +37,8 @@ object VoiceDownloader {
         }
 
         val request = DownloadManager.Request(Uri.parse(VOICES_URL)).apply {
-            setTitle("Downloading Sassy Butler Voices")
-            setDescription("Fetching full voice bundle (28 MB)...")
+            setTitle("Downloading Jeeves Voices")
+            setDescription("The butler requires his vocal cords.")
             setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED)
             // Save to external files dir temporarily so DownloadManager can write to it
             setDestinationInExternalFilesDir(context, Environment.DIRECTORY_DOWNLOADS, DOWNLOADED_VOICES_FILE)

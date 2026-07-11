@@ -1,6 +1,7 @@
 package com.hermes.agent.ui.plugins
 
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -10,10 +11,16 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.material3.Button
 import androidx.compose.material3.Card
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -26,6 +33,10 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.semantics.LiveRegionMode
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.liveRegion
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -37,14 +48,24 @@ import com.hermes.agent.ui.components.DestructiveActionDialog
 @Composable
 fun PluginsScreen(
     viewModel: PluginsViewModel = hiltViewModel(),
+    onBack: () -> Unit = {},
 ) {
-    val plugins by viewModel.plugins.collectAsStateWithLifecycle()
+    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    val plugins = uiState.plugins
     var pendingUninstall by remember { mutableStateOf<PluginInstance?>(null) }
 
     Scaffold(
         topBar = {
             TopAppBar(
                 title = { Text("Plugins") },
+                navigationIcon = {
+                    IconButton(onClick = onBack) {
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                            contentDescription = "Navigate back"
+                        )
+                    }
+                },
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = MaterialTheme.colorScheme.surface,
                     titleContentColor = MaterialTheme.colorScheme.onSurface,
@@ -59,26 +80,56 @@ fun PluginsScreen(
                 .padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
-            Text(
-                text = "${plugins.size} plugins · " +
-                    "${plugins.count { it.state == PluginState.ACTIVE }} active",
-                style = MaterialTheme.typography.labelMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
+            if (uiState.isLoading) {
+                Box(
+                    modifier = Modifier.fillMaxSize().semantics { liveRegion = LiveRegionMode.Polite },
+                    contentAlignment = Alignment.Center,
+                ) {
+                    CircularProgressIndicator()
+                }
+            } else if (uiState.error != null) {
+                Column(
+                    modifier = Modifier.fillMaxSize().semantics { liveRegion = LiveRegionMode.Polite },
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.Center,
+                ) {
+                    Text(text = "Error: ${uiState.error}", color = MaterialTheme.colorScheme.error)
+                    Spacer(modifier = Modifier.height(16.dp))
+                    Button(onClick = viewModel::loadPlugins) {
+                        Text("Retry")
+                    }
+                }
+            } else if (plugins.isEmpty()) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .semantics { contentDescription = "No plugins installed." },
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Text("No plugins installed.", style = MaterialTheme.typography.bodyMedium)
+                }
+            } else {
+                Text(
+                    text = "${plugins.size} plugins · " +
+                        "${plugins.count { it.state == PluginState.ACTIVE }} active",
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
 
-            LazyColumn(
-                modifier = Modifier.fillMaxSize(),
-                verticalArrangement = Arrangement.spacedBy(8.dp),
-            ) {
-                items(plugins, key = { it.manifest.id }) { plugin ->
-                    PluginRow(
-                        plugin = plugin,
-                        onToggle = { enabled ->
-                            if (enabled) viewModel.activate(plugin.manifest.id)
-                            else viewModel.suspend_(plugin.manifest.id)
-                        },
-                        onUninstall = { pendingUninstall = plugin },
-                    )
+                LazyColumn(
+                    modifier = Modifier.fillMaxSize(),
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    items(plugins, key = { it.manifest.id }) { plugin ->
+                        PluginRow(
+                            plugin = plugin,
+                            onToggle = { enabled ->
+                                if (enabled) viewModel.activate(plugin.manifest.id)
+                                else viewModel.suspend_(plugin.manifest.id)
+                            },
+                            onUninstall = { pendingUninstall = plugin },
+                        )
+                    }
                 }
             }
         }

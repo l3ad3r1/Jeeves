@@ -94,43 +94,55 @@ class AlarmForegroundService : LifecycleService() {
 
         Log.i(TAG, "Starting alarm id=$alarmId at $hour:${minute.toString().padStart(2,'0')}")
 
-        val greeting = ButlerScript.greeting(this, formatTime(hour, minute))
-
-        // 1. Become a foreground service immediately
+        // 1. Become a foreground service immediately to avoid ANR/Crash
         promoteToForeground(alarmId, hour, minute)
 
         // 2. Acquire wake lock
         acquireWakeLock()
 
-        // 3. Launch the full-screen lock screen activity (shows the greeting)
-        launchAlarmActivity(alarmId, hour, minute, greeting)
-
-        // 4. Optional refined vibration
-        startHaptics()
-
-        // 5. Begin the audio sequence: (birds →) TTS greeting
-        scope.launch {
-            audioEngine.playAlarmSequence(
-                greeting     = greeting,
-                skipBirds    = !ButlerPrefs.birdsIntro(this@AlarmForegroundService),
-                voiceEnabled = ButlerPrefs.voiceEnabled(this@AlarmForegroundService),
-                onBirdsComplete = { Log.d(TAG, "Birds finished, TTS playing") }
-            )
-        }
-
-        // 6. Refresh the weather cache in the background so a snoozed
-        //    re-fire speaks current conditions (this alarm already used
-        //    the cache — the greeting text is final by now).
-        scope.launch { WeatherService.refresh(this@AlarmForegroundService) }
-
-        // 7. Keep the schedule alive: repeating alarms re-arm for the next
-        //    occurrence; one-shots are switched off in the store.
+        // 3. Keep the schedule alive immediately
         AlarmStore.get(this, alarmId)?.let { alarm ->
             if (alarm.days.isNotEmpty()) {
                 AlarmScheduler(this).schedule(alarm)
             } else {
                 AlarmStore.upsert(this, alarm.copy(enabled = false))
             }
+        }
+
+        // 4. Generate AI Greeting and play sequence
+        scope.launch {
+            var greeting = ButlerScript.greeting(this@AlarmForegroundService, formatTime(hour, minute))
+            try {
+                val aiProvider = dagger.hilt.android.EntryPointAccessors.fromApplication(
+                    applicationContext, com.sassybutler.alarm.di.ButlerAiProviderEntryPoint::class.java
+                ).getButlerAiProvider()
+                
+                val hon = ButlerPrefs.honorific(this@AlarmForegroundService)
+                val sassLevel = ButlerPrefs.sassLevel(this@AlarmForegroundService)
+                val weather = WeatherService.cached(this@AlarmForegroundService)?.sentence() ?: "Unknown weather"
+                
+                val generated = aiProvider.generateMorningGreeting(weather, formatTime(hour, minute), hon, sassLevel)
+                if (generated != null && generated.isNotBlank()) greeting = generated
+            } catch (e: Exception) {
+                Log.w(TAG, "Failed to generate AI greeting, using fallback.")
+            }
+
+            // Launch the full-screen lock screen activity (shows the greeting)
+            launchAlarmActivity(alarmId, hour, minute, greeting)
+
+            // Optional refined vibration
+            startHaptics()
+
+            // Begin the audio sequence: (birds →) TTS greeting
+            audioEngine.playAlarmSequence(
+                greeting     = greeting,
+                skipBirds    = !ButlerPrefs.birdsIntro(this@AlarmForegroundService),
+                voiceEnabled = ButlerPrefs.voiceEnabled(this@AlarmForegroundService),
+                onBirdsComplete = { Log.d(TAG, "Birds finished, TTS playing") }
+            )
+
+            // Refresh the weather cache in the background
+            WeatherService.refresh(this@AlarmForegroundService)
         }
     }
 
@@ -258,7 +270,7 @@ class AlarmForegroundService : LifecycleService() {
         val pm = getSystemService(Context.POWER_SERVICE) as PowerManager
         wakeLock = pm.newWakeLock(
             PowerManager.PARTIAL_WAKE_LOCK,
-            "SassyButler::AlarmWakeLock"
+            "JeevesAlarms::WakeLock"
         ).also { it.acquire(10 * 60 * 1000L) } // 10 min max
     }
 

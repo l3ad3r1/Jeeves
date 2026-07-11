@@ -82,10 +82,13 @@ object AlarmStore {
     fun upsert(context: Context, alarm: Alarm) {
         val list = all(context).filter { it.id != alarm.id } + alarm
         save(context, list.sortedBy { it.hour * 60 + it.minute })
+        CalendarSyncManager.syncAlarmToCalendar(context, alarm)
     }
 
-    fun delete(context: Context, id: Int) =
+    fun delete(context: Context, id: Int) {
         save(context, all(context).filter { it.id != id })
+        CalendarSyncManager.removeAlarmFromCalendar(context, id)
+    }
 
     fun nextId(context: Context): Int = (all(context).maxOfOrNull { it.id } ?: 0) + 1
 

@@ -18,6 +18,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.outlined.Add
 import androidx.compose.material.icons.outlined.AutoAwesome
 import androidx.compose.material.icons.outlined.Delete
@@ -31,6 +32,8 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Button
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -45,13 +48,20 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.semantics.LiveRegionMode
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.liveRegion
+import androidx.compose.ui.semantics.semantics
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.hermes.agent.domain.model.Skill
 import com.hermes.agent.ui.components.DestructiveActionDialog
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun SkillsScreen(viewModel: SkillsViewModel = hiltViewModel()) {
+fun SkillsScreen(
+    viewModel: SkillsViewModel = hiltViewModel(),
+    onBack: () -> Unit = {},
+) {
     val state by viewModel.state.collectAsState()
     var pendingDelete by remember { mutableStateOf<Skill?>(null) }
 
@@ -59,6 +69,14 @@ fun SkillsScreen(viewModel: SkillsViewModel = hiltViewModel()) {
         topBar = {
             TopAppBar(
                 title = { Text("Skills & Tools") },
+                navigationIcon = {
+                    IconButton(onClick = onBack) {
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                            contentDescription = "Navigate back"
+                        )
+                    }
+                },
             )
         },
         floatingActionButton = {
@@ -67,9 +85,31 @@ fun SkillsScreen(viewModel: SkillsViewModel = hiltViewModel()) {
             }
         },
     ) { padding ->
-        if (state.skills.isEmpty()) {
+        if (state.isLoading) {
             Box(
-                modifier = Modifier.fillMaxSize().padding(padding),
+                modifier = Modifier.fillMaxSize().padding(padding).semantics { liveRegion = LiveRegionMode.Polite },
+                contentAlignment = Alignment.Center,
+            ) {
+                CircularProgressIndicator()
+            }
+        } else if (state.listError != null) {
+            Column(
+                modifier = Modifier.fillMaxSize().padding(padding).semantics { liveRegion = LiveRegionMode.Polite },
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.Center,
+            ) {
+                Text(text = "Error: ${state.listError}", color = MaterialTheme.colorScheme.error)
+                Spacer(modifier = Modifier.height(16.dp))
+                Button(onClick = viewModel::loadSkills) {
+                    Text("Retry")
+                }
+            }
+        } else if (state.skills.isEmpty()) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(padding)
+                    .semantics { contentDescription = "No skills yet. Tap + to add one." },
                 contentAlignment = Alignment.Center,
             ) {
                 Text("No skills yet. Tap + to add one.", style = MaterialTheme.typography.bodyMedium)

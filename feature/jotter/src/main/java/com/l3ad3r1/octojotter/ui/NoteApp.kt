@@ -52,10 +52,18 @@ import androidx.compose.material.icons.automirrored.filled.FormatListBulleted
 import androidx.compose.material.icons.automirrored.filled.Label
 import androidx.compose.material.icons.automirrored.filled.List
 import androidx.compose.material.icons.automirrored.filled.Notes
+import androidx.compose.material.icons.automirrored.filled.Undo
+import androidx.compose.material.icons.automirrored.filled.Redo
 import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.Bolt
 import androidx.compose.material.icons.filled.Bookmark
 import androidx.compose.material.icons.filled.ChevronRight
+import androidx.compose.material.icons.filled.ArrowForward
+import androidx.compose.material.icons.filled.AutoAwesome
+import androidx.compose.material.icons.filled.Chat
+import androidx.compose.material.icons.filled.Style
+import androidx.compose.material.icons.filled.GraphicEq
+import androidx.compose.material.icons.filled.MenuBook
+import androidx.compose.material.icons.filled.ArrowForward
 import androidx.compose.material.icons.filled.CloudDone
 import androidx.compose.material.icons.filled.CloudDownload
 import androidx.compose.material.icons.filled.CloudOff
@@ -156,8 +164,9 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.filled.Folder
 import androidx.compose.material.icons.filled.FolderOpen
-import androidx.compose.material.icons.filled.CreateNewFolder
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -509,88 +518,6 @@ fun NotesListScreen(
         }
     }
 
-    ModalNavigationDrawer(
-        drawerState = drawerState,
-        drawerContent = {
-            ModalDrawerSheet(
-                drawerContainerColor = MaterialTheme.colorScheme.background,
-                modifier = Modifier.width(300.dp)
-            ) {
-                Spacer(modifier = Modifier.height(16.dp))
-
-                // List Items
-                val drawerItems = listOf(
-                    Triple("Notes", Icons.Default.Description, selectedFolder == null),
-                    Triple("Favorites", Icons.Default.StarBorder, selectedFolder == "Favorites"),
-                    Triple("Reminders", Icons.Default.NotificationsNone, selectedFolder == "Reminders"),
-                    Triple("Monographs", Icons.Default.LibraryBooks, selectedFolder == "Monographs"),
-                    Triple("Archive", Icons.Default.Archive, selectedFolder == "Archive"),
-                    Triple("Trash", Icons.Default.DeleteOutline, false)
-                )
-
-                drawerItems.forEach { (label, icon, isSelected) ->
-                    val isNotes = label == "Notes"
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = 12.dp, vertical = 4.dp)
-                            .clip(RoundedCornerShape(8.dp))
-                            .background(if (isSelected) MaterialTheme.colorScheme.surfaceVariant else Color.Transparent)
-                            .clickable {
-                                if (label == "Trash") {
-                                    onNavigateToTrash()
-                                } else if (isNotes) {
-                                    viewModel.selectFolder(null)
-                                } else {
-                                    viewModel.selectFolder(label)
-                                }
-                                scope.launch { drawerState.close() }
-                            }
-                            .padding(horizontal = 16.dp, vertical = 12.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Icon(
-                            imageVector = icon,
-                            contentDescription = label,
-                            tint = if (isNotes && isSelected) Color(0xFF4CAF50) else MaterialTheme.colorScheme.onSurfaceVariant,
-                            modifier = Modifier.size(20.dp)
-                        )
-                        Spacer(modifier = Modifier.width(16.dp))
-                        Text(
-                            text = label,
-                            style = MaterialTheme.typography.bodyLarge,
-                            color = MaterialTheme.colorScheme.onBackground,
-                            modifier = Modifier.weight(1f)
-                        )
-                        Text(
-                            text = if (label == "Trash") "${syncHealth.trash}" else "0", // Mock counts for others
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
-                }
-
-                HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp), color = MaterialTheme.colorScheme.surfaceVariant)
-
-                Spacer(modifier = Modifier.weight(1f))
-
-                // Bottom Tab Icons
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .background(MaterialTheme.colorScheme.surface)
-                        .padding(horizontal = 24.dp, vertical = 12.dp),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Icon(Icons.Default.Home, contentDescription = "Home", tint = Color(0xFF4CAF50))
-                    Icon(Icons.Default.MenuBook, contentDescription = "Book", tint = MaterialTheme.colorScheme.onSurfaceVariant)
-                    Icon(Icons.Default.Tag, contentDescription = "Tags", tint = MaterialTheme.colorScheme.onSurfaceVariant)
-                    Icon(Icons.Default.DarkMode, contentDescription = "Theme", tint = MaterialTheme.colorScheme.onSurfaceVariant)
-                }
-            }
-        }
-    ) {
         Scaffold(
             snackbarHost = { SnackbarHost(snackbarHostState) },
             topBar = {
@@ -1399,7 +1326,6 @@ fun NotesListScreen(
         )
     }
 }
-}
 
 // ---- Nested folder tree model (drives the "Grouped" view) ----
 
@@ -1809,6 +1735,9 @@ fun EditorScreen(
     var isEditing by remember { mutableStateOf(false) }
     var showDrawingDialog by remember { mutableStateOf(false) }
 
+    var showAiActions by remember { mutableStateOf(false) }
+    var showDocumentChat by remember { mutableStateOf(false) }
+
     var textFieldValue by remember {
         mutableStateOf(
             TextFieldValue(
@@ -2051,8 +1980,8 @@ fun EditorScreen(
 
     val editorToolbar: @Composable () -> Unit = {
         Surface(
-            color = Color(0xFF1E1E1E), // Dark background matching the editor
-            contentColor = Color.LightGray,
+            color = MaterialTheme.colorScheme.surface,
+            contentColor = MaterialTheme.colorScheme.onSurface,
             tonalElevation = 0.dp,
             modifier = Modifier.fillMaxWidth()
         ) {
@@ -2063,67 +1992,95 @@ fun EditorScreen(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                // Left side icons (+, B, I, U, Menu)
+                // Formatting tools
                 Row(
                     horizontalArrangement = Arrangement.spacedBy(16.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    IconButton(onClick = { /* Add element */ }) {
-                        Icon(Icons.Default.Add, contentDescription = "Add", tint = Color(0xFF4CAF50)) // Green plus
-                    }
                     IconButton(onClick = { insertMarkdown("**") }) {
-                        Icon(Icons.Default.FormatBold, contentDescription = "Format Bold", tint = Color.LightGray)
+                        Icon(Icons.Default.FormatBold, contentDescription = "Format Bold", tint = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
                     IconButton(onClick = { insertMarkdown("*") }) {
-                        Icon(Icons.Default.FormatItalic, contentDescription = "Format Italic", tint = Color.LightGray)
+                        Icon(Icons.Default.FormatItalic, contentDescription = "Format Italic", tint = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
                     IconButton(onClick = { insertMarkdown("<u>", "</u>") }) {
-                        Icon(Icons.Default.FormatUnderlined, contentDescription = "Format Underlined", tint = Color.LightGray)
+                        Icon(Icons.Default.FormatUnderlined, contentDescription = "Format Underlined", tint = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
-                    IconButton(onClick = { /* More options */ }) {
-                        Icon(Icons.Default.MoreVert, contentDescription = "More Options", tint = Color.LightGray)
-                    }
-                }
-                
-                // Right side tools (Text size, etc.)
-                Row(
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    IconButton(onClick = { /* Decrease size */ }) {
-                        Icon(Icons.Default.Remove, contentDescription = "Decrease size", tint = Color.LightGray)
-                    }
-                    Text("16px", color = Color.LightGray, style = MaterialTheme.typography.bodyMedium)
                 }
             }
         }
     }
 
     Scaffold(
-        containerColor = Color(0xFF1E1E1E),
+        containerColor = MaterialTheme.colorScheme.background,
         topBar = {
             TopAppBar(
                 title = { },
                 navigationIcon = {
                     IconButton(onClick = handleExit) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back", tint = Color.LightGray)
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back", tint = MaterialTheme.colorScheme.onSurface)
                     }
                 },
                 actions = {
                     IconButton(onClick = { /* TODO: Undo */ }) {
-                        Icon(Icons.Default.Undo, contentDescription = "Undo", tint = Color.DarkGray)
+                        Icon(Icons.AutoMirrored.Filled.Undo, contentDescription = "Undo", tint = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
                     IconButton(onClick = { /* TODO: Redo */ }) {
-                        Icon(Icons.Default.Redo, contentDescription = "Redo", tint = Color.DarkGray)
+                        Icon(Icons.AutoMirrored.Filled.Redo, contentDescription = "Redo", tint = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
                     IconButton(onClick = { /* TODO: Tag */ }) {
-                        Icon(Icons.Default.LocalOffer, contentDescription = "Tag", tint = Color.LightGray)
+                        Icon(Icons.Default.LocalOffer, contentDescription = "Tag", tint = MaterialTheme.colorScheme.onSurface)
                     }
                     IconButton(onClick = { /* TODO: Options */ }) {
-                        Icon(Icons.Default.MoreVert, contentDescription = "Options", tint = Color.LightGray)
+                        Icon(Icons.Default.MoreVert, contentDescription = "Options", tint = MaterialTheme.colorScheme.onSurface)
+                    }
+                    IconButton(onClick = { showAiActions = true }) {
+                        Icon(androidx.compose.material.icons.Icons.Default.AutoAwesome, contentDescription = "AI Actions", tint = MaterialTheme.colorScheme.primary)
+                    }
+                    if (showAiActions) {
+                        androidx.compose.material3.ModalBottomSheet(onDismissRequest = { showAiActions = false }) {
+                            Column(modifier = Modifier.padding(16.dp)) {
+                                Text("NotebookLM Actions", style = MaterialTheme.typography.titleLarge)
+                                Spacer(modifier = Modifier.height(16.dp))
+                                androidx.compose.material3.ListItem(
+                                    headlineContent = { Text("Document Chat") },
+                                    leadingContent = { Icon(androidx.compose.material.icons.Icons.Default.Chat, contentDescription = null) },
+                                    modifier = Modifier.clickable { 
+                                        showAiActions = false
+                                        showDocumentChat = true
+                                    }
+                                )
+                                androidx.compose.material3.ListItem(
+                                    headlineContent = { Text("Generate Summary") },
+                                    leadingContent = { Icon(androidx.compose.material.icons.Icons.Default.MenuBook, contentDescription = null) },
+                                    modifier = Modifier.clickable { 
+                                        showAiActions = false
+                                        viewModel.generateSummary(textFieldValue.text)
+                                    }
+                                )
+                                androidx.compose.material3.ListItem(
+                                    headlineContent = { Text("Generate Flashcards") },
+                                    leadingContent = { Icon(androidx.compose.material.icons.Icons.Default.Style, contentDescription = null) },
+                                    modifier = Modifier.clickable { 
+                                        showAiActions = false
+                                        viewModel.generateFlashcards(textFieldValue.text)
+                                    }
+                                )
+                                androidx.compose.material3.ListItem(
+                                    headlineContent = { Text("Audio Overview") },
+                                    leadingContent = { Icon(androidx.compose.material.icons.Icons.Default.GraphicEq, contentDescription = null) },
+                                    modifier = Modifier.clickable { 
+                                        showAiActions = false
+                                        viewModel.generateAudioOverview(textFieldValue.text)
+                                    }
+                                )
+                                Spacer(modifier = Modifier.height(32.dp))
+                            }
+                        }
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = Color(0xFF1E1E1E),
+                    containerColor = MaterialTheme.colorScheme.surface,
                 )
             )
         },
@@ -2178,11 +2135,90 @@ fun EditorScreen(
                         handleExit()
                     }
                 )
-            }        } ?: Box(
+            }
+        } ?: Box(
             modifier = Modifier.fillMaxSize(),
             contentAlignment = Alignment.Center
         ) {
             CircularProgressIndicator()
+        }
+
+        val isGeneratingAi by viewModel.isGeneratingAi.collectAsState()
+        val aiResult by viewModel.aiResult.collectAsState()
+
+        if (aiResult != null || isGeneratingAi) {
+            androidx.compose.material3.AlertDialog(
+                onDismissRequest = { viewModel.clearAiResult() },
+                title = { Text(if (isGeneratingAi) "AI is thinking..." else "NotebookLM") },
+                text = {
+                    Column(modifier = Modifier.verticalScroll(rememberScrollState())) {
+                        if (isGeneratingAi) {
+                            androidx.compose.material3.LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
+                            Spacer(modifier = Modifier.height(16.dp))
+                        }
+                        Text(aiResult ?: "", style = MaterialTheme.typography.bodyMedium)
+                    }
+                },
+                confirmButton = {
+                    androidx.compose.material3.TextButton(onClick = {
+                        textFieldValue = androidx.compose.ui.text.input.TextFieldValue(textFieldValue.text + "\n\n" + aiResult)
+                        viewModel.clearAiResult()
+                    }) {
+                        Text("Append to Note")
+                    }
+                },
+                dismissButton = {
+                    androidx.compose.material3.TextButton(onClick = { viewModel.clearAiResult() }) {
+                        Text("Close")
+                    }
+                }
+            )
+        }
+
+        if (showDocumentChat) {
+            androidx.compose.material3.ModalBottomSheet(
+                onDismissRequest = { showDocumentChat = false },
+                modifier = Modifier.fillMaxHeight(0.8f)
+            ) {
+                Column(modifier = Modifier.fillMaxSize().padding(16.dp)) {
+                    Text("Chat with Note", style = MaterialTheme.typography.titleLarge)
+                    Spacer(modifier = Modifier.height(8.dp))
+                    
+                    Box(modifier = Modifier.weight(1f).fillMaxWidth()) {
+                        Column(modifier = Modifier.verticalScroll(rememberScrollState())) {
+                            if (isGeneratingAi) {
+                                androidx.compose.material3.LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
+                                Spacer(modifier = Modifier.height(8.dp))
+                            }
+                            Text(aiResult ?: "Ask a question about this note...", style = MaterialTheme.typography.bodyMedium)
+                        }
+                    }
+                    
+                    var chatInput by remember { mutableStateOf("") }
+                    Row(
+                        modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        androidx.compose.material3.OutlinedTextField(
+                            value = chatInput,
+                            onValueChange = { chatInput = it },
+                            modifier = Modifier.weight(1f),
+                            placeholder = { Text("Ask Jeeves...") }
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        IconButton(
+                            onClick = {
+                                if (chatInput.isNotBlank()) {
+                                    viewModel.chatWithNote(textFieldValue.text, chatInput)
+                                    chatInput = ""
+                                }
+                            }
+                        ) {
+                            Icon(Icons.Default.ArrowForward, contentDescription = "Send")
+                        }
+                    }
+                }
+            }
         }
     }
 }
@@ -2270,6 +2306,7 @@ fun DrawingDialog(
                     modifier = Modifier
                         .fillMaxSize()
                         .clip(RoundedCornerShape(8.dp))
+                        .semantics { contentDescription = "Drawing canvas. Draw using your finger or stylus." }
                         .onSizeChanged { canvasSize = it }
                         .pointerInput(Unit) {
                             detectDragGestures(
@@ -2317,8 +2354,16 @@ fun DrawingDialog(
             }
         },
         dismissButton = {
-            TextButton(onClick = onDismiss, modifier = Modifier.testTag("drawing_cancel_button")) {
-                Text("Cancel")
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                TextButton(onClick = { strokes.clear() }, modifier = Modifier.testTag("drawing_clear_button")) {
+                    Text("Clear")
+                }
+                TextButton(onClick = { if (strokes.isNotEmpty()) strokes.removeLast() }, modifier = Modifier.testTag("drawing_undo_button")) {
+                    Text("Undo")
+                }
+                TextButton(onClick = onDismiss, modifier = Modifier.testTag("drawing_cancel_button")) {
+                    Text("Cancel")
+                }
             }
         }
     )
@@ -2342,15 +2387,15 @@ fun EditorInputs(
         TextField(
             value = title,
             onValueChange = onTitleChanged,
-            placeholder = { Text("Note title", style = MaterialTheme.typography.headlineLarge.copy(fontWeight = FontWeight.Bold, color = Color.Gray)) },
+            placeholder = { Text("Note title", style = MaterialTheme.typography.headlineLarge.copy(fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurfaceVariant)) },
             singleLine = true,
-            textStyle = MaterialTheme.typography.headlineLarge.copy(fontWeight = FontWeight.Bold, color = Color.White),
+            textStyle = MaterialTheme.typography.headlineLarge.copy(fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onBackground),
             colors = TextFieldDefaults.colors(
                 focusedContainerColor = Color.Transparent,
                 unfocusedContainerColor = Color.Transparent,
                 focusedIndicatorColor = Color.Transparent,
                 unfocusedIndicatorColor = Color.Transparent,
-                cursorColor = Color.White
+                cursorColor = MaterialTheme.colorScheme.primary
             ),
             modifier = Modifier
                 .fillMaxWidth()
@@ -2571,14 +2616,14 @@ fun EditorInputs(
             TextField(
                 value = textFieldValue,
                 onValueChange = onContentChanged,
-                placeholder = { Text("Start writing your note...", color = Color.DarkGray) },
-                textStyle = MaterialTheme.typography.bodyLarge.copy(fontFamily = MonoFontFamily, color = Color.LightGray),
+                placeholder = { Text("Start writing your note...", color = MaterialTheme.colorScheme.onSurfaceVariant) },
+                textStyle = MaterialTheme.typography.bodyLarge.copy(fontFamily = MonoFontFamily, color = MaterialTheme.colorScheme.onBackground),
                 colors = TextFieldDefaults.colors(
                     focusedContainerColor = Color.Transparent,
                     unfocusedContainerColor = Color.Transparent,
                     focusedIndicatorColor = Color.Transparent,
                     unfocusedIndicatorColor = Color.Transparent,
-                    cursorColor = Color.White
+                    cursorColor = MaterialTheme.colorScheme.primary
                 ),
                 visualTransformation = markdownTransformation,
                 modifier = Modifier

@@ -56,24 +56,28 @@ class SessionBrowserViewModel @Inject constructor(
      */
     fun browseRecent() {
         viewModelScope.launch {
-            try {
-                _uiState.value = SessionBrowserUiState.Loading
-                val sessions = sessionRepository.getRecent(limit = 50)
-                val sessionsWithCounts = sessions.map { session ->
-                    val messageCount = sessionRepository.getMessageCount(session.id)
-                    SessionWithMessageCount(session, messageCount)
-                }
-                _uiState.value = SessionBrowserUiState.Success(sessionsWithCounts)
-            } catch (e: Exception) {
-                _uiState.value = SessionBrowserUiState.Error(e.message ?: "Unknown error")
+            executeBrowseRecent()
+        }
+    }
+
+    private suspend fun executeBrowseRecent() {
+        try {
+            _uiState.value = SessionBrowserUiState.Loading
+            val sessions = sessionRepository.getRecent(limit = 50)
+            val sessionsWithCounts = sessions.map { session ->
+                val messageCount = sessionRepository.getMessageCount(session.id)
+                SessionWithMessageCount(session, messageCount)
             }
+            _uiState.value = SessionBrowserUiState.Success(sessionsWithCounts)
+        } catch (e: Exception) {
+            _uiState.value = SessionBrowserUiState.Error(e.message ?: "Unknown error")
         }
     }
 
     private suspend fun executeSearch(query: String) {
         try {
             if (query.isBlank()) {
-                browseRecent()
+                executeBrowseRecent()
                 return
             }
             _uiState.value = SessionBrowserUiState.Loading

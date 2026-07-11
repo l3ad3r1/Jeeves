@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.outlined.Schedule
@@ -46,20 +47,33 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.hermes.agent.domain.model.CronPresets
 import com.hermes.agent.domain.model.ScheduledTask
+import com.hermes.agent.ui.components.DestructiveActionDialog
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun CronScreen(viewModel: CronViewModel = hiltViewModel()) {
+fun CronScreen(
+    viewModel: CronViewModel = hiltViewModel(),
+    onBack: () -> Unit = {},
+) {
     val tasks by viewModel.tasks.collectAsStateWithLifecycle()
     var showAddDialog by remember { mutableStateOf(false) }
+    var deleteTarget by remember { mutableStateOf<String?>(null) }
 
     Scaffold(
         topBar = {
             TopAppBar(
                 title = { Text("CRON") },
+                navigationIcon = {
+                    IconButton(onClick = onBack) {
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                            contentDescription = "Navigate back"
+                        )
+                    }
+                },
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = MaterialTheme.colorScheme.surface,
                     titleContentColor = MaterialTheme.colorScheme.onSurface,
@@ -84,7 +98,7 @@ fun CronScreen(viewModel: CronViewModel = hiltViewModel()) {
                     TaskCard(
                         task = task,
                         onToggle = { viewModel.toggle(task.id) },
-                        onDelete = { viewModel.delete(task.id) },
+                        onDelete = { deleteTarget = task.id },
                     )
                 }
                 item { Spacer(Modifier.height(80.dp)) }
@@ -100,6 +114,19 @@ fun CronScreen(viewModel: CronViewModel = hiltViewModel()) {
                 },
             )
         }
+    }
+
+    if (deleteTarget != null) {
+        DestructiveActionDialog(
+            title = "Delete Task",
+            message = "Are you sure you want to delete this scheduled task?",
+            confirmLabel = "Delete",
+            onConfirm = {
+                deleteTarget?.let { viewModel.delete(it) }
+                deleteTarget = null
+            },
+            onDismiss = { deleteTarget = null }
+        )
     }
 }
 
@@ -249,23 +276,32 @@ private fun AddTaskDialog(
                     }
                 }
                 if (useCustom) {
+                    val isError = customCron.isNotBlank() && !customCron.trim().matches(Regex("^(\\S+\\s+){4}\\S+$"))
                     OutlinedTextField(
                         value = customCron,
                         onValueChange = { customCron = it },
                         label = { Text("Cron expression") },
                         placeholder = { Text("0 9 * * 1-5") },
                         singleLine = true,
+                        isError = isError,
                         modifier = Modifier.fillMaxWidth(),
-                        supportingText = { Text("5-field cron: min hour dom month dow") },
+                        supportingText = {
+                            if (isError) {
+                                Text("Invalid 5-field cron expression")
+                            } else {
+                                Text("5-field cron: min hour dom month dow")
+                            }
+                        },
                     )
                 }
             }
         },
         confirmButton = {
             val finalCron = if (useCustom) customCron.trim() else selectedCron
+            val isCronValid = !useCustom || finalCron.matches(Regex("^(\\S+\\s+){4}\\S+$"))
             TextButton(
                 onClick = { onConfirm(label.trim(), prompt.trim(), finalCron) },
-                enabled = label.isNotBlank() && prompt.isNotBlank() && finalCron.isNotBlank(),
+                enabled = label.isNotBlank() && prompt.isNotBlank() && isCronValid,
             ) { Text("Schedule") }
         },
         dismissButton = {

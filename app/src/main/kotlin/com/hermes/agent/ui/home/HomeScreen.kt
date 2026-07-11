@@ -19,6 +19,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
@@ -126,14 +127,14 @@ fun HomeScreen(
                 .background(Brush.linearGradient(listOf(HermesAccentDeep, scheme.primary)))
                 .padding(18.dp),
         ) {
-            Text("Active model", color = Color.White.copy(alpha = 0.85f), fontSize = 12.sp)
+            Text("Active model", color = Color.White.copy(alpha = 0.85f), style = MaterialTheme.typography.labelSmall)
             Spacer(Modifier.height(4.dp))
             Text(
                 model.ifBlank { "not configured" },
                 fontFamily = GeistMono,
                 color = Color.White,
+                style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.Bold,
-                fontSize = 18.sp,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
             )
@@ -263,12 +264,13 @@ private fun SectionHeader(title: String, action: String, onAction: () -> Unit) {
             color = scheme.outline,
         )
         Spacer(Modifier.weight(1f))
-        Text(
-            action,
-            style = MaterialTheme.typography.labelLarge,
-            color = scheme.primary,
-            modifier = Modifier.clickable(onClick = onAction),
-        )
+        TextButton(onClick = onAction) {
+            Text(
+                action,
+                style = MaterialTheme.typography.labelLarge,
+                color = scheme.primary,
+            )
+        }
     }
 }
 

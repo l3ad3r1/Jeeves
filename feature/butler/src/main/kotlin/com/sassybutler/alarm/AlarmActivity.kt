@@ -11,7 +11,9 @@ import androidx.compose.animation.core.*
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -127,7 +129,10 @@ fun AlarmWakeScreen(
     }
 
     Column(
-        modifier = Modifier.fillMaxSize().padding(32.dp),
+        modifier = Modifier
+            .fillMaxSize()
+            .verticalScroll(rememberScrollState())
+            .padding(32.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center
     ) {
@@ -140,7 +145,7 @@ fun AlarmWakeScreen(
         Row(verticalAlignment = Alignment.Bottom) {
             Text(
                 text = SimpleDateFormat("HH:mm", Locale.UK).format(currentTime),
-                style = MaterialTheme.typography.displayLarge.copy(fontSize = 80.sp)
+                style = MaterialTheme.typography.displayLarge
             )
             Text(
                 text = SimpleDateFormat(":ss", Locale.UK).format(currentTime),
@@ -185,68 +190,12 @@ fun AlarmWakeScreen(
 
 @Composable
 fun PulseButton(onClick: () -> Unit) {
-    val infiniteTransition = rememberInfiniteTransition(label = "pulse")
-    
-    val scale1 by infiniteTransition.animateFloat(
-        initialValue = 1f,
-        targetValue = 1.7f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(2500, easing = LinearEasing),
-            repeatMode = RepeatMode.Restart
-        ),
-        label = "scale1"
-    )
-    val alpha1 by infiniteTransition.animateFloat(
-        initialValue = 0.5f,
-        targetValue = 0f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(2500, easing = LinearEasing),
-            repeatMode = RepeatMode.Restart
-        ),
-        label = "alpha1"
-    )
-
-    val scale2 by infiniteTransition.animateFloat(
-        initialValue = 1f,
-        targetValue = 1.7f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(2500, easing = LinearEasing, delayMillis = 1250),
-            repeatMode = RepeatMode.Restart
-        ),
-        label = "scale2"
-    )
-    val alpha2 by infiniteTransition.animateFloat(
-        initialValue = 0.5f,
-        targetValue = 0f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(2500, easing = LinearEasing, delayMillis = 1250),
-            repeatMode = RepeatMode.Restart
-        ),
-        label = "alpha2"
-    )
-
-    Box(contentAlignment = Alignment.Center) {
-        Box(
-            modifier = Modifier
-                .size(100.dp)
-                .scale(scale1)
-                .alpha(alpha1)
-                .background(MaterialTheme.colorScheme.primary, CircleShape)
-        )
-        Box(
-            modifier = Modifier
-                .size(100.dp)
-                .scale(scale2)
-                .alpha(alpha2)
-                .background(MaterialTheme.colorScheme.primary, CircleShape)
-        )
-        Button(
-            onClick = onClick,
-            shape = CircleShape,
-            modifier = Modifier.size(100.dp),
-            contentPadding = PaddingValues(0.dp)
-        ) {
-            Text("HUSH")
-        }
+    Button(
+        onClick = onClick,
+        shape = CircleShape,
+        modifier = Modifier.size(100.dp),
+        contentPadding = PaddingValues(0.dp)
+    ) {
+        Text("HUSH")
     }
 }

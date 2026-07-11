@@ -1291,4 +1291,76 @@ class NoteViewModel(application: Application) : AndroidViewModel(application) {
         WorkManager.getInstance(getApplication())
             .enqueueUniqueWork("GistNotesSync", ExistingWorkPolicy.REPLACE, syncRequest)
     }
+
+    // ---- NotebookLM Features ----
+
+    private val aiProvider: com.l3ad3r1.octojotter.domain.JotterAiProvider? by lazy {
+        try {
+            dagger.hilt.android.EntryPointAccessors.fromApplication(
+                application,
+                com.l3ad3r1.octojotter.domain.JotterAiProviderEntryPoint::class.java
+            ).jotterAiProvider()
+        } catch (e: Exception) {
+            null
+        }
+    }
+
+    private val _isGeneratingAi = MutableStateFlow(false)
+    val isGeneratingAi: StateFlow<Boolean> = _isGeneratingAi.asStateFlow()
+
+    private val _aiResult = MutableStateFlow<String?>(null)
+    val aiResult: StateFlow<String?> = _aiResult.asStateFlow()
+
+    fun clearAiResult() {
+        _aiResult.value = null
+    }
+
+    fun generateSummary(content: String) {
+        val provider = aiProvider ?: return
+        viewModelScope.launch {
+            _isGeneratingAi.value = true
+            _aiResult.value = ""
+            provider.generateSummary(content).collect { chunk ->
+                _aiResult.value = (_aiResult.value ?: "") + chunk
+            }
+            _isGeneratingAi.value = false
+        }
+    }
+
+    fun generateFlashcards(content: String) {
+        val provider = aiProvider ?: return
+        viewModelScope.launch {
+            _isGeneratingAi.value = true
+            _aiResult.value = ""
+            provider.generateFlashcards(content).collect { chunk ->
+                _aiResult.value = (_aiResult.value ?: "") + chunk
+            }
+            _isGeneratingAi.value = false
+        }
+    }
+
+    fun generateAudioOverview(content: String) {
+        val provider = aiProvider ?: return
+        viewModelScope.launch {
+            _isGeneratingAi.value = true
+            _aiResult.value = ""
+            provider.generateAudioOverview(content).collect { chunk ->
+                _aiResult.value = chunk // this emits status strings, not stream chunks
+            }
+            _isGeneratingAi.value = false
+        }
+    }
+
+    fun chatWithNote(content: String, userMessage: String) {
+        val provider = aiProvider ?: return
+        viewModelScope.launch {
+            _isGeneratingAi.value = true
+            // if you want to keep previous chat history you'd append, but for simplicity here we just show the latest reply
+            _aiResult.value = ""
+            provider.chatWithNote(content, userMessage).collect { chunk ->
+                _aiResult.value = (_aiResult.value ?: "") + chunk
+            }
+            _isGeneratingAi.value = false
+        }
+    }
 }

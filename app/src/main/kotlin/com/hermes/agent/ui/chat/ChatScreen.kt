@@ -88,7 +88,6 @@ fun ChatScreen(
     val listState = rememberLazyListState()
     val snackbarHostState = remember { SnackbarHostState() }
     var planDrawerOpen by remember { mutableStateOf(false) }
-    var chatTab by remember { mutableStateOf(0) } // 0=Tools, 1=Terminal, 2=Subagents
 
     // Auto-scroll only when the user is already near the bottom of the list.
     // This prevents pulling users away from earlier content they're reading.
@@ -188,34 +187,28 @@ fun ChatScreen(
                     .fillMaxSize()
                     .padding(innerPadding),
             ) {
-                ChatModeTabs(selected = chatTab, onSelect = { chatTab = it })
-                if (chatTab == 0 && uiState.todos.isNotEmpty()) {
+                if (uiState.todos.isNotEmpty()) {
                     TodoPanel(todos = uiState.todos)
                 }
                 Box(modifier = Modifier.weight(1f).fillMaxSize()) {
-                    when (chatTab) {
-                        1 -> TerminalPanel()
-                        else -> {
-                            if (uiState.messages.isEmpty() && uiState.streamingText == null) {
-                                EmptyChatState(modifier = Modifier.fillMaxSize())
-                            } else {
-                                LazyColumn(
-                                    state = listState,
-                                    modifier = Modifier.fillMaxSize(),
-                                    verticalArrangement = Arrangement.spacedBy(4.dp),
-                                    contentPadding = androidx.compose.foundation.layout.PaddingValues(
-                                        vertical = 12.dp,
-                                    ),
-                                ) {
-                                    items(uiState.visibleItems) { item ->
-                                        when (item) {
-                                            is ChatListItem.MessageItem -> MessageBubble(message = item.message)
-                                            is ChatListItem.StreamingItem -> StreamingBubble(item = item)
-                                        }
-                                    }
-                                    item { Spacer(modifier = Modifier.height(8.dp)) }
+                    if (uiState.messages.isEmpty() && uiState.streamingText == null) {
+                        EmptyChatState(modifier = Modifier.fillMaxSize())
+                    } else {
+                        LazyColumn(
+                            state = listState,
+                            modifier = Modifier.fillMaxSize(),
+                            verticalArrangement = Arrangement.spacedBy(4.dp),
+                            contentPadding = androidx.compose.foundation.layout.PaddingValues(
+                                vertical = 12.dp,
+                            ),
+                        ) {
+                            items(uiState.visibleItems) { item ->
+                                when (item) {
+                                    is ChatListItem.MessageItem -> MessageBubble(message = item.message)
+                                    is ChatListItem.StreamingItem -> StreamingBubble(item = item)
                                 }
                             }
+                            item { Spacer(modifier = Modifier.height(8.dp)) }
                         }
                     }
                 }

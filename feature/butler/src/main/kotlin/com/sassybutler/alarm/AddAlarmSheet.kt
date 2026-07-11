@@ -1,74 +1,54 @@
 package com.sassybutler.alarm
 
-import android.os.Bundle
-import android.view.LayoutInflater
-import android.view.View
-import android.view.ViewGroup
+import android.content.Context
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.platform.ComposeView
-import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
-import com.google.android.material.bottomsheet.BottomSheetDialogFragment
-import com.google.android.material.timepicker.MaterialTimePicker
-import com.google.android.material.timepicker.TimeFormat
-import com.sassybutler.alarm.ui.ButlerTheme
 import java.util.Calendar
 
-class AddAlarmSheet(
-    private val existing: Alarm? = null,
-    private val onSaved: () -> Unit,
-) : BottomSheetDialogFragment() {
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun AddAlarmSheet(
+    existing: Alarm? = null,
+    onSaved: () -> Unit,
+    onDismiss: () -> Unit
+) {
+    var label by remember { mutableStateOf(existing?.label ?: "") }
+    var selectedDays by remember { mutableStateOf((existing?.days ?: Alarm.WEEKDAYS).toSet()) }
 
-    private var hour24 = existing?.hour ?: Calendar.getInstance().get(Calendar.HOUR_OF_DAY)
-    private var minute = existing?.minute ?: Calendar.getInstance().get(Calendar.MINUTE)
-    
-    // We update this state to trigger recomposition when the picker returns
-    private val timeState = mutableStateOf(Pair(hour24, minute))
+    var hour24 by remember { mutableStateOf(existing?.hour ?: Calendar.getInstance().get(Calendar.HOUR_OF_DAY)) }
+    var minute by remember { mutableStateOf(existing?.minute ?: Calendar.getInstance().get(Calendar.MINUTE)) }
 
-    override fun onCreateView(
-        inflater: LayoutInflater, container: ViewGroup?,
-        savedInstanceState: Bundle?
-    ): View {
-        return ComposeView(requireContext()).apply {
-            setContent {
-                ButlerTheme {
-                    Surface(
-                        modifier = Modifier.fillMaxWidth(),
-                        color = MaterialTheme.colorScheme.surface
-                    ) {
-                        AddAlarmContent()
-                    }
-                }
-            }
-        }
-    }
+    var showTimePicker by remember { mutableStateOf(false) }
 
-    @OptIn(ExperimentalMaterial3Api::class)
-    @Composable
-    private fun AddAlarmContent() {
-        var label by remember { mutableStateOf(existing?.label ?: "") }
-        var selectedDays by remember { mutableStateOf((existing?.days ?: Alarm.WEEKDAYS).toSet()) }
-        val (h, m) = timeState.value
+    val context = LocalContext.current
 
+    ModalBottomSheet(
+        onDismissRequest = onDismiss,
+        modifier = Modifier.fillMaxWidth()
+    ) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
+                .verticalScroll(rememberScrollState())
                 .padding(24.dp)
         ) {
             Text(
-                text = if (existing != null) "Amend the Appointment" else "A New Appointment",
+                text = if (existing != null) "Amend Appointment" else "A New Appointment",
                 style = MaterialTheme.typography.titleLarge
             )
             Text(
-                text = if (existing != null) "I shall adjust the ledger accordingly." else "When shall I disturb you?",
+                text = if (existing != null) "Adjust your alarm details below." else "When shall Jeeves wake you?",
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.padding(bottom = 24.dp)
@@ -83,12 +63,12 @@ class AddAlarmSheet(
             )
 
             val h12 = when {
-                h == 0 -> 12
-                h > 12 -> h - 12
-                else -> h
+                hour24 == 0 -> 12
+                hour24 > 12 -> hour24 - 12
+                else -> hour24
             }
-            val period = if (h < 12) "AM" else "PM"
-            val timeText = "%d:%02d %s".format(h12, m, period)
+            val period = if (hour24 < 12) "AM" else "PM"
+            val timeText = "%d:%02d %s".format(h12, minute, period)
 
             Row(
                 modifier = Modifier.fillMaxWidth().padding(bottom = 24.dp),
@@ -97,7 +77,7 @@ class AddAlarmSheet(
             ) {
                 Text(text = "Time", style = MaterialTheme.typography.titleMedium)
                 Card(
-                    onClick = { showTimePicker() },
+                    onClick = { showTimePicker = true },
                     colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
                 ) {
                     Text(
@@ -117,10 +97,10 @@ class AddAlarmSheet(
                     val isSelected = day in selectedDays
                     Box(
                         modifier = Modifier
-                            .size(40.dp)
+                            .size(48.dp)
                             .clip(CircleShape)
                             .background(
-                                if (isSelected) MaterialTheme.colorScheme.primary 
+                                if (isSelected) MaterialTheme.colorScheme.primary
                                 else MaterialTheme.colorScheme.surfaceVariant
                             )
                             .clickable {
@@ -130,8 +110,8 @@ class AddAlarmSheet(
                     ) {
                         Text(
                             text = Alarm.DAY_NAMES[day]!!.first().toString(),
-                            color = if (isSelected) MaterialTheme.colorScheme.onPrimary 
-                                    else MaterialTheme.colorScheme.onSurfaceVariant,
+                            color = if (isSelected) MaterialTheme.colorScheme.onPrimary
+                            else MaterialTheme.colorScheme.onSurfaceVariant,
                             style = MaterialTheme.typography.labelLarge
                         )
                     }
@@ -139,66 +119,93 @@ class AddAlarmSheet(
             }
 
             Button(
-                onClick = { save(label, selectedDays, h, m) },
+                onClick = { 
+                    save(context, existing, label, selectedDays, hour24, minute, onSaved, onDismiss) 
+                },
                 modifier = Modifier.fillMaxWidth()
             ) {
-                Text(if (existing != null) "Update the Alarm, Butler" else "Make it so, Butler")
+                Text(if (existing != null) "Update Alarm" else "Set Alarm")
             }
 
             if (existing != null) {
                 TextButton(
-                    onClick = { delete() },
+                    onClick = { 
+                        delete(context, existing, onSaved, onDismiss) 
+                    },
                     modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
                     colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error)
                 ) {
-                    Text("Remove from Ledger")
+                    Text("Delete Alarm")
                 }
             }
         }
     }
 
-    private fun showTimePicker() {
-        val picker = MaterialTimePicker.Builder()
-            .setTimeFormat(TimeFormat.CLOCK_12H)
-            .setHour(hour24)
-            .setMinute(minute)
-            .setTitleText("Select time")
-            .build()
-        picker.addOnPositiveButtonClickListener {
-            hour24 = picker.hour
-            minute = picker.minute
-            timeState.value = Pair(hour24, minute)
-        }
-        picker.show(parentFragmentManager, "time_picker")
-    }
-
-    private fun save(label: String, days: Set<Int>, h: Int, m: Int) {
-        val ctx = requireContext()
-        val alarm = Alarm(
-            id = existing?.id ?: AlarmStore.nextId(ctx),
-            hour = h,
-            minute = m,
-            label = label.ifBlank { "Unnamed Appointment" },
-            enabled = existing?.enabled ?: true,
-            days = days,
+    if (showTimePicker) {
+        val timePickerState = rememberTimePickerState(
+            initialHour = hour24,
+            initialMinute = minute,
+            is24Hour = false
         )
-
-        existing?.let { AlarmScheduler(ctx).cancel(it.id, it.hour, it.minute) }
-
-        AlarmStore.upsert(ctx, alarm)
-        if (alarm.enabled) AlarmScheduler(ctx).schedule(alarm)
-
-        onSaved()
-        dismiss()
+        AlertDialog(
+            onDismissRequest = { showTimePicker = false },
+            confirmButton = {
+                TextButton(onClick = {
+                    hour24 = timePickerState.hour
+                    minute = timePickerState.minute
+                    showTimePicker = false
+                }) {
+                    Text("OK")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showTimePicker = false }) {
+                    Text("Cancel")
+                }
+            },
+            text = {
+                TimePicker(state = timePickerState)
+            }
+        )
     }
+}
 
-    private fun delete() {
-        val ctx = requireContext()
-        existing?.let {
-            AlarmScheduler(ctx).cancel(it.id, it.hour, it.minute)
-            AlarmStore.delete(ctx, it.id)
-        }
-        onSaved()
-        dismiss()
-    }
+private fun save(
+    context: Context, 
+    existing: Alarm?, 
+    label: String, 
+    days: Set<Int>, 
+    h: Int, 
+    m: Int, 
+    onSaved: () -> Unit,
+    onDismiss: () -> Unit
+) {
+    val alarm = Alarm(
+        id = existing?.id ?: AlarmStore.nextId(context),
+        hour = h,
+        minute = m,
+        label = label.ifBlank { "Unnamed Appointment" },
+        enabled = existing?.enabled ?: true,
+        days = days,
+    )
+
+    existing?.let { AlarmScheduler(context).cancel(it.id, it.hour, it.minute) }
+
+    AlarmStore.upsert(context, alarm)
+    if (alarm.enabled) AlarmScheduler(context).schedule(alarm)
+
+    onSaved()
+    onDismiss()
+}
+
+private fun delete(
+    context: Context, 
+    existing: Alarm, 
+    onSaved: () -> Unit,
+    onDismiss: () -> Unit
+) {
+    AlarmScheduler(context).cancel(existing.id, existing.hour, existing.minute)
+    AlarmStore.delete(context, existing.id)
+    onSaved()
+    onDismiss()
 }

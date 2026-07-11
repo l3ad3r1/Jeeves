@@ -17,9 +17,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.contentDescription
-import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import com.hermes.agent.domain.model.Message
@@ -106,7 +104,6 @@ fun StreamingBubble(
             .fillMaxWidth()
             .padding(horizontal = 12.dp, vertical = 4.dp)
             .semantics(mergeDescendants = true) {
-                liveRegion = LiveRegionMode.Polite
                 contentDescription = if (item.text.isBlank()) "Assistant is typing" else "Assistant is responding: ${item.text}"
             },
         horizontalAlignment = Alignment.Start,
