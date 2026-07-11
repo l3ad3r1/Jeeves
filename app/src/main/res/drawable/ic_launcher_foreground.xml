@@ -1,10 +1,12 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!-- Jeeves launcher mark: bow tie + tuxedo lapels + three buttons.
-     Each lapel has a straight inner edge converging to a shared point at the
-     bottom (the shirt's V-neck) and a round convex outer bulge - not a
-     teardrop pinched at the top, which an earlier pass got wrong.
-     Geometry is kept inside the ~72dp adaptive-icon safe zone (18dp margin
-     on a 108dp canvas) so it survives circle/squircle launcher masks. -->
+     Construction: a circle (the jacket) with a white V-neck removed. Each
+     lapel = one circle-arc outer edge + one straight inner edge, the two
+     inner edges converging to a single point at the bottom (the shirt's
+     V-neck). The bow tie sits on the neck above the collar line.
+     Everything is kept within ~radius 33 of centre (54,54) so it survives
+     the circular/squircle adaptive-icon mask. Cream mark on the navy
+     ic_launcher_background; the V-neck and gaps show the navy through. -->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
     android:width="108dp"
     android:height="108dp"
@@ -14,19 +16,13 @@
         android:fillColor="#F5F0E6"
         android:fillType="nonZero"
         android:pathData="
-            M 25.2,20.8 L 54,29.4 L 82.8,20.8 L 82.8,33.7 L 54,29.4 L 25.2,33.7 Z
-            M 48.2,38.2
-              C 28.8,41.0 20.9,54.0 23.8,64.1
-              C 26.6,74.2 38.2,81.4 54,84.2
-              L 48.2,38.2
-              Z
-            M 59.8,38.2
-              C 79.2,41.0 87.1,54.0 84.2,64.1
-              C 81.4,74.2 69.8,81.4 54,84.2
-              L 59.8,38.2
-              Z
-            M 56.2,46 A 2.2,2.2 0 1,1 51.8,46 A 2.2,2.2 0 1,1 56.2,46 Z
-            M 56.2,54 A 2.2,2.2 0 1,1 51.8,54 A 2.2,2.2 0 1,1 56.2,54 Z
-            M 56.2,62 A 2.2,2.2 0 1,1 51.8,62 A 2.2,2.2 0 1,1 56.2,62 Z
+            M 44,22 L 53,27 L 44,32 Z
+            M 64,22 L 55,27 L 64,32 Z
+            M 51.5,24.5 L 56.5,24.5 L 56.5,29.5 L 51.5,29.5 Z
+            M 48,34 L 40,34 A 28,28 0 0 0 54,84 Z
+            M 60,34 L 68,34 A 28,28 0 0 1 54,84 Z
+            M 51.8,46 A 2.2,2.2 0 1 1 56.2,46 A 2.2,2.2 0 1 1 51.8,46 Z
+            M 51.8,55 A 2.2,2.2 0 1 1 56.2,55 A 2.2,2.2 0 1 1 51.8,55 Z
+            M 51.8,64 A 2.2,2.2 0 1 1 56.2,64 A 2.2,2.2 0 1 1 51.8,64 Z
         " />
 </vector>
