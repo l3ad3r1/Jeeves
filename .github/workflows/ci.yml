@@ -24,7 +24,7 @@ jobs:
       - name: Apply local submodule patches
         run: |
           cd app/src/main/cpp/llama.cpp
-          git apply ../../../../llama_vulkan.patch
+          git apply ../../../../../llama_vulkan.patch
       # AGP 9 / Kotlin 2.2 toolchain runs on JDK 21 (repo builds with JBR 21).
       - uses: actions/setup-java@v4
         with:
