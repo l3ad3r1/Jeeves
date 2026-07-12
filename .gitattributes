@@ -2,3 +2,7 @@
 *.sh text eol=lf
 install-hermes-termux.sh text eol=lf
 gradlew text eol=lf
+
+# Patch files must stay byte-exact LF: git apply rejects CRLF hunks against
+# the LF files inside the llama.cpp submodule (L-020).
+*.patch -text

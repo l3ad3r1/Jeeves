@@ -16,15 +16,21 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 45
     steps:
-      - name: Run actions/checkout@v4
-        uses: actions/checkout@v4
+      # llama.cpp is a real submodule (L-020): without `submodules`, the
+      # native build sees an empty directory and CMake fails at
+      # add_subdirectory. Kotlin-only runs used to pass anyway — green CI
+      # did NOT validate the native build until assembleDebug was added.
+      - uses: actions/checkout@v4
         with:
           submodules: recursive
 
-      - name: Apply local submodule patches
-        run: |
-          cd app/src/main/cpp/llama.cpp
-          git apply ../../../../../llama_vulkan.patch
+      # Jeeves-local llama.cpp patches (tools/patches/) applied on top of
+      # the pinned submodule commit. The script fails loudly if the pin and
+      # the patches drift apart — never replace it with sed, which no-ops
+      # silently when upstream changes the matched line (L-020).
+      - name: Apply llama.cpp patches
+        run: bash tools/apply-llama-patches.sh
+
       # AGP 9 / Kotlin 2.2 toolchain runs on JDK 21 (repo builds with JBR 21).
       - uses: actions/setup-java@v4
         with:
@@ -33,6 +39,8 @@ jobs:
 
       - uses: gradle/actions/setup-gradle@v4
 
+      # GGML_VULKAN=ON needs host glslc to compile shaders at build time;
+      # build.gradle.kts forwards $VULKAN_SDK/bin/glslc to CMake.
       - name: Install Vulkan SDK
         uses: jakoch/install-vulkan-sdk-action@v1
         with:
@@ -43,36 +51,13 @@ jobs:
       # gitignored (required only for packaging a runnable APK). Compilation
       # and the Robolectric suite do not read them, so CI works from a bare
       # checkout.
-      - name: Configure CMake
-        run: |
-          ./gradlew --no-daemon :app:generateJsonModelDebug --info || (
-            echo "Gradle configure failed, running cmake manually to see error:"
-            mkdir -p app/.cxx/manual
-            cmake \
-              -H./app/src/main/cpp \
-              -B./app/.cxx/manual \
-              -DCMAKE_SYSTEM_NAME=Android \
-              -DCMAKE_SYSTEM_VERSION=29 \
-              -DANDROID_PLATFORM=android-29 \
-              -DANDROID_ABI=arm64-v8a \
-              -DANDROID_NDK=$ANDROID_NDK_HOME \
-              -DCMAKE_TOOLCHAIN_FILE=$ANDROID_NDK_HOME/build/cmake/android.toolchain.cmake \
-              -GNinja \
-              -DGGML_VULKAN=ON \
-              -DVulkan_GLSLC_EXECUTABLE=$VULKAN_SDK/bin/glslc \
-              -DHOST_C_COMPILER=/usr/bin/gcc \
-              -DHOST_CXX_COMPILER=/usr/bin/g++
-            exit 1
-          )
-
       - name: Compile all modules and build APK
         run: >
-          ./gradlew --no-daemon --info
+          ./gradlew --no-daemon
           :app:compileDebugKotlin
           :feature:jotter:compileDebugKotlin
           :feature:butler:compileDebugKotlin
           :app:assembleDebug
-
 
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4

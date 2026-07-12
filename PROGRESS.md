@@ -18,6 +18,45 @@ repo. All three apps are merged and shipping (`:app` + `:feature:jotter` + `:fea
 
 ## Status log (newest first)
 
+### CI unbroken: llama.cpp made a real submodule + patches made reproducible — 2026-07-12
+**Note to Antigravity (and every future agent) — why this was fixed and how it works now.**
+- [x] **What was broken:** the llama.cpp migration (`1ebf409`) committed a nested git
+      clone as a bare gitlink with no `.gitmodules`, so every fresh checkout — CI
+      included — got an **empty** `app/src/main/cpp/llama.cpp/`. The native build only
+      worked on this one Windows machine. CI stayed green because it never ran CMake;
+      the moment `acec411` added `assembleDebug`, master went red
+      (`CMake Error at CMakeLists.txt:34 (add_subdirectory)`), and 11 rapid-fire fix
+      commits (UTF-16 patch file from PowerShell, wrong patch path, inline `sed`)
+      stayed red. Root cause + generalized rule now in `docs/agents/LESSONS.md` **L-020**.
+- [x] **The fix:** `.gitmodules` maps the existing gitlink to
+      `https://github.com/ggml-org/llama.cpp.git` (pinned at `e3546c7`, unchanged).
+      The two hand-edits llama.cpp needs for the AGP cross-build (SPIRV-Headers made
+      optional; `CMAKE_MAKE_PROGRAM` forwarded to the vulkan-shaders-gen sub-build)
+      are now **committed** at `tools/patches/llama.cpp-vulkan-cmake.patch` and applied
+      by `tools/apply-llama-patches.sh` — idempotent, and it fails loudly if the pin
+      and the patch ever drift (unlike `sed`, which no-ops silently). CI checkout uses
+      `submodules: recursive` and runs the script before Gradle. The unused local edit
+      to llama.cpp's `examples/llama.android/.../ai_chat.cpp` was reverted — the app
+      builds its own `app/src/main/cpp/ai_chat.cpp`, which already carries the
+      `n_gpu_layers`/`use_mmap` change.
+- [x] **Kept from the red-run iterations (they were directionally right):** Vulkan SDK
+      install step in CI (host `glslc` for shader compilation) and the
+      `build.gradle.kts` hints (`Vulkan_GLSLC_EXECUTABLE` from `$VULKAN_SDK`,
+      `HOST_C_COMPILER`/`HOST_CXX_COMPILER` on non-Windows — verified real cache
+      variables consumed by `ggml-vulkan/CMakeLists.txt:23-27`). Debug-only steps
+      (manual cmake fallback dump, `--info`, log-cat steps) removed; `ci_log*.txt`
+      debris deleted.
+- [x] **Local flow verified:** submodule file restored to pristine then
+      `apply-llama-patches.sh` re-applied the patch cleanly (the exact CI sequence);
+      the patch also reverse-applies, proving it matches the working tree that built
+      the v0.9.9 APK.
+- [x] VERIFIED: preflight (ledger greps + compile of 3 modules + 252-test suite) exit 0
+      locally before commit.
+- [ ] CI on this commit watched to green per AGENTS.md step 4 (the native
+      Vulkan/arm64 build has never yet succeeded on a runner — expect iteration; each
+      red run gets fixed and re-watched, and this box gets ticked only by the commit
+      that actually goes green).
+
 ### Phase 2 — In-App Native LLM & Model Downloading — 2026-07-12
 - [x] **Native Engine Integration:** Completely removed MediaPipe (`LlmInference`) in favor of `llama.cpp` using the JNI wrapper (`com.arm.aichat`). Updated `app/build.gradle.kts` to wire CMake for native ARM CPU/GPU compilation, targeting `arm64-v8a` only.
 - [x] **Adreno GPU Offloading:** Forced `use_mmap = true` and `n_gpu_layers = 99` natively inside `ai_chat.cpp` to harness Adreno GPUs on Snapdragon devices, bypassing the closed-source Google ML Kit limits.

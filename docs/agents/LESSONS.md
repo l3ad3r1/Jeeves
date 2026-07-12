@@ -172,3 +172,32 @@ GitHub releases; a release happens only after a human-directed review pass.
 **Defect:** App stalled at 99% download progress because the main thread was blocked copying a massive file.
 **Rule:** Do not perform blocking I/O (like file copying or network requests) directly in `BroadcastReceiver.onReceive`. Offload to a coroutine on `Dispatchers.IO` or use `WorkManager`.
 **Check:** `grep -A 5 "override fun onReceive"` and ensure no blocking I/O happens inside its body.
+
+## L-020 — A nested git clone is invisible to every other checkout
+**Origin:** Phase 2 (llama.cpp migration, `1ebf409`) — llama.cpp was cloned inside
+`app/src/main/cpp/` and committed. Git stored it as a bare gitlink (mode 160000) with
+no `.gitmodules` mapping, so every fresh clone — including CI — got an EMPTY directory.
+Worse, the two local edits needed to build it (the Vulkan CMake fixes) existed only in
+one machine's working tree, recorded nowhere. CI stayed green for days because it never
+ran the native build; the first `assembleDebug` run failed instantly, and the fix
+attempts that followed (a patch file written via PowerShell redirection → UTF-16,
+unreadable by `git apply`; a wrong relative path; then inline `sed`) burned 11 red
+commits in 40 minutes.
+**Defect:** The repo could not produce its own APK anywhere except one Windows machine,
+and nobody knew, because the gate never exercised the path that depended on the missing
+files.
+**Rule:** Third-party source trees are either (a) real submodules — `.gitmodules` entry,
+pinned commit, `submodules: recursive` in the CI checkout — or (b) fully vendored
+(delete the inner `.git` and commit the tree). Local modifications to a pinned tree live
+IN THIS REPO as `tools/patches/*.patch`, applied by `tools/apply-llama-patches.sh`,
+which fails loudly when the pin and the patches drift apart. Never patch via `sed` in
+CI — sed no-ops silently when upstream moves the matched line, the same silent-failure
+mode as L-007. Generate patch files with `git diff >` from bash, never from PowerShell
+redirection (UTF-16 + CRLF make them invalid to `git apply`).
+**Check:** `git ls-files -s | grep ^160000` — every hit must have a matching
+`.gitmodules` entry AND CI must fetch it. After `apply-llama-patches.sh` runs,
+`git -C app/src/main/cpp/llama.cpp status --short` must show ONLY the patched files;
+any other dirt is an unrecorded local dependency. And remember: a green CI vouches only
+for the tasks it actually ran — before trusting it, confirm the workflow builds what
+your change depends on (here CI was "green" while the native build was unbuildable,
+because `assembleDebug` was not in the workflow yet).

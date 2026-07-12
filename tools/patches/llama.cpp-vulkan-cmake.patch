@@ -1,0 +1,22 @@
+diff --git a/ggml/src/ggml-vulkan/CMakeLists.txt b/ggml/src/ggml-vulkan/CMakeLists.txt
+index 5aeb6e9..76a3107 100644
+--- a/ggml/src/ggml-vulkan/CMakeLists.txt
++++ b/ggml/src/ggml-vulkan/CMakeLists.txt
+@@ -11,7 +11,7 @@ find_package(Vulkan COMPONENTS glslc REQUIRED)
+ if (DEFINED ENV{VULKAN_SDK})
+     list(APPEND CMAKE_PREFIX_PATH "$ENV{VULKAN_SDK}")
+ endif()
+-find_package(SPIRV-Headers CONFIG REQUIRED)
++find_package(SPIRV-Headers CONFIG)
+ 
+ if (CMAKE_CXX_COMPILER_ID STREQUAL "MSVC")
+     # Parallel build object files
+@@ -64,7 +64,7 @@ if (Vulkan_FOUND)
+                              ../../include/ggml-vulkan.h
+                             )
+ 
+-    set(VULKAN_SHADER_GEN_CMAKE_ARGS "")
++    set(VULKAN_SHADER_GEN_CMAKE_ARGS "-DCMAKE_MAKE_PROGRAM=${CMAKE_MAKE_PROGRAM}")
+ 
+     # Test all shader extensions
+     test_shader_extension_support(
