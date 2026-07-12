@@ -1,0 +1,86 @@
+name: Release
+
+# Builds and signs the release APK, verifies the signer, and attaches it to
+# the GitHub Release for the pushed tag. Triggered ONLY by a tag push
+# (v*) - per AGENTS.md L-017, agents never create that tag or the release
+# itself; a human pushes the tag, this workflow does the mechanical build.
+#
+# Required repo secrets (set these yourself in GitHub Settings -> Secrets
+# and variables -> Actions; nothing here or in any agent session ever sees
+# the actual values):
+#   RELEASE_KEYSTORE_BASE64   base64 of hermes-release.jks (`base64 -w0 hermes-release.jks`)
+#   RELEASE_KEYSTORE_PASSWORD
+#   RELEASE_KEY_ALIAS
+#   RELEASE_KEY_PASSWORD
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write   # needed to create the release / upload the asset
+
+jobs:
+  build-sign-release:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Apply llama.cpp patches
+        run: bash tools/apply-llama-patches.sh
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - uses: gradle/actions/setup-gradle@v4
+
+      - name: Install Vulkan SDK
+        uses: jakoch/install-vulkan-sdk-action@v1
+        with:
+          vulkan_version: latest
+          install_runtime: true
+
+      - name: Write signing config (from secrets, runner-local only)
+        run: |
+          echo "${{ secrets.RELEASE_KEYSTORE_BASE64 }}" | base64 -d > "$RUNNER_TEMP/release.jks"
+          cat > hermes.local.properties <<EOF
+          hermes.signing.storeFile=$RUNNER_TEMP/release.jks
+          hermes.signing.storePassword=${{ secrets.RELEASE_KEYSTORE_PASSWORD }}
+          hermes.signing.keyAlias=${{ secrets.RELEASE_KEY_ALIAS }}
+          hermes.signing.keyPassword=${{ secrets.RELEASE_KEY_PASSWORD }}
+          EOF
+
+      - name: Build signed release APK
+        run: ./gradlew --no-daemon :app:assembleRelease
+
+      # L-012: verify the signer before anything ships. Hard-fails the job
+      # rather than publishing an APK signed with the wrong (or no) key.
+      - name: Verify signer
+        run: |
+          APK=$(find app/build/outputs/apk/release -name '*.apk' | head -1)
+          echo "Checking: $APK"
+          FINGERPRINT=$("$ANDROID_HOME/build-tools"/*/apksigner verify --print-certs "$APK" \
+            | grep 'signer #1 certificate SHA-256' | awk '{print $NF}')
+          echo "Signer SHA-256: $FINGERPRINT"
+          if [ "$FINGERPRINT" != "99255c31ffba1932e4ab2abc12d99b82bf780874b8c686076497157996cf6d6f" ]; then
+            echo "::error::Signer mismatch - expected 99255c31..., got $FINGERPRINT"
+            exit 1
+          fi
+          echo "APK_PATH=$APK" >> "$GITHUB_ENV"
+
+      - name: Attach APK to the GitHub Release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          TAG="${{ github.ref_name }}"
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            gh release upload "$TAG" "$APK_PATH" --clobber
+          else
+            gh release create "$TAG" "$APK_PATH" --title "Jeeves $TAG" --generate-notes
+          fi
