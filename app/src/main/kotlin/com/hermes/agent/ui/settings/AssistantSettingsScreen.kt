@@ -64,6 +64,48 @@ fun AssistantSettingsScreen(
             SectionHeader(text = stringResource(R.string.settings_section_cloud))
             CloudSection(settings = settings, viewModel = viewModel)
 
+            val isDownloaded by viewModel.isModelDownloaded.collectAsStateWithLifecycle()
+            val isDownloading by viewModel.isModelDownloading.collectAsStateWithLifecycle()
+            val downloadProgress by viewModel.modelDownloadProgress.collectAsStateWithLifecycle()
+
+            SectionHeader(text = "On-Device AI (Experimental)")
+            Card(modifier = Modifier.fillMaxWidth()) {
+                Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
+                    Text(
+                        text = "Download the on-device Llama 3.2 (1B) model to run entirely offline without cloud dependencies. The model is roughly 800MB.",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    
+                    if (isDownloaded) {
+                        Text(
+                            text = "Model downloaded and ready.",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.primary
+                        )
+                    } else if (isDownloading) {
+                        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                            Text(
+                                text = "Downloading model... (${(downloadProgress * 100).toInt()}%)",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.primary
+                            )
+                            androidx.compose.material3.LinearProgressIndicator(
+                                progress = { downloadProgress },
+                                modifier = Modifier.fillMaxWidth()
+                            )
+                        }
+                    } else {
+                        androidx.compose.material3.Button(
+                            onClick = { viewModel.downloadLocalModel() },
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Text("Download Model (800MB)")
+                        }
+                    }
+                }
+            }
+
             SectionHeader(text = "Chat")
             Card(modifier = Modifier.fillMaxWidth()) {
                 Column(modifier = Modifier.padding(16.dp)) {

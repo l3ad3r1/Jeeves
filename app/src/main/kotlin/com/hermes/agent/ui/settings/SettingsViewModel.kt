@@ -88,6 +88,7 @@ class SettingsViewModel @Inject constructor(
     private val otaInstaller: OtaInstaller,
     private val githubBackupService: GithubBackupService,
     private val sessionExporter: SessionExporter,
+    private val localLlmManager: com.hermes.agent.data.llm.LocalLlmManager,
 ) : ViewModel() {
 
     // ─── Unified settings (shared with Jotter and Butler) ───────────────────
@@ -143,6 +144,24 @@ class SettingsViewModel @Inject constructor(
             started = SharingStarted.WhileSubscribed(5_000),
             initialValue = UserSettings(),
         )
+
+    val isModelDownloaded = MutableStateFlow(localLlmManager.isModelDownloaded())
+    val isModelDownloading: StateFlow<Boolean> = localLlmManager.isDownloading
+    val modelDownloadProgress: StateFlow<Float> = localLlmManager.downloadProgress
+
+    init {
+        viewModelScope.launch {
+            localLlmManager.isDownloading.collect { downloading ->
+                if (!downloading) {
+                    isModelDownloaded.value = localLlmManager.isModelDownloaded()
+                }
+            }
+        }
+    }
+
+    fun downloadLocalModel() {
+        localLlmManager.startDownload()
+    }
 
     private val _updateState = MutableStateFlow<UpdateUiState>(UpdateUiState.Idle)
     val updateState: StateFlow<UpdateUiState> = _updateState.asStateFlow()
@@ -372,5 +391,10 @@ class SettingsViewModel @Inject constructor(
 
     fun dismissExportState() {
         _exportState.value = ExportUiState.Idle
+    }
+
+    override fun onCleared() {
+        super.onCleared()
+        localLlmManager.close()
     }
 }

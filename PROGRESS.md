@@ -18,6 +18,14 @@ repo. All three apps are merged and shipping (`:app` + `:feature:jotter` + `:fea
 
 ## Status log (newest first)
 
+### Phase 2 — In-App Native LLM & Model Downloading — 2026-07-12
+- [x] **Native Engine Integration:** Completely removed MediaPipe (`LlmInference`) in favor of `llama.cpp` using the JNI wrapper (`com.arm.aichat`). Updated `app/build.gradle.kts` to wire CMake for native ARM CPU/GPU compilation, targeting `arm64-v8a` only.
+- [x] **Adreno GPU Offloading:** Forced `use_mmap = true` and `n_gpu_layers = 99` natively inside `ai_chat.cpp` to harness Adreno GPUs on Snapdragon devices, bypassing the closed-source Google ML Kit limits.
+- [x] **Prompt Logic & Llama 3 Format:** Created a specific `Llama3Strategy` formatting class to ensure accurate `<|begin_of_text|><|start_header_id|>` sequences injected down to the C++ bindings instead of passing raw string user prompts.
+- [x] **Memory & Lifecycle Safety:** Bound `engine.cleanUp()` directly inside `SettingsViewModel.onCleared()` to avoid unrecoverable native memory leaks and Android Low Memory Killer evictions when swapping views.
+- [x] **Background Downloader:** Replaced ADB side-loading instructions with an internal `DownloadManager` workflow in `LocalLlmManager.kt`. Model `Llama-3.2-1B-Instruct-Q4_K_M.gguf` downloads cleanly via a UI button on the settings page with live progress reporting, unpacking automatically to `context.filesDir`.
+- [x] VERIFIED: 252 tests ran successfully without failures natively in Windows PowerShell (`.\gradlew :app:testDebugUnitTest`). UNVERIFIED: Android runtime execution of `DownloadManager` and Adreno shader processing (blocked by Windows host lack of connected device / SPIRV-Headers issues during debug C++ build).
+
 ### CI gate + agent self-learning loop — 2026-07-11
 - [x] **CI (roadmap D11):** `.github/workflows/ci.yml` — compile of all 3 modules +
       the unit suite on every push/PR to master. TTS assets aren't needed (gitignored;

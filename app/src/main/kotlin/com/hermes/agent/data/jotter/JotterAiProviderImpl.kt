@@ -3,6 +3,7 @@ package com.hermes.agent.data.jotter
 import com.hermes.agent.data.llm.CloudLlmProvider
 import com.hermes.agent.data.llm.LlmMessage
 import com.hermes.agent.data.llm.LlmStreamChunk
+import com.hermes.agent.data.llm.LocalLlmManager
 import com.hermes.agent.data.voice.VoiceOutputManager
 import com.l3ad3r1.octojotter.domain.JotterAiProvider
 import kotlinx.coroutines.flow.Flow
@@ -14,20 +15,33 @@ import javax.inject.Singleton
 @Singleton
 class JotterAiProviderImpl @Inject constructor(
     private val cloudLlmProvider: CloudLlmProvider,
+    private val localLlmManager: LocalLlmManager,
     private val voiceOutputManager: VoiceOutputManager
 ) : JotterAiProvider {
 
+    private fun formatPrompt(system: String, user: String): String {
+        return com.hermes.agent.data.llm.formatters.Llama3Strategy().format(system, user)
+    }
+
     override fun generateSummary(noteContent: String): Flow<String> {
+        val system = "You are a highly analytical AI assistant. Create a comprehensive markdown summary of the following note. Include key takeaways and action items."
+        if (localLlmManager.isModelDownloaded()) {
+            return localLlmManager.generateResponse(formatPrompt(system, noteContent))
+        }
         val messages = listOf(
-            LlmMessage(role = "system", content = "You are a highly analytical AI assistant. Create a comprehensive markdown summary of the following note. Include key takeaways and action items."),
+            LlmMessage(role = "system", content = system),
             LlmMessage(role = "user", content = noteContent)
         )
         return cloudLlmProvider.stream(messages).mapNotNull { (it as? LlmStreamChunk.Delta)?.text }
     }
 
     override fun generateFlashcards(noteContent: String): Flow<String> {
+        val system = "You are a study guide generator. Create a series of Q&A flashcards based on the provided note. Format as Markdown lists."
+        if (localLlmManager.isModelDownloaded()) {
+            return localLlmManager.generateResponse(formatPrompt(system, noteContent))
+        }
         val messages = listOf(
-            LlmMessage(role = "system", content = "You are a study guide generator. Create a series of Q&A flashcards based on the provided note. Format as Markdown lists."),
+            LlmMessage(role = "system", content = system),
             LlmMessage(role = "user", content = noteContent)
         )
         return cloudLlmProvider.stream(messages).mapNotNull { (it as? LlmStreamChunk.Delta)?.text }
@@ -36,12 +50,24 @@ class JotterAiProviderImpl @Inject constructor(
     override fun generateAudioOverview(noteContent: String): Flow<String> {
         return flow {
             emit("Generating audio overview...")
-            val messages = listOf(
-                LlmMessage(role = "system", content = "Summarize this note into a highly conversational, engaging podcast script for a single host. Keep it under 100 words so it can be quickly read aloud."),
-                LlmMessage(role = "user", content = noteContent)
-            )
-            val response = cloudLlmProvider.complete(messages)
-            val script = response.content.ifBlank { "Unable to generate audio script." }
+            val system = "Summarize this note into a highly conversational, engaging podcast script for a single host. Keep it under 100 words so it can be quickly read aloud."
+            
+            var script = ""
+            if (localLlmManager.isModelDownloaded()) {
+                localLlmManager.generateResponse(formatPrompt(system, noteContent)).collect { chunk ->
+                    script += chunk
+                }
+            } else {
+                val messages = listOf(
+                    LlmMessage(role = "system", content = system),
+                    LlmMessage(role = "user", content = noteContent)
+                )
+                script = cloudLlmProvider.complete(messages).content
+            }
+            
+            if (script.isBlank()) {
+                script = "Unable to generate audio script."
+            }
             
             emit("Playing audio overview...")
             if (!voiceOutputManager.isAvailable()) {
@@ -57,8 +83,12 @@ class JotterAiProviderImpl @Inject constructor(
     }
 
     override fun chatWithNote(noteContent: String, userMessage: String): Flow<String> {
+        val system = "You are a helpful AI assistant answering questions STRICTLY based on the provided note context.\n\nContext:\n$noteContent"
+        if (localLlmManager.isModelDownloaded()) {
+            return localLlmManager.generateResponse(formatPrompt(system, userMessage))
+        }
         val messages = listOf(
-            LlmMessage(role = "system", content = "You are a helpful AI assistant answering questions STRICTLY based on the provided note context.\n\nContext:\n$noteContent"),
+            LlmMessage(role = "system", content = system),
             LlmMessage(role = "user", content = userMessage)
         )
         return cloudLlmProvider.stream(messages).mapNotNull { (it as? LlmStreamChunk.Delta)?.text }
