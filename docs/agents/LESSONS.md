@@ -166,3 +166,9 @@ GitHub releases; a release happens only after a human-directed review pass.
 **Defect:** App failed to build natively for devices running the declared minSdk.
 **Rule:** When adding C/C++ Android NDK code, ensure you use APIs compatible with the `minSdk` defined in `app/build.gradle.kts`. Do not rely on CI to catch NDK build errors unless CI explicitly runs `assembleDebug`.
 **Check:** Verify NDK APIs against NDK documentation for the target minSdk.
+
+## L-019 — File I/O inside BroadcastReceivers must be offloaded
+**Origin:** Phase 2 (Local LLM) — 800MB model file was copied via `File.copyTo` directly inside `BroadcastReceiver.onReceive` on the main thread, causing the UI to lock up or the process to die silently, leaving the progress bar stuck at 99%.
+**Defect:** App stalled at 99% download progress because the main thread was blocked copying a massive file.
+**Rule:** Do not perform blocking I/O (like file copying or network requests) directly in `BroadcastReceiver.onReceive`. Offload to a coroutine on `Dispatchers.IO` or use `WorkManager`.
+**Check:** `grep -A 5 "override fun onReceive"` and ensure no blocking I/O happens inside its body.
