@@ -155,7 +155,7 @@ class OrchestratorImpl @Inject constructor(
 
             val decision = llmRouter.route(llmMessages)
             val provider = when (decision) {
-                is RoutingDecision.Cloud -> decision.provider
+                is RoutingDecision.Ready -> decision.provider
                 is RoutingDecision.Unavailable -> {
                     emit(OrchestratorEvent.Failed(decision.reason))
                     return@flow

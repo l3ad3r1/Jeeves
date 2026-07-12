@@ -97,7 +97,7 @@ class ChatRepositoryImpl @Inject constructor(
         // 3. Route to a provider.
         val decision = router.route(llmMessages)
         val provider = when (decision) {
-            is RoutingDecision.Cloud -> decision.provider
+            is RoutingDecision.Ready -> decision.provider
             is RoutingDecision.Unavailable -> {
                 emit(ChatStreamEvent.Error(IllegalStateException(decision.reason)))
                 return@flow
@@ -266,7 +266,7 @@ class ChatRepositoryImpl @Inject constructor(
         )
 
         val decision = router.route(llmMessages)
-        if (decision is RoutingDecision.Cloud) {
+        if (decision is RoutingDecision.Ready) {
             val response = runCatching { decision.provider.complete(llmMessages) }.getOrNull()
             if (response != null && response.content.isNotBlank()) {
                 val summary = "Conversation Summary: ${response.content.trim()}"

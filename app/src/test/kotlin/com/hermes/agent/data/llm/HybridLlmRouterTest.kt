@@ -14,12 +14,14 @@ class HybridLlmRouterTest {
 
     private lateinit var cloud: CloudLlmProvider
     private lateinit var specialised: CloudLlmProvider
+    private lateinit var local: LocalLlmProvider
     private lateinit var settings: SettingsRepository
 
     @Before
     fun setUp() {
         cloud = mockk(relaxed = true)
         specialised = mockk(relaxed = true)
+        local = mockk(relaxed = true)
         settings = mockk(relaxed = true)
     }
 
@@ -31,10 +33,10 @@ class HybridLlmRouterTest {
         )
         coEvery { cloud.isAvailable() } returns true
 
-        val router = HybridLlmRouter(cloud, specialised, settings)
+        val router = HybridLlmRouter(cloud, specialised, local, settings)
         val decision = router.route(listOf(LlmMessage("user", "hello")))
 
-        assertTrue("expected Cloud decision", decision is RoutingDecision.Cloud)
+        assertTrue("expected Ready decision", decision is RoutingDecision.Ready)
     }
 
     @Test
@@ -46,11 +48,11 @@ class HybridLlmRouterTest {
         coEvery { cloud.isAvailable() } returns true
         coEvery { specialised.isAvailable() } returns true
 
-        val router = HybridLlmRouter(cloud, specialised, settings)
+        val router = HybridLlmRouter(cloud, specialised, local, settings)
         val decision = router.route(listOf(LlmMessage("user", "Please analyze and compare these options")))
 
-        assertTrue(decision is RoutingDecision.Cloud)
-        assertEquals(specialised, (decision as RoutingDecision.Cloud).provider)
+        assertTrue(decision is RoutingDecision.Ready)
+        assertEquals(specialised, (decision as RoutingDecision.Ready).provider)
     }
 
     @Test
@@ -62,11 +64,11 @@ class HybridLlmRouterTest {
         coEvery { cloud.isAvailable() } returns true
         coEvery { specialised.isAvailable() } returns true
 
-        val router = HybridLlmRouter(cloud, specialised, settings)
+        val router = HybridLlmRouter(cloud, specialised, local, settings)
         val decision = router.route(listOf(LlmMessage("user", "hi")))
 
-        assertTrue(decision is RoutingDecision.Cloud)
-        assertEquals(cloud, (decision as RoutingDecision.Cloud).provider)
+        assertTrue(decision is RoutingDecision.Ready)
+        assertEquals(cloud, (decision as RoutingDecision.Ready).provider)
     }
 
     @Test
@@ -78,36 +80,54 @@ class HybridLlmRouterTest {
         coEvery { cloud.isAvailable() } returns true
         coEvery { specialised.isAvailable() } returns false
 
-        val router = HybridLlmRouter(cloud, specialised, settings)
+        val router = HybridLlmRouter(cloud, specialised, local, settings)
         val decision = router.route(listOf(LlmMessage("user", "Please analyze and compare these options")))
 
-        assertTrue(decision is RoutingDecision.Cloud)
-        assertEquals(cloud, (decision as RoutingDecision.Cloud).provider)
+        assertTrue(decision is RoutingDecision.Ready)
+        assertEquals(cloud, (decision as RoutingDecision.Ready).provider)
     }
 
     @Test
-    fun `returns unavailable when cloud disabled`() = runTest {
+    fun `returns unavailable when cloud disabled and local unavailable`() = runTest {
         coEvery { settings.current() } returns UserSettings(
             cloudEnabled = false,
             cloudApiKey = "sk-test",
         )
         coEvery { cloud.isAvailable() } returns false
+        coEvery { local.isAvailable() } returns false
 
-        val router = HybridLlmRouter(cloud, specialised, settings)
+        val router = HybridLlmRouter(cloud, specialised, local, settings)
         val decision = router.route(listOf(LlmMessage("user", "hello")))
 
         assertTrue("expected Unavailable", decision is RoutingDecision.Unavailable)
     }
 
     @Test
-    fun `returns unavailable when cloud enabled but no API key`() = runTest {
+    fun `routes to local when cloud disabled but local available`() = runTest {
+        coEvery { settings.current() } returns UserSettings(
+            cloudEnabled = false,
+            cloudApiKey = "sk-test",
+        )
+        coEvery { cloud.isAvailable() } returns false
+        coEvery { local.isAvailable() } returns true
+
+        val router = HybridLlmRouter(cloud, specialised, local, settings)
+        val decision = router.route(listOf(LlmMessage("user", "hello")))
+
+        assertTrue(decision is RoutingDecision.Ready)
+        assertEquals(local, (decision as RoutingDecision.Ready).provider)
+    }
+
+    @Test
+    fun `returns unavailable when cloud enabled but no API key and local unavailable`() = runTest {
         coEvery { settings.current() } returns UserSettings(
             cloudEnabled = true,
             cloudApiKey = "",
         )
         coEvery { cloud.isAvailable() } returns false
+        coEvery { local.isAvailable() } returns false
 
-        val router = HybridLlmRouter(cloud, specialised, settings)
+        val router = HybridLlmRouter(cloud, specialised, local, settings)
         val decision = router.route(listOf(LlmMessage("user", "anything")))
 
         assertTrue(decision is RoutingDecision.Unavailable)
@@ -119,6 +139,22 @@ class HybridLlmRouterTest {
     }
 
     @Test
+    fun `routes to local when cloud enabled but no API key and local available`() = runTest {
+        coEvery { settings.current() } returns UserSettings(
+            cloudEnabled = true,
+            cloudApiKey = "",
+        )
+        coEvery { cloud.isAvailable() } returns false
+        coEvery { local.isAvailable() } returns true
+
+        val router = HybridLlmRouter(cloud, specialised, local, settings)
+        val decision = router.route(listOf(LlmMessage("user", "anything")))
+
+        assertTrue(decision is RoutingDecision.Ready)
+        assertEquals(local, (decision as RoutingDecision.Ready).provider)
+    }
+
+    @Test
     fun `returns deterministic decisions across calls`() = runTest {
         coEvery { settings.current() } returns UserSettings(
             cloudEnabled = true,
@@ -126,7 +162,7 @@ class HybridLlmRouterTest {
         )
         coEvery { cloud.isAvailable() } returns true
 
-        val router = HybridLlmRouter(cloud, specialised, settings)
+        val router = HybridLlmRouter(cloud, specialised, local, settings)
         val d1 = router.route(listOf(LlmMessage("user", "hi")))
         val d2 = router.route(listOf(LlmMessage("user", "hi")))
         assertEquals(d1::class, d2::class)

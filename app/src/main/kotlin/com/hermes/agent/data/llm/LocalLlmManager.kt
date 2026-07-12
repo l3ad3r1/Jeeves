@@ -62,32 +62,6 @@ class LocalLlmManager @Inject constructor(
         val manager = context.getSystemService(Context.DOWNLOAD_SERVICE) as DownloadManager
         val downloadId = manager.enqueue(request)
 
-        val receiver = object : BroadcastReceiver() {
-            override fun onReceive(c: Context, intent: Intent) {
-                val id = intent.getLongExtra(DownloadManager.EXTRA_DOWNLOAD_ID, -1)
-                if (id == downloadId) {
-                    try {
-                        val externalFile = File(context.getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS), modelFileName)
-                        val internalFile = File(context.filesDir, modelFileName)
-                        if (externalFile.exists()) {
-                            externalFile.copyTo(internalFile, overwrite = true)
-                            externalFile.delete()
-                        }
-                    } catch (e: Exception) {
-                        e.printStackTrace()
-                    }
-                    _isDownloading.value = false
-                    context.unregisterReceiver(this)
-                }
-            }
-        }
-        
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            context.registerReceiver(receiver, IntentFilter(DownloadManager.ACTION_DOWNLOAD_COMPLETE), Context.RECEIVER_NOT_EXPORTED)
-        } else {
-            context.registerReceiver(receiver, IntentFilter(DownloadManager.ACTION_DOWNLOAD_COMPLETE))
-        }
-
         CoroutineScope(Dispatchers.IO).launch {
             var downloading = true
             while (downloading && _isDownloading.value) {
@@ -102,9 +76,19 @@ class LocalLlmManager @Inject constructor(
                         val status = cursor.getInt(statusIndex)
                         if (status == DownloadManager.STATUS_SUCCESSFUL || status == DownloadManager.STATUS_FAILED) {
                             downloading = false
-                            if (status == DownloadManager.STATUS_FAILED) {
-                                _isDownloading.value = false
+                            if (status == DownloadManager.STATUS_SUCCESSFUL) {
+                                try {
+                                    val externalFile = File(context.getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS), modelFileName)
+                                    val internalFile = File(context.filesDir, modelFileName)
+                                    if (externalFile.exists()) {
+                                        externalFile.copyTo(internalFile, overwrite = true)
+                                        externalFile.delete()
+                                    }
+                                } catch (e: Exception) {
+                                    e.printStackTrace()
+                                }
                             }
+                            _isDownloading.value = false
                         } else {
                             val bytesDownloaded = cursor.getLong(bytesDownloadedIndex)
                             val bytesTotal = cursor.getLong(bytesTotalIndex)
