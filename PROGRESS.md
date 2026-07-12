@@ -52,10 +52,15 @@ repo. All three apps are merged and shipping (`:app` + `:feature:jotter` + `:fea
       the v0.9.9 APK.
 - [x] VERIFIED: preflight (ledger greps + compile of 3 modules + 252-test suite) exit 0
       locally before commit.
-- [ ] CI on this commit watched to green per AGENTS.md step 4 (the native
-      Vulkan/arm64 build has never yet succeeded on a runner — expect iteration; each
-      red run gets fixed and re-watched, and this box gets ticked only by the commit
-      that actually goes green).
+- [x] CI watched to green per AGENTS.md step 4. One iteration was needed: run
+      29203867302 (`83a50b7`) got through checkout/submodule/patch/configure/shader-gen
+      and failed compiling `ggml-vulkan.cpp` — `vulkan/vulkan.hpp` is not in the NDK
+      sysroot (C header only); fixed in `6fc02aa` by overriding `Vulkan_INCLUDE_DIR`
+      to the host Vulkan SDK (headers from SDK, `libvulkan.so` still from the NDK).
+      Run **29204086971: success in 9m07s** — submodule checkout, patch, full native
+      Vulkan arm64 build, `assembleDebug` APK artifact, and the 252-test suite, green
+      on ubuntu-latest from a bare checkout. This is the first time the native build
+      has ever succeeded anywhere other than the original dev machine.
 
 ### Phase 2 — In-App Native LLM & Model Downloading — 2026-07-12
 - [x] **Native Engine Integration:** Completely removed MediaPipe (`LlmInference`) in favor of `llama.cpp` using the JNI wrapper (`com.arm.aichat`). Updated `app/build.gradle.kts` to wire CMake for native ARM CPU/GPU compilation, targeting `arm64-v8a` only.
