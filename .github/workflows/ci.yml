@@ -54,6 +54,14 @@ jobs:
       - name: Unit tests (Robolectric)
         run: ./gradlew --no-daemon :app:testDebugUnitTest
 
+      - name: Publish CMake Error logs on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: cmake-error-logs
+          path: app/.cxx/**/CMakeError.log
+          retention-days: 1
+
       - name: Publish test report on failure
         if: failure()
         uses: actions/upload-artifact@v4
