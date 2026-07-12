@@ -1,5 +1,41 @@
 # Release Notes
 
+## Version 0.10.0 - On-device AI, and builds you can trust
+
+Jeeves can now run a language model entirely on your phone - no cloud key, no
+network - and every commit to the app is now built and tested by CI, including
+the native engine, so "it built on one machine" can never again masquerade as
+"it works."
+
+### On-device AI (new)
+*   **Native llama.cpp engine** replaces the MediaPipe runtime: faster,
+    open, and under our control down to the C++ bindings.
+*   **In-app model download:** grab `Llama 3.2 1B Instruct` from Settings with
+    a live progress bar - no more ADB side-loading. The model unpacks
+    automatically and is ready to chat.
+*   **Offline by default when cloud is off:** if Cloud LLM is disabled or no
+    API key is set, chats route straight to the local model instead of asking
+    you to enable cloud.
+*   GPU offload plumbing (Vulkan/Adreno) is compiled in but still
+    experimental - the engine falls back to CPU where Vulkan isn't available.
+    Not yet device-verified; treat CPU as the supported path this release.
+
+### Reliability (the real headline)
+*   **CI gate on every push:** all three modules compile, the full native
+    engine builds, the APK assembles, and the 252-test suite runs - on every
+    single commit. Red means it doesn't merge.
+*   **Reproducible builds:** the llama.cpp source is now a pinned submodule
+    with our local patches tracked in-repo and applied by script. Any machine
+    (and CI) can build Jeeves from a bare checkout - previously the native
+    engine only built on one specific PC, and nothing could detect that.
+*   Fixed a native logging call that broke builds for Android 10 devices.
+
+### Coming next (v0.10.x, per the roadmap)
+This release is the gateway to "The Great Verification": the on-device sweep
+of everything shipped in 0.9.7-0.9.9 (briefing, One Memory, ambient surfaces,
+backup round-trip, accessibility). Features are frozen until the debt ledger
+in `docs/DIGITAL_BUTLER_ROADMAP.md` empties.
+
 ## Version 0.9.9 - Repo picker shows all repositories
 
 v0.9.8's repo-sync fix corrected the name matching but kept a filter that HID
