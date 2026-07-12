@@ -117,6 +117,13 @@ android {
                 arguments += "-DGGML_CPU_ALL_VARIANTS=ON"
                 arguments += "-DGGML_LLAMAFILE=OFF"
                 arguments += "-DGGML_VULKAN=ON" // Enable Vulkan for Android GPUs
+                
+                val vulkanSdk = System.getenv("VULKAN_SDK")
+                if (vulkanSdk != null) {
+                    arguments += "-DCMAKE_FIND_ROOT_PATH_MODE_PACKAGE=BOTH"
+                    arguments += "-DCMAKE_FIND_ROOT_PATH_MODE_PROGRAM=BOTH"
+                    arguments += "-DCMAKE_FIND_ROOT_PATH_MODE_INCLUDE=BOTH"
+                }
             }
         }
     }
