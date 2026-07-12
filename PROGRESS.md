@@ -38,7 +38,10 @@ repo. All three apps are merged and shipping (`:app` + `:feature:jotter` + `:fea
 - [x] Preflight self-test: first run correctly FAILED on its own L-002 grep (it caught
       the fix's explanatory comment — grep now skips comment lines), then passed
       end-to-end: exit 0, BUILD SUCCESSFUL, 252 tests.
-- [ ] UNVERIFIED: first GitHub Actions run pending this push (cold-cache runner build).
+- [x] VERIFIED: CI run #1 failed in 26 s with exit 126 — `gradlew` had been committed
+      from Windows without the executable bit (mode fixed 100644→100755, commit
+      `1c50acc`); run #2 (29182520350) completed **success in 5m24s** — full compile +
+      252-test suite green on ubuntu-latest from a bare checkout. D11 closed.
 
 ### Review R2: Antigravity's v0.9.7 release + v0.12 working tree — 2026-07-11
 - [x] Reviewed released commits `a34d4cd`/`1ac8392` (v0.9.7: OTA foreground service,
