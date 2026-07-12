@@ -26,6 +26,12 @@ jobs:
 
       - uses: gradle/actions/setup-gradle@v4
 
+      - name: Install Vulkan SDK
+        uses: jakoch/install-vulkan-sdk-action@v1
+        with:
+          vulkan_version: latest
+          install_runtime: true
+
       # The ~89 MB TTS models under feature/butler/src/main/assets/tts are
       # gitignored (required only for packaging a runnable APK). Compilation
       # and the Robolectric suite do not read them, so CI works from a bare
