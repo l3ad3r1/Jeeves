@@ -28,14 +28,36 @@ restore → L-005, L-006").
   commit message AND a `- [ ]` line in `PROGRESS.md`. Claiming untested behavior as
   working is the single worst failure mode in this repo's history (L-001).
 
-**4. AFTER a review finds a defect in your work — close the loop.**
+**4. AFTER pushing — CI must go green. This is the definition of "done".**
+A push is not the finish line; a green CI run is. You are not done, and you do not
+report the task as complete, until CI passes on your commit.
+- Immediately after `git push`, watch the run:
+  ```bash
+  gh run watch "$(gh run list --branch master --limit 1 --json databaseId --jq '.[0].databaseId')" \
+    --exit-status -R l3ad3r1/Jeeves
+  ```
+  (If `gh` isn't available/authed, open the Actions tab and wait for the check on your
+  commit. Never assume — confirm.)
+- **Green:** report done, quoting the run conclusion.
+- **Red:** you own it. Stop all new work. Read the failure
+  (`gh run view <id> --log-failed -R l3ad3r1/Jeeves`), fix the cause, push the fix,
+  and watch again. Repeat until green. A red CI you walked away from is an
+  unfinished task, full stop.
+- Never disable, skip, `continue-on-failure`, or weaken a check to get green
+  (that is L-017 territory and worse — it defeats the gate's entire purpose).
+- `tools/preflight.sh` is the local mirror of CI: if it passed, CI usually will too,
+  but CI is the authority. If they ever disagree, CI wins and you investigate why the
+  local run missed it (often an env/mode difference — e.g. the executable bit on
+  `gradlew`, which the very first CI run caught).
+
+**5. AFTER a review finds a defect in your work — close the loop.**
 Append a new `L-NNN` entry to `docs/agents/LESSONS.md` in the given format:
 what shipped, why it was wrong, the generalized rule, and a mechanical check. This is
 not punishment — it is how the next session gets smarter. A defect that recurs after
 its lesson exists is a process failure; a defect with no lesson written is a wasted
 tuition payment.
 
-**5. NEVER — hard limits.**
+**6. NEVER — hard limits.**
 - Never create a git tag or GitHub release (L-017). Releases happen only after a
   human-directed review pass. You may commit and push to master; CI gates you.
 - Never touch `hermes-release.jks`, `hermes.local.properties`, or signing config
@@ -53,6 +75,8 @@ bash tools/preflight.sh               # all of the above + ledger greps
 ```
 
 CI (`.github/workflows/ci.yml`) runs compile + tests on every push to master.
+It runs automatically — you cannot avoid triggering it — but you MUST watch it to
+green (step 4). "I pushed" is not "it works"; "CI is green on my commit" is.
 A red CI on your commit means you stop feature work and fix it first.
 
 ## Standing rules (the short list)
