@@ -122,6 +122,12 @@ android {
                 if (vulkanSdk != null) {
                     arguments += "-DVulkan_GLSLC_EXECUTABLE=$vulkanSdk/bin/glslc"
                 }
+                
+                val isWindows = System.getProperty("os.name").lowercase().contains("windows")
+                if (!isWindows) {
+                    arguments += "-DHOST_C_COMPILER=/usr/bin/gcc"
+                    arguments += "-DHOST_CXX_COMPILER=/usr/bin/g++"
+                }
             }
         }
     }
