@@ -36,6 +36,16 @@ jobs:
       # gitignored (required only for packaging a runnable APK). Compilation
       # and the Robolectric suite do not read them, so CI works from a bare
       # checkout.
+      - name: Configure CMake
+        run: |
+          ./gradlew --no-daemon :app:generateJsonModelDebug --info || (
+            echo "CMake Output Log:"
+            find app/.cxx -name "CMakeOutput.log" -exec cat {} \;
+            echo "CMake Error Log:"
+            find app/.cxx -name "CMakeError.log" -exec cat {} \;
+            exit 1
+          )
+
       - name: Compile all modules and build APK
         run: >
           ./gradlew --no-daemon --info
