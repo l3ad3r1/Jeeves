@@ -120,9 +120,6 @@ android {
                 
                 val vulkanSdk = System.getenv("VULKAN_SDK")
                 if (vulkanSdk != null) {
-                    arguments += "-DCMAKE_FIND_ROOT_PATH_MODE_PACKAGE=BOTH"
-                    arguments += "-DCMAKE_FIND_ROOT_PATH_MODE_PROGRAM=BOTH"
-                    arguments += "-DCMAKE_FIND_ROOT_PATH_MODE_INCLUDE=BOTH"
                     arguments += "-DVulkan_GLSLC_EXECUTABLE=$vulkanSdk/bin/glslc"
                 }
             }

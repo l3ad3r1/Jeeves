@@ -38,7 +38,7 @@ jobs:
       # checkout.
       - name: Compile all modules and build APK
         run: >
-          ./gradlew --no-daemon
+          ./gradlew --no-daemon --info
           :app:compileDebugKotlin
           :feature:jotter:compileDebugKotlin
           :feature:butler:compileDebugKotlin
