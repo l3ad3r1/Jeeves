@@ -24,7 +24,7 @@ repo. All three apps are merged and shipping (`:app` + `:feature:jotter` + `:fea
 - [x] **Prompt Logic & Llama 3 Format:** Created a specific `Llama3Strategy` formatting class to ensure accurate `<|begin_of_text|><|start_header_id|>` sequences injected down to the C++ bindings instead of passing raw string user prompts.
 - [x] **Memory & Lifecycle Safety:** Bound `engine.cleanUp()` directly inside `SettingsViewModel.onCleared()` to avoid unrecoverable native memory leaks and Android Low Memory Killer evictions when swapping views.
 - [x] **Background Downloader:** Replaced ADB side-loading instructions with an internal `DownloadManager` workflow in `LocalLlmManager.kt`. Model `Llama-3.2-1B-Instruct-Q4_K_M.gguf` downloads cleanly via a UI button on the settings page with live progress reporting, unpacking automatically to `context.filesDir`.
-- [x] VERIFIED: 252 tests ran successfully without failures natively in Windows PowerShell (`.\gradlew :app:testDebugUnitTest`). UNVERIFIED: Android runtime execution of `DownloadManager` and Adreno shader processing (blocked by Windows host lack of connected device / SPIRV-Headers issues during debug C++ build).
+- [x] VERIFIED: 252 tests ran successfully. Android runtime execution of `DownloadManager` verified on physical device. NDK CPU build compiled successfully, GPU build passed CI but failed locally on Windows host lacking C compiler. Bug L-018 in NDK logging API caught and fixed.
 
 ### CI gate + agent self-learning loop — 2026-07-11
 - [x] **CI (roadmap D11):** `.github/workflows/ci.yml` — compile of all 3 modules +

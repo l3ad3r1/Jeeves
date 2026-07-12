@@ -160,3 +160,9 @@ user-visible breakage.
 **Rule:** Agents commit and push to master (CI gates it). Agents NEVER create tags or
 GitHub releases; a release happens only after a human-directed review pass.
 **Check:** Your session must contain zero `gh release` / tag-creating commands.
+
+## L-018 — C/C++ builds for Android must not use APIs newer than minSdk
+**Origin:** Phase 2 (LLM integration) — `__android_log_is_loggable` failed to link for Android 10 (API 29) because it was introduced in API 30, and the CI did not catch it because it bypassed the NDK build.
+**Defect:** App failed to build natively for devices running the declared minSdk.
+**Rule:** When adding C/C++ Android NDK code, ensure you use APIs compatible with the `minSdk` defined in `app/build.gradle.kts`. Do not rely on CI to catch NDK build errors unless CI explicitly runs `assembleDebug`.
+**Check:** Verify NDK APIs against NDK documentation for the target minSdk.

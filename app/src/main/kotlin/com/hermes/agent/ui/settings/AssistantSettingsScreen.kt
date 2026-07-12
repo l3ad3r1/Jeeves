@@ -68,7 +68,7 @@ fun AssistantSettingsScreen(
             val isDownloading by viewModel.isModelDownloading.collectAsStateWithLifecycle()
             val downloadProgress by viewModel.modelDownloadProgress.collectAsStateWithLifecycle()
 
-            SectionHeader(text = "On-Device AI (Experimental)")
+            SectionHeader(text = "On-Device AI (Local Engine)")
             Card(modifier = Modifier.fillMaxWidth()) {
                 Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
                     Text(
