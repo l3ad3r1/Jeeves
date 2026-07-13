@@ -18,6 +18,14 @@ repo. All three apps are merged and shipping (`:app` + `:feature:jotter` + `:fea
 
 ## Status log (newest first)
 
+### v0.11.6: LLM Prompt Format Decoupling + Native Engine Fix — 2026-07-13
+- [x] **Gibberish output fix:** The local Llama 3 model was previously outputting complete gibberish (Llama 3 KV cache corruption). Root cause was a prompt formatting conflict: Kotlin (`LocalLlmProvider`, `JotterAiProviderImpl`) was manually appending `<|begin_of_text|><|start_header_id|>system...` and passing it as the `user` prompt down to C++. Meanwhile, `use_jinja = true` inside `ai_chat.cpp` meant the C++ core was auto-injecting its own Llama-3 system prompt and wrapping the Kotlin-provided formatted string inside a second set of `user` tags. 
+- [x] **Decoupling formatting to C++:** Removed manual `StringBuilder` Llama 3 prompt construction from the Kotlin layer entirely. `generateResponse` now takes `systemPrompt` and `userPrompt` as separate parameters and bridges them down natively. Now, the C++ Jinja engine dynamically and natively formats it exactly as the `.gguf` file expects it.
+- [x] **InferenceEngine state fix:** Removed the rigid `_readyForSystemPrompt` state gate in `InferenceEngineImpl.kt` which previously caused issues with system prompt updates. 
+- [x] **Disabled Vulkan compilation for Release:** Set `-DGGML_VULKAN=OFF` in `app/build.gradle.kts` since we are exclusively using CPU-only inference for Llama 3 models anyway to bypass Adreno driver instability (`vk::DeviceLostError`). This bypasses the complex host toolchain `vulkan-shaders-gen` errors when building releases locally on Windows without MinGW headers.
+- [x] **Bumped version:** Updated `gradle.properties` to `versionCode=76` and `versionName=0.11.6`. Built the release APK, verified signer, and installed via adb.
+- [x] VERIFIED: `tools/preflight.sh` exit 0 (compile, 252 tests, anti-pattern greps pass). User verified local LLM outputs coherent text on S24 Ultra!
+
 ### Model picker + "AI Models" download folder — 2026-07-13
 - [x] **Model dropdown.** New `data/llm/ModelCatalog.kt` — a registry of
       `DownloadableModel(id, displayName, fileName, url, sizeBytes)`. Seeded with 4

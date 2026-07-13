@@ -116,7 +116,6 @@ android {
                 arguments += "-DGGML_BACKEND_DL=ON"
                 arguments += "-DGGML_CPU_ALL_VARIANTS=ON"
                 arguments += "-DGGML_LLAMAFILE=OFF"
-                arguments += "-DGGML_VULKAN=ON" // Enable Vulkan for Android GPUs
                 
                 // The NDK sysroot has vulkan.h but NOT the C++ vulkan.hpp that
                 // ggml-vulkan includes; both glslc and the Vulkan-Hpp headers
@@ -128,6 +127,11 @@ android {
                     arguments += "-DVulkan_GLSLC_EXECUTABLE=$vulkanSdk/bin/glslc"
                     arguments += "-DVulkan_INCLUDE_DIR=$vulkanSdk/include"
                 }
+                
+                arguments(
+                    "-DGGML_OPENMP=OFF",
+                    "-DGGML_VULKAN=OFF"
+                )
                 
                 val isWindows = System.getProperty("os.name").lowercase().contains("windows")
                 if (!isWindows) {

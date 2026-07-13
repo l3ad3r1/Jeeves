@@ -28,30 +28,12 @@ class LocalLlmProvider @Inject constructor(
     }
 
     override fun stream(messages: List<LlmMessage>): Flow<LlmStreamChunk> {
-        val prompt = formatPrompt(messages)
-        return localLlmManager.generateResponse(prompt).map { LlmStreamChunk.Delta(it) }
+        val system = messages.firstOrNull { it.role == "system" }?.content.orEmpty()
+        val user = messages.lastOrNull { it.role == "user" }?.content.orEmpty()
+        return localLlmManager.generateResponse(system, user).map { LlmStreamChunk.Delta(it) }
     }
 
     override suspend fun isAvailable(): Boolean {
         return localLlmManager.isModelDownloaded()
-    }
-
-    private fun formatPrompt(messages: List<LlmMessage>): String {
-        val system = messages.firstOrNull { it.role == "system" }?.content.orEmpty()
-        val user = messages.lastOrNull { it.role == "user" }?.content.orEmpty()
-        
-        // Use the Llama 3 format that was built in the previous session
-        val sb = java.lang.StringBuilder()
-        sb.append("<|begin_of_text|>")
-        if (system.isNotEmpty()) {
-            sb.append("<|start_header_id|>system<|end_header_id|>\n\n")
-            sb.append(system)
-            sb.append("<|eot_id|>")
-        }
-        // Add previous messages (simplified for now, just sending the last user message)
-        sb.append("<|start_header_id|>user<|end_header_id|>\n\n")
-        sb.append(user)
-        sb.append("<|eot_id|><|start_header_id|>assistant<|end_header_id|>\n\n")
-        return sb.toString()
     }
 }

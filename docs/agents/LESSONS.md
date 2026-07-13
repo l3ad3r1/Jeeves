@@ -201,3 +201,9 @@ any other dirt is an unrecorded local dependency. And remember: a green CI vouch
 for the tasks it actually ran — before trusting it, confirm the workflow builds what
 your change depends on (here CI was "green" while the native build was unbuildable,
 because `assembleDebug` was not in the workflow yet).
+
+## L-021 — Never double-wrap prompt formats across language boundaries
+**Origin:** v0.10.5 (`LocalLlmProvider` formatting conflict); v0.11.6 review
+**Defect:** Local Llama 3 model produced total gibberish due to KV cache corruption. Kotlin code was manually injecting `<|begin_of_text|><|start_header_id|>...` tokens and passing the raw string to the C++ core. Meanwhile, the C++ core's Jinja engine `add_special=true` setting auto-injected a second set of headers, causing double-wrapping.
+**Rule:** When bridging between higher-level logic (Kotlin/Java) and lower-level inference engines (C++ llama.cpp), pass the raw system and user prompts as distinct string arguments. Do not manually construct LLM templates (e.g. ChatML, Llama 3) in the host language if the native engine employs Jinja templates. Let the engine natively format the template exactly as the `.gguf` metadata expects it.
+**Check:** Grep for `<|begin_of_text|>` or `[INST]` inside Kotlin files. If the model logic natively supports templating (Jinja/gguf), the Kotlin layer should not be concatenating string tags.

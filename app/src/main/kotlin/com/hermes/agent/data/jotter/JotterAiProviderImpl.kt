@@ -19,14 +19,11 @@ class JotterAiProviderImpl @Inject constructor(
     private val voiceOutputManager: VoiceOutputManager
 ) : JotterAiProvider {
 
-    private fun formatPrompt(system: String, user: String): String {
-        return com.hermes.agent.data.llm.formatters.Llama3Strategy().format(system, user)
-    }
 
     override fun generateSummary(noteContent: String): Flow<String> = flow {
         val system = "You are a highly analytical AI assistant. Create a comprehensive markdown summary of the following note. Include key takeaways and action items."
         if (localLlmManager.isModelDownloaded()) {
-            localLlmManager.generateResponse(formatPrompt(system, noteContent)).collect { emit(it) }
+            localLlmManager.generateResponse(system, noteContent).collect { emit(it) }
         } else {
             val messages = listOf(
                 LlmMessage(role = "system", content = system),
@@ -41,7 +38,7 @@ class JotterAiProviderImpl @Inject constructor(
     override fun generateFlashcards(noteContent: String): Flow<String> = flow {
         val system = "You are a study guide generator. Create a series of Q&A flashcards based on the provided note. Format as Markdown lists."
         if (localLlmManager.isModelDownloaded()) {
-            localLlmManager.generateResponse(formatPrompt(system, noteContent)).collect { emit(it) }
+            localLlmManager.generateResponse(system, noteContent).collect { emit(it) }
         } else {
             val messages = listOf(
                 LlmMessage(role = "system", content = system),
@@ -60,7 +57,7 @@ class JotterAiProviderImpl @Inject constructor(
             
             var script = ""
             if (localLlmManager.isModelDownloaded()) {
-                localLlmManager.generateResponse(formatPrompt(system, noteContent)).collect { chunk ->
+                localLlmManager.generateResponse(system, noteContent).collect { chunk ->
                     script += chunk
                 }
             } else {
@@ -91,7 +88,7 @@ class JotterAiProviderImpl @Inject constructor(
     override fun chatWithNote(noteContent: String, userMessage: String): Flow<String> = flow {
         val system = "You are a helpful AI assistant answering questions STRICTLY based on the provided note context.\n\nContext:\n$noteContent"
         if (localLlmManager.isModelDownloaded()) {
-            localLlmManager.generateResponse(formatPrompt(system, userMessage)).collect { emit(it) }
+            localLlmManager.generateResponse(system, userMessage).collect { emit(it) }
         } else {
             val messages = listOf(
                 LlmMessage(role = "system", content = system),

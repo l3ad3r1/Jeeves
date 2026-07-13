@@ -194,11 +194,14 @@ class LocalLlmManager @Inject constructor(
         }
     }
 
-    fun generateResponse(prompt: String): Flow<String> = flow {
+    fun generateResponse(systemPrompt: String, userPrompt: String): Flow<String> = flow {
         if (!engine.state.value.isModelLoaded) {
             initialize()
         }
-        engine.sendUserPrompt(prompt).collect { emit(it) }
+        if (systemPrompt.isNotEmpty()) {
+            engine.setSystemPrompt(systemPrompt)
+        }
+        engine.sendUserPrompt(userPrompt).collect { emit(it) }
     }.flowOn(Dispatchers.IO)
 
     fun close() {
