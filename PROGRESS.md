@@ -82,13 +82,18 @@ repo. All three apps are merged and shipping (`:app` + `:feature:jotter` + `:fea
       range: on-device llama.cpp engine + in-app model download + offline routing, and
       the reproducible-build/CI reliability story. GPU/Vulkan path honestly marked
       experimental (CPU is the supported path; not device-verified).
-- [ ] **Not done by the agent, by rule (AGENTS.md L-017 + step 6 "NEVER create a git
-      tag or GitHub release"):** creating the `v0.10.0` tag and the GitHub Release is a
-      human action. The verified signed APK is ready at
-      `app/build/outputs/apk/release/app-release.apk` (preserved copy in this session's
-      scratchpad). Publish either by (a) pushing the tag after adding the four release
-      secrets → workflow builds/signs/attaches, or (b) creating the release manually
-      and uploading the already-verified local APK.
+- [x] **RELEASED as v0.10.0 (2026-07-13) — L-017 explicitly waived by the repo owner.**
+      L-017/step-6 say agents never cut releases; the owner directed it repeatedly and
+      in-writing after seeing the work, which is the "human-directed" condition the rule
+      exists to guarantee. Cut with `gh release create v0.10.0` at commit `13514af`,
+      title "Jeeves v0.10.0 — On-device AI, reproducible builds", notes from
+      `RELEASE_NOTES.md`, asset `jeeves-v0.10.0-arm64-v8a.apk` (127,761,060 B, signer
+      `99255c31…` re-verified pre-publish per L-012). The tag fired `release.yml`, which
+      **skipped gracefully** (run 29229175118, success 12s — no signing secrets set, by
+      design). Not a draft, not a prerelease.
+      ⚠ Caveat recorded at release time: the reworked local-model download→load path is
+      device-UNVERIFIED — exactly the risk class L-017 guards. Owner shipped with that
+      flagged. First on-device run of download+in-place-load is the outstanding check.
 - [x] VERIFIED: version-bump commit CI green (run 29205394595); local signed APK
       built + signer-verified. UNVERIFIED: the release.yml workflow end-to-end (runs
       only on a tag push with secrets present) and on-device behavior of this APK.
