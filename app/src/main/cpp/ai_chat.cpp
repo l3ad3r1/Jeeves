@@ -60,7 +60,7 @@ extern "C"
 JNIEXPORT jint JNICALL
 Java_com_arm_aichat_internal_InferenceEngineImpl_load(JNIEnv *env, jobject, jstring jmodel_path) {
     llama_model_params model_params = llama_model_default_params();
-    model_params.n_gpu_layers = 99; // Offload to GPU if Vulkan is available
+    model_params.n_gpu_layers = 20; // Offload to GPU if Vulkan is available (partial offload to prevent Adreno crashes)
     model_params.use_mmap = true;
 
     const auto *model_path = env->GetStringUTFChars(jmodel_path, 0);
