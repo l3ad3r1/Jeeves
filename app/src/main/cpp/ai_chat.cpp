@@ -96,7 +96,7 @@ static llama_context *init_context(llama_model *model, const int n_ctx = DEFAULT
     }
     ctx_params.n_ctx = n_ctx;
     ctx_params.n_batch = BATCH_SIZE;
-    ctx_params.n_ubatch = BATCH_SIZE;
+    ctx_params.n_ubatch = 64; // Workaround for Adreno vk::DeviceLostError (TDR)
     ctx_params.n_threads = n_threads;
     ctx_params.n_threads_batch = n_threads;
     auto *context = llama_init_from_model(g_model, ctx_params);
