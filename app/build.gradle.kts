@@ -162,6 +162,7 @@ android {
         // 15+ devices. (The legacy-packaging override existed only to extract
         // the now-removed BusyBox executable.)
         jniLibs {
+            useLegacyPackaging = true
             // ONNX Runtime ships libonnxruntime.so in more than one AAR entry.
             // Carried over from Sassy Butler's app module (:feature:butler consumes it).
             pickFirsts += "**/libonnxruntime.so"
