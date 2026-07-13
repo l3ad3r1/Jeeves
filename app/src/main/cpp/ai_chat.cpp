@@ -377,7 +377,7 @@ Java_com_arm_aichat_internal_InferenceEngineImpl_processSystemPrompt(
 
     // Tokenize system prompt
     const auto system_tokens = common_tokenize(g_context, formatted_system_prompt,
-                                               has_chat_template, has_chat_template);
+                                               false, true);
     for (auto id: system_tokens) {
         LOGv("token: `%s`\t -> `%d`", common_token_to_piece(g_context, id).c_str(), id);
     }
@@ -425,7 +425,7 @@ Java_com_arm_aichat_internal_InferenceEngineImpl_processUserPrompt(
     env->ReleaseStringUTFChars(juser_prompt, user_prompt);
 
     // Decode formatted user prompts
-    auto user_tokens = common_tokenize(g_context, formatted_user_prompt, has_chat_template, has_chat_template);
+    auto user_tokens = common_tokenize(g_context, formatted_user_prompt, false, true);
     for (auto id: user_tokens) {
         LOGv("token: `%s`\t -> `%d`", common_token_to_piece(g_context, id).c_str(), id);
     }
