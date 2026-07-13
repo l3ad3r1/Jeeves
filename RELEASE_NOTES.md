@@ -1,5 +1,11 @@
 # Release Notes
 
+## Version 0.11.6 - LLM Prompt Formatting Decoupled & Stability Fixes
+
+*   **Gibberish Output Fix**: Fixed an issue where the local Llama 3 model produced total gibberish. The Kotlin layer was manually wrapping prompts in `<|begin_of_text|>` tags, while the C++ engine's Jinja templates applied its own tags. This caused double-wrapping and corrupted the KV cache. Prompt string formatting has now been fully delegated to the native C++ engine.
+*   **Vulkan Disabled for Release**: The engine now forces CPU-only inference (`DGGML_VULKAN=OFF`) to ensure reliable stability across Adreno GPUs and avoid host compiler issues on Windows during local release builds.
+*   **Prompt State Cleanup**: Removed the rigid `_readyForSystemPrompt` state gate in `InferenceEngineImpl.kt` which was causing prompt delivery failures.
+
 ## Version 0.10.0 - On-device AI, and builds you can trust
 
 Jeeves can now run a language model entirely on your phone - no cloud key, no
