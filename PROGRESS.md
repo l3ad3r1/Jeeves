@@ -18,6 +18,31 @@ repo. All three apps are merged and shipping (`:app` + `:feature:jotter` + `:fea
 
 ## Status log (newest first)
 
+### Local-model downloader: load in place, drop the ~800 MB copy — 2026-07-13
+- [x] `LocalLlmManager` downloaded the GGUF to the app's **external** files dir
+      (`getExternalFilesDir(DIRECTORY_DOWNLOADS)`, where DownloadManager must write —
+      it can't touch internal `/data/data`), then **copied** the ~800 MB file into
+      internal `filesDir` and deleted the external one, and loaded from internal.
+      Collapsed to load in place: `modelFile` now points at the external download
+      location, so the check, the load, and the download target are one path. Removed
+      the copy/delete block.
+- [x] Fixes three things the copy caused: (1) ~800 MB of redundant disk I/O and a
+      transient ~1.6 GB free-space requirement; (2) the progress bar sat at 100% during
+      the multi-hundred-MB copy (copy ran between STATUS_SUCCESSFUL and
+      `isDownloading=false`) — the "stuck near the end" shape L-019 warns about; (3) a
+      kill mid-copy left a truncated internal file that `isModelDownloaded()`
+      (`exists() && length()>0`) reported as ready, then failed to load. External-files
+      path is app-private (no permission) and mmap-able, so the native engine loads it
+      directly — consistent with the custom-model SAF path already using mmap via
+      `/proc/self/fd`.
+- [x] Also scrubbed a 56 MB `jeeves-apk.zip` (a `gh run download` artifact) that had
+      been committed into the then-unpushed SAF-picker commit — amended it out before it
+      could reach GitHub, and added a `.gitignore` guard (`jeeves-apk.zip`, `*-apk.zip`).
+      Same failure class as the 151 MB blob from 2026-07-12 (L-020's patch-file lesson).
+- [x] VERIFIED: preflight (compile 3 modules + 252 tests + ledger greps) exit 0; signed
+      release APK rebuilt (versionCode 70 / 0.10.0, signer `99255c31…`). UNVERIFIED:
+      on-device download-then-load with the new in-place path (no device this session).
+
 ### v0.10.0: version bump, signed APK built + verified, release pipeline — 2026-07-12
 - [x] Bumped `gradle.properties` to versionCode 70 / versionName 0.10.0 (L-012). Named
       v0.10.0, not v1.0, matching `docs/DIGITAL_BUTLER_ROADMAP.md`'s actual next

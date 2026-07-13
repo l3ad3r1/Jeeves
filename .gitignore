@@ -13,6 +13,12 @@ local.properties
 *.iml
 .cxx/
 captures/
+
+# --- CI artifacts (downloaded run artifacts land here; never commit them) ---
+# jeeves-apk.zip is the `gh run download` bundle of the CI-built APK; a 56 MB
+# copy was accidentally committed once (scrubbed from the unpushed commit).
+jeeves-apk.zip
+*-apk.zip
 .idea/
 .DS_Store
 

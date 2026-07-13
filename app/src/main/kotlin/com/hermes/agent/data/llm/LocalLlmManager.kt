@@ -37,8 +37,16 @@ class LocalLlmManager @Inject constructor(
     
     private val modelFileName = "Llama-3.2-1B-Instruct-Q4_K_M.gguf"
 
+    // The model lives in the app's external files dir (app-private, no runtime
+    // permission needed), which is exactly where DownloadManager writes it —
+    // see startDownload's setDestinationInExternalFilesDir. This path is a real
+    // filesystem file the native engine can mmap directly, so there is no copy
+    // into internal filesDir: DownloadManager cannot write to /data/data/... at
+    // all, and copying the ~800 MB model afterwards just doubled the disk I/O
+    // and transiently needed ~1.6 GB free. getExternalFilesDir is non-null
+    // whenever the download itself could have succeeded.
     val modelFile: File
-        get() = File(context.filesDir, modelFileName)
+        get() = File(context.getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS), modelFileName)
 
     suspend fun isModelDownloaded(): Boolean {
         val customUri = settingsRepository.current().localModelUri
@@ -80,19 +88,10 @@ class LocalLlmManager @Inject constructor(
                     if (statusIndex >= 0 && bytesDownloadedIndex >= 0 && bytesTotalIndex >= 0) {
                         val status = cursor.getInt(statusIndex)
                         if (status == DownloadManager.STATUS_SUCCESSFUL || status == DownloadManager.STATUS_FAILED) {
+                            // Model is downloaded straight to modelFile (external
+                            // files dir); nothing to move. The engine loads it in
+                            // place — see initialize().
                             downloading = false
-                            if (status == DownloadManager.STATUS_SUCCESSFUL) {
-                                try {
-                                    val externalFile = File(context.getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS), modelFileName)
-                                    val internalFile = File(context.filesDir, modelFileName)
-                                    if (externalFile.exists()) {
-                                        externalFile.copyTo(internalFile, overwrite = true)
-                                        externalFile.delete()
-                                    }
-                                } catch (e: Exception) {
-                                    e.printStackTrace()
-                                }
-                            }
                             _isDownloading.value = false
                         } else {
                             val bytesDownloaded = cursor.getLong(bytesDownloadedIndex)
