@@ -25,10 +25,13 @@ import kotlinx.coroutines.withContext
 import java.io.File
 import javax.inject.Inject
 import javax.inject.Singleton
+import com.hermes.agent.data.settings.SettingsRepository
+import android.os.ParcelFileDescriptor
 
 @Singleton
 class LocalLlmManager @Inject constructor(
-    @ApplicationContext private val context: Context
+    @ApplicationContext private val context: Context,
+    private val settingsRepository: SettingsRepository,
 ) {
     private val engine: InferenceEngine = AiChat.getInferenceEngine(context)
     
@@ -37,7 +40,9 @@ class LocalLlmManager @Inject constructor(
     val modelFile: File
         get() = File(context.filesDir, modelFileName)
 
-    fun isModelDownloaded(): Boolean {
+    suspend fun isModelDownloaded(): Boolean {
+        val customUri = settingsRepository.current().localModelUri
+        if (customUri.isNotBlank()) return true
         return modelFile.exists() && modelFile.length() > 0
     }
 
@@ -48,21 +53,21 @@ class LocalLlmManager @Inject constructor(
     val downloadProgress: StateFlow<Float> = _downloadProgress
 
     fun startDownload() {
-        if (isDownloading.value || isModelDownloaded()) return
-        _isDownloading.value = true
-        _downloadProgress.value = 0f
-        
-        val url = "https://huggingface.co/bartowski/Llama-3.2-1B-Instruct-GGUF/resolve/main/Llama-3.2-1B-Instruct-Q4_K_M.gguf"
-        val request = DownloadManager.Request(Uri.parse(url)).apply {
-            setTitle("Downloading Llama 3.2 1B")
-            setDescription("The local LLM is being downloaded.")
-            setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED)
-            setDestinationInExternalFilesDir(context, Environment.DIRECTORY_DOWNLOADS, modelFileName)
-        }
-        val manager = context.getSystemService(Context.DOWNLOAD_SERVICE) as DownloadManager
-        val downloadId = manager.enqueue(request)
-
         CoroutineScope(Dispatchers.IO).launch {
+            if (isDownloading.value || isModelDownloaded()) return@launch
+            _isDownloading.value = true
+            _downloadProgress.value = 0f
+            
+            val url = "https://huggingface.co/bartowski/Llama-3.2-1B-Instruct-GGUF/resolve/main/Llama-3.2-1B-Instruct-Q4_K_M.gguf"
+            val request = DownloadManager.Request(Uri.parse(url)).apply {
+                setTitle("Downloading Llama 3.2 1B")
+                setDescription("The local LLM is being downloaded.")
+                setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED)
+                setDestinationInExternalFilesDir(context, Environment.DIRECTORY_DOWNLOADS, modelFileName)
+            }
+            val manager = context.getSystemService(Context.DOWNLOAD_SERVICE) as DownloadManager
+            val downloadId = manager.enqueue(request)
+
             var downloading = true
             while (downloading && _isDownloading.value) {
                 val query = DownloadManager.Query().setFilterById(downloadId)
@@ -109,7 +114,16 @@ class LocalLlmManager @Inject constructor(
             throw IllegalStateException("Model not downloaded yet. Please download it in settings.")
         }
         if (!engine.state.value.isModelLoaded) {
-            engine.loadModel(modelFile.absolutePath)
+            val customUri = settingsRepository.current().localModelUri
+            if (customUri.isNotBlank()) {
+                val uri = Uri.parse(customUri)
+                val pfd = context.contentResolver.openFileDescriptor(uri, "r")
+                    ?: throw IllegalStateException("Cannot open custom model file")
+                engine.loadModel("/proc/self/fd/${pfd.fd}")
+                pfd.close()
+            } else {
+                engine.loadModel(modelFile.absolutePath)
+            }
         }
     }
 

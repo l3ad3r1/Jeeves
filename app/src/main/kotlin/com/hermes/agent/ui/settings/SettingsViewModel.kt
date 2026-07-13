@@ -145,12 +145,13 @@ class SettingsViewModel @Inject constructor(
             initialValue = UserSettings(),
         )
 
-    val isModelDownloaded = MutableStateFlow(localLlmManager.isModelDownloaded())
+    val isModelDownloaded = MutableStateFlow(false)
     val isModelDownloading: StateFlow<Boolean> = localLlmManager.isDownloading
     val modelDownloadProgress: StateFlow<Float> = localLlmManager.downloadProgress
 
     init {
         viewModelScope.launch {
+            isModelDownloaded.value = localLlmManager.isModelDownloaded()
             localLlmManager.isDownloading.collect { downloading ->
                 if (!downloading) {
                     isModelDownloaded.value = localLlmManager.isModelDownloaded()
@@ -215,6 +216,11 @@ class SettingsViewModel @Inject constructor(
      *  keep tool use opaque and show only the final reply. */
     fun setShowToolCalls(enabled: Boolean) = viewModelScope.launch {
         settingsRepository.setShowToolCalls(enabled)
+    }
+
+    fun setLocalModelUri(uri: String) = viewModelScope.launch {
+        settingsRepository.setLocalModelUri(uri)
+        isModelDownloaded.value = localLlmManager.isModelDownloaded()
     }
 
     // --- Local API server ---

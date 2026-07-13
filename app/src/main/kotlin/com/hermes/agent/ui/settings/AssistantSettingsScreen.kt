@@ -24,6 +24,10 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import android.content.Intent
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.PasswordVisualTransformation
@@ -76,13 +80,41 @@ fun AssistantSettingsScreen(
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
-                    
-                    if (isDownloaded) {
+                    val context = LocalContext.current
+                    val pickerLauncher = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
+                        if (uri != null) {
+                            context.contentResolver.takePersistableUriPermission(uri, Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                            viewModel.setLocalModelUri(uri.toString())
+                        }
+                    }
+
+                    if (settings.localModelUri.isNotBlank()) {
+                        Text(
+                            text = "Model loaded from device storage.",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.primary
+                        )
+                        androidx.compose.material3.Button(
+                            onClick = { viewModel.setLocalModelUri("") },
+                            modifier = Modifier.fillMaxWidth(),
+                            colors = androidx.compose.material3.ButtonDefaults.buttonColors(
+                                containerColor = MaterialTheme.colorScheme.error
+                            )
+                        ) {
+                            Text("Clear custom model")
+                        }
+                    } else if (isDownloaded) {
                         Text(
                             text = "Model downloaded and ready.",
                             style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.primary
                         )
+                        androidx.compose.material3.OutlinedButton(
+                            onClick = { pickerLauncher.launch(arrayOf("application/octet-stream")) },
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Text("Pick Custom Model (.gguf)")
+                        }
                     } else if (isDownloading) {
                         Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                             Text(
@@ -101,6 +133,12 @@ fun AssistantSettingsScreen(
                             modifier = Modifier.fillMaxWidth()
                         ) {
                             Text("Download Model (800MB)")
+                        }
+                        androidx.compose.material3.OutlinedButton(
+                            onClick = { pickerLauncher.launch(arrayOf("application/octet-stream")) },
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Text("Pick Custom Model (.gguf)")
                         }
                     }
                 }

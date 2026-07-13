@@ -112,7 +112,11 @@ repo. All three apps are merged and shipping (`:app` + `:feature:jotter` + `:fea
       on ubuntu-latest from a bare checkout. This is the first time the native build
       has ever succeeded anywhere other than the original dev machine.
 
-### Phase 2 — In-App Native LLM & Model Downloading — 2026-07-12
+### Phase 2 — In-App Native LLM & Model Downloading — 2026-07-13
+- [x] **Custom Model Picker (SAF):** `Llama 3.2 1B (On-Device)` now supports loading a custom `.gguf` file directly from device storage (e.g. `Downloads/`) via Android's Storage Access Framework (SAF).
+- [ ] **UNVERIFIED (Requires Android Studio deployment):** Successfully bridging SAF `content://` stream to native `llama.cpp` using `/proc/self/fd/<id>`. The code is implemented but compilation requires Android Studio / NDK tools to be built properly. User needs to run from Android Studio to verify.
+- [x] Added "Pick Custom Model" button to `AssistantSettingsScreen`. Downloader is disabled when custom model is loaded.
+- [x] **UnsupportedArchitectureException fix:** `Llama 3.2 1B (On-Device)` engine crashing locally on x86_64 (emulator) due to `UnsupportedArchitectureException`. Fix implemented by enabling `useLegacyPackaging = true` in `app/build.gradle.kts`.
 - [x] **Native Engine Integration:** Completely removed MediaPipe (`LlmInference`) in favor of `llama.cpp` using the JNI wrapper (`com.arm.aichat`). Updated `app/build.gradle.kts` to wire CMake for native ARM CPU/GPU compilation, targeting `arm64-v8a` only.
 - [x] **Adreno GPU Offloading:** Forced `use_mmap = true` and `n_gpu_layers = 99` natively inside `ai_chat.cpp` to harness Adreno GPUs on Snapdragon devices, bypassing the closed-source Google ML Kit limits.
 - [x] **Prompt Logic & Llama 3 Format:** Created a specific `Llama3Strategy` formatting class to ensure accurate `<|begin_of_text|><|start_header_id|>` sequences injected down to the C++ bindings instead of passing raw string user prompts.

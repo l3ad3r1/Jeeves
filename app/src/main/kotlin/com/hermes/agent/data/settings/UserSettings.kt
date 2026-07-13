@@ -13,6 +13,8 @@ data class UserSettings(
     val auxModel: String = "gpt-4o-mini",
     val auxBaseUrl: String = "",
     val auxApiKey: String = "",
+    // Local AI Model
+    val localModelUri: String = "",
     // Backup
     val githubPat: String = "",
     val gistId: String = "",
