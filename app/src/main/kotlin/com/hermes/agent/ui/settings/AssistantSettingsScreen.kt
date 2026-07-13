@@ -10,7 +10,10 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.Card
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.ExposedDropdownMenuBox
+import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -68,81 +71,8 @@ fun AssistantSettingsScreen(
             SectionHeader(text = stringResource(R.string.settings_section_cloud))
             CloudSection(settings = settings, viewModel = viewModel)
 
-            val isDownloaded by viewModel.isModelDownloaded.collectAsStateWithLifecycle()
-            val isDownloading by viewModel.isModelDownloading.collectAsStateWithLifecycle()
-            val downloadProgress by viewModel.modelDownloadProgress.collectAsStateWithLifecycle()
-
             SectionHeader(text = "On-Device AI (Local Engine)")
-            Card(modifier = Modifier.fillMaxWidth()) {
-                Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
-                    Text(
-                        text = "Download the on-device Llama 3.2 (1B) model to run entirely offline without cloud dependencies. The model is roughly 800MB.",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                    val context = LocalContext.current
-                    val pickerLauncher = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
-                        if (uri != null) {
-                            context.contentResolver.takePersistableUriPermission(uri, Intent.FLAG_GRANT_READ_URI_PERMISSION)
-                            viewModel.setLocalModelUri(uri.toString())
-                        }
-                    }
-
-                    if (settings.localModelUri.isNotBlank()) {
-                        Text(
-                            text = "Model loaded from device storage.",
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.primary
-                        )
-                        androidx.compose.material3.Button(
-                            onClick = { viewModel.setLocalModelUri("") },
-                            modifier = Modifier.fillMaxWidth(),
-                            colors = androidx.compose.material3.ButtonDefaults.buttonColors(
-                                containerColor = MaterialTheme.colorScheme.error
-                            )
-                        ) {
-                            Text("Clear custom model")
-                        }
-                    } else if (isDownloaded) {
-                        Text(
-                            text = "Model downloaded and ready.",
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.primary
-                        )
-                        androidx.compose.material3.OutlinedButton(
-                            onClick = { pickerLauncher.launch(arrayOf("application/octet-stream")) },
-                            modifier = Modifier.fillMaxWidth()
-                        ) {
-                            Text("Pick Custom Model (.gguf)")
-                        }
-                    } else if (isDownloading) {
-                        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                            Text(
-                                text = "Downloading model... (${(downloadProgress * 100).toInt()}%)",
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = MaterialTheme.colorScheme.primary
-                            )
-                            androidx.compose.material3.LinearProgressIndicator(
-                                progress = { downloadProgress },
-                                modifier = Modifier.fillMaxWidth()
-                            )
-                        }
-                    } else {
-                        androidx.compose.material3.Button(
-                            onClick = { viewModel.downloadLocalModel() },
-                            modifier = Modifier.fillMaxWidth()
-                        ) {
-                            Text("Download Model (800MB)")
-                        }
-                        androidx.compose.material3.OutlinedButton(
-                            onClick = { pickerLauncher.launch(arrayOf("application/octet-stream")) },
-                            modifier = Modifier.fillMaxWidth()
-                        ) {
-                            Text("Pick Custom Model (.gguf)")
-                        }
-                    }
-                }
-            }
+            OnDeviceAiCard(settings = settings, viewModel = viewModel)
 
             SectionHeader(text = "Chat")
             Card(modifier = Modifier.fillMaxWidth()) {
@@ -154,6 +84,190 @@ fun AssistantSettingsScreen(
                         checked = settings.showToolCalls,
                         onCheckedChange = viewModel::setShowToolCalls,
                     )
+                }
+            }
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun OnDeviceAiCard(
+    settings: com.hermes.agent.data.settings.UserSettings,
+    viewModel: SettingsViewModel,
+) {
+    val isDownloaded by viewModel.isModelDownloaded.collectAsStateWithLifecycle()
+    val isDownloading by viewModel.isModelDownloading.collectAsStateWithLifecycle()
+    val downloadProgress by viewModel.modelDownloadProgress.collectAsStateWithLifecycle()
+    val downloadError by viewModel.modelDownloadError.collectAsStateWithLifecycle()
+
+    val context = LocalContext.current
+    val selectedModel = com.hermes.agent.data.llm.ModelCatalog.byId(settings.selectedModelId)
+
+    // Storage-access state; re-checked when the user returns from the grant flow.
+    var hasStorage by remember { mutableStateOf(viewModel.hasStorageAccess()) }
+    val allFilesLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.StartActivityForResult()
+    ) {
+        hasStorage = viewModel.hasStorageAccess()
+        viewModel.onStorageAccessMaybeChanged()
+    }
+    val writePermLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) {
+        hasStorage = viewModel.hasStorageAccess()
+        viewModel.onStorageAccessMaybeChanged()
+    }
+    fun requestStorageAccess() {
+        val intent = viewModel.allFilesAccessIntent()
+        if (intent != null) allFilesLauncher.launch(intent)
+        else writePermLauncher.launch(android.Manifest.permission.WRITE_EXTERNAL_STORAGE)
+    }
+
+    val customPicker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
+        if (uri != null) {
+            context.contentResolver.takePersistableUriPermission(uri, Intent.FLAG_GRANT_READ_URI_PERMISSION)
+            viewModel.setLocalModelUri(uri.toString())
+        }
+    }
+
+    Card(modifier = Modifier.fillMaxWidth()) {
+        Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
+            Text(
+                text = "Run a language model entirely on-device — no cloud key, no network. " +
+                    "Pick a model, choose where to save it, and download.",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+
+            // ── Model dropdown ──────────────────────────────────────────────
+            var expanded by remember { mutableStateOf(false) }
+            ExposedDropdownMenuBox(
+                expanded = expanded,
+                onExpandedChange = { if (!isDownloading) expanded = it },
+            ) {
+                OutlinedTextField(
+                    value = "${selectedModel.displayName} · ${selectedModel.sizeLabel}",
+                    onValueChange = {},
+                    readOnly = true,
+                    enabled = !isDownloading,
+                    label = { Text("Model") },
+                    trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
+                    colors = hermesFieldColors(),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .menuAnchor(),
+                )
+                ExposedDropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
+                    viewModel.modelCatalog.forEach { model ->
+                        DropdownMenuItem(
+                            text = { Text("${model.displayName} · ${model.sizeLabel}") },
+                            onClick = {
+                                viewModel.setSelectedModelId(model.id)
+                                expanded = false
+                            },
+                        )
+                    }
+                }
+            }
+
+            // ── Download folder ─────────────────────────────────────────────
+            var dirText by remember(settings.modelDownloadDir) { mutableStateOf(settings.modelDownloadDir) }
+            OutlinedTextField(
+                value = dirText,
+                onValueChange = {
+                    dirText = it
+                    viewModel.setModelDownloadDir(it)
+                },
+                enabled = !isDownloading,
+                label = { Text("Download folder") },
+                placeholder = { Text("/storage/emulated/0/${viewModel.defaultModelDirName}") },
+                supportingText = {
+                    Text("Leave blank to use the default \"${viewModel.defaultModelDirName}\" folder in internal storage.")
+                },
+                singleLine = true,
+                colors = hermesFieldColors(),
+                modifier = Modifier.fillMaxWidth(),
+            )
+
+            // ── Storage permission gate ─────────────────────────────────────
+            if (!hasStorage) {
+                Text(
+                    text = "Storage access is needed to save the model into a folder you can see. " +
+                        "Without it, downloads can't be saved there.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.error,
+                )
+                androidx.compose.material3.OutlinedButton(
+                    onClick = { requestStorageAccess() },
+                    modifier = Modifier.fillMaxWidth(),
+                ) {
+                    Text("Grant storage access")
+                }
+            }
+
+            // ── Error surface (L-007) ───────────────────────────────────────
+            if (downloadError.isNotBlank()) {
+                Text(
+                    text = downloadError,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.error,
+                )
+                androidx.compose.material3.TextButton(onClick = { viewModel.clearModelDownloadError() }) {
+                    Text("Dismiss")
+                }
+            }
+
+            // ── State-driven actions ────────────────────────────────────────
+            when {
+                settings.localModelUri.isNotBlank() -> {
+                    Text(
+                        text = "Using a custom model from device storage.",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.primary,
+                    )
+                    androidx.compose.material3.Button(
+                        onClick = { viewModel.setLocalModelUri("") },
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = androidx.compose.material3.ButtonDefaults.buttonColors(
+                            containerColor = MaterialTheme.colorScheme.error,
+                        ),
+                    ) { Text("Clear custom model") }
+                }
+                isDownloading -> {
+                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Text(
+                            text = "Downloading… (${(downloadProgress * 100).toInt()}%)",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.primary,
+                        )
+                        androidx.compose.material3.LinearProgressIndicator(
+                            progress = { downloadProgress },
+                            modifier = Modifier.fillMaxWidth(),
+                        )
+                    }
+                }
+                isDownloaded -> {
+                    Text(
+                        text = "${selectedModel.displayName} is downloaded and ready.",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.primary,
+                    )
+                    androidx.compose.material3.OutlinedButton(
+                        onClick = { customPicker.launch(arrayOf("application/octet-stream")) },
+                        modifier = Modifier.fillMaxWidth(),
+                    ) { Text("Pick a custom model (.gguf) instead") }
+                }
+                else -> {
+                    androidx.compose.material3.Button(
+                        onClick = { viewModel.downloadLocalModel() },
+                        enabled = hasStorage,
+                        modifier = Modifier.fillMaxWidth(),
+                    ) { Text("Download ${selectedModel.displayName} (${selectedModel.sizeLabel})") }
+                    androidx.compose.material3.OutlinedButton(
+                        onClick = { customPicker.launch(arrayOf("application/octet-stream")) },
+                        modifier = Modifier.fillMaxWidth(),
+                    ) { Text("Pick a custom model (.gguf) instead") }
                 }
             }
         }

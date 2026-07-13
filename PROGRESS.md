@@ -18,6 +18,46 @@ repo. All three apps are merged and shipping (`:app` + `:feature:jotter` + `:fea
 
 ## Status log (newest first)
 
+### Model picker + "AI Models" download folder — 2026-07-13
+- [x] **Model dropdown.** New `data/llm/ModelCatalog.kt` — a registry of
+      `DownloadableModel(id, displayName, fileName, url, sizeBytes)`. Seeded with 4
+      bartowski Q4_K_M GGUFs whose URLs **and byte sizes were verified live against
+      HuggingFace** before shipping (avoids the untested-data / 404-in-picker bug class,
+      cf. L-003): Llama 3.2 1B (770 MB, default), Qwen2.5 1.5B (940 MB), Qwen2.5 3B
+      (1.8 GB), Llama 3.2 3B (1.9 GB). Add future models by appending to this one list —
+      the UI and download/load paths read from it.
+- [x] **Default download folder = a visible top-level "AI Models"** on shared storage
+      (`/storage/emulated/0/AI Models/`), replacing the hidden app-external `Download/`
+      dir the model used to live in. User can override with any absolute path via an
+      editable "Download folder" field (blank = the default).
+- [x] **Storage access.** Writing a real top-level folder on Android 11+ needs All-Files
+      access (`MANAGE_EXTERNAL_STORAGE`, granted via a Settings screen —
+      `ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION`); Android 10 uses legacy
+      `WRITE_EXTERNAL_STORAGE` + `requestLegacyExternalStorage`. `LocalLlmManager
+      .hasStorageAccess()` abstracts the two; the Settings card gates the Download button
+      behind it and offers a "Grant storage access" button. This is a sideloaded app, so
+      the Play Store's restriction on this permission is moot.
+- [x] **Download flow.** DownloadManager still does the network work (survives screen-off
+      / process death — L-016), writing to the app-external staging dir it's allowed to
+      touch, then `moveIntoPlace()` does an **instant same-volume rename** into the
+      target folder (a ~800 MB copy only as a cross-volume fallback, e.g. a custom SD-card
+      path). Download/move failures now surface in the UI via a `downloadError` StateFlow
+      (L-007) — the old code showed nothing on failure.
+- [x] Files: `ModelCatalog.kt` (new); `UserSettings`/`SettingsRepository`/`Impl`
+      (`selectedModelId`, `modelDownloadDir`); `LocalLlmManager` (catalog + dir +
+      permission + error + load-from-chosen-dir); `SettingsViewModel` (expose
+      catalog/selection/dir/permission/error); `AssistantSettingsScreen` (dropdown +
+      folder field + grant-access button + error surface); `AndroidManifest`
+      (`MANAGE_EXTERNAL_STORAGE`, `WRITE_EXTERNAL_STORAGE` maxSdk 29,
+      `requestLegacyExternalStorage`).
+- [x] VERIFIED: preflight (compile 3 modules + 252 tests + ledger greps) exit 0.
+- [ ] **UNVERIFIED — needs a device (L-001).** None of the runtime behavior was exercised:
+      the All-Files-access grant flow, writing/creating `/storage/emulated/0/AI Models/`,
+      the DownloadManager→rename move, loading a model from the shared path via native
+      mmap, the Android-10 legacy path, and switching models mid-library. This is
+      storage/permission/download code — exactly the class a build+unit-suite cannot
+      validate. Do a device pass before relying on it or releasing.
+
 ### Local-model downloader: load in place, drop the ~800 MB copy — 2026-07-13
 - [x] `LocalLlmManager` downloaded the GGUF to the app's **external** files dir
       (`getExternalFilesDir(DIRECTORY_DOWNLOADS)`, where DownloadManager must write —

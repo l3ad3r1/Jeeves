@@ -148,6 +148,14 @@ class SettingsViewModel @Inject constructor(
     val isModelDownloaded = MutableStateFlow(false)
     val isModelDownloading: StateFlow<Boolean> = localLlmManager.isDownloading
     val modelDownloadProgress: StateFlow<Float> = localLlmManager.downloadProgress
+    val modelDownloadError: StateFlow<String> = localLlmManager.downloadError
+
+    /** The list of models offered in the download dropdown. */
+    val modelCatalog: List<com.hermes.agent.data.llm.DownloadableModel> =
+        com.hermes.agent.data.llm.ModelCatalog.MODELS
+
+    /** Default folder name shown when the user hasn't set a custom directory. */
+    val defaultModelDirName: String = com.hermes.agent.data.llm.ModelCatalog.DEFAULT_DIR_NAME
 
     init {
         viewModelScope.launch {
@@ -160,9 +168,48 @@ class SettingsViewModel @Inject constructor(
         }
     }
 
+    /** Re-evaluate whether the selected model exists in the current folder. */
+    private fun refreshModelDownloaded() = viewModelScope.launch {
+        isModelDownloaded.value = localLlmManager.isModelDownloaded()
+    }
+
     fun downloadLocalModel() {
         localLlmManager.startDownload()
     }
+
+    fun clearModelDownloadError() = localLlmManager.clearDownloadError()
+
+    /** Persist the chosen catalog model; the download check follows the switch. */
+    fun setSelectedModelId(id: String) = viewModelScope.launch {
+        settingsRepository.setSelectedModelId(id)
+        isModelDownloaded.value = localLlmManager.isModelDownloaded()
+    }
+
+    /** Persist a custom download directory (blank = default "AI Models"). */
+    fun setModelDownloadDir(dir: String) = viewModelScope.launch {
+        settingsRepository.setModelDownloadDir(dir.trim())
+        isModelDownloaded.value = localLlmManager.isModelDownloaded()
+    }
+
+    /** Whether the app can write models to a user-visible shared folder. */
+    fun hasStorageAccess(): Boolean =
+        com.hermes.agent.data.llm.LocalLlmManager.hasStorageAccess(appContext)
+
+    /**
+     * The Settings screen used to grant All-Files access on Android 11+. Returns
+     * null on Android 10, where the UI requests WRITE_EXTERNAL_STORAGE at runtime
+     * instead.
+     */
+    fun allFilesAccessIntent(): android.content.Intent? =
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.R) {
+            android.content.Intent(
+                android.provider.Settings.ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION,
+                android.net.Uri.parse("package:${appContext.packageName}"),
+            )
+        } else null
+
+    /** Re-check permission-dependent state after returning from the grant flow. */
+    fun onStorageAccessMaybeChanged() = refreshModelDownloaded()
 
     private val _updateState = MutableStateFlow<UpdateUiState>(UpdateUiState.Idle)
     val updateState: StateFlow<UpdateUiState> = _updateState.asStateFlow()

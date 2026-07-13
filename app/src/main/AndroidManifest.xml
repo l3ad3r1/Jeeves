@@ -28,6 +28,20 @@
     <!-- In-app OTA updater: install the downloaded release APK without a browser. -->
     <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
 
+    <!-- On-device LLM models: download GGUF files into a user-visible top-level
+         "AI Models" folder (or any folder the user names). A true top-level folder
+         on shared storage requires All-Files access on Android 11+; granted at
+         runtime via Settings (Environment.isExternalStorageManager). This is a
+         sideloaded app, so the Play Store's restriction on this permission does
+         not apply. -->
+    <uses-permission android:name="android.permission.MANAGE_EXTERNAL_STORAGE"
+        tools:ignore="ScopedStorage" />
+    <!-- Android 10 (API 29) has no All-Files access; it uses legacy raw-path
+         writes to shared storage via WRITE_EXTERNAL_STORAGE +
+         requestLegacyExternalStorage on <application> below. -->
+    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE"
+        android:maxSdkVersion="29" />
+
     <!-- SMS gateway (sent via the notify tool / SmsManager). -->
     <uses-permission android:name="android.permission.SEND_SMS" />
 
@@ -55,6 +69,7 @@
         android:fullBackupContent="@xml/backup_rules"
         android:icon="@mipmap/ic_launcher"
         android:label="@string/app_name"
+        android:requestLegacyExternalStorage="true"
         android:roundIcon="@mipmap/ic_launcher_round"
         android:supportsRtl="true"
         android:theme="@style/Theme.HermesAgent"
