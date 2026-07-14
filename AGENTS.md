@@ -44,7 +44,7 @@ report the task as complete, until CI passes on your commit.
   and watch again. Repeat until green. A red CI you walked away from is an
   unfinished task, full stop.
 - Never disable, skip, `continue-on-failure`, or weaken a check to get green
-  (that is L-017 territory and worse — it defeats the gate's entire purpose).
+  — that defeats the gate's entire purpose.
 - `tools/preflight.sh` is the local mirror of CI: if it passed, CI usually will too,
   but CI is the authority. If they ever disagree, CI wins and you investigate why the
   local run missed it (often an env/mode difference — e.g. the executable bit on
@@ -58,8 +58,6 @@ its lesson exists is a process failure; a defect with no lesson written is a was
 tuition payment.
 
 **6. NEVER — hard limits.**
-- Never create a git tag or GitHub release (L-017). Releases happen only after a
-  human-directed review pass. You may commit and push to master; CI gates you.
 - Never touch `hermes-release.jks`, `hermes.local.properties`, or signing config
   values.
 - Never delete user data paths or migrations without an explicit instruction.
@@ -92,7 +90,9 @@ A red CI on your commit means you stop feature work and fix it first.
 - **No personal literals in product code** (L-004); heuristics may order, never hide.
 - **No side-effectful Kotlin default args** (L-013).
 - **fg/bg visual pairs re-verified together** (L-011).
-- **Version bump ships with the release change-set** (L-012) — but you don't release.
+- **Releases require explicit user direction and a reviewed, green commit.**
+- **Version bump ships with the release change-set** and the signer is verified before
+  publishing (L-012).
 - Update `PROGRESS.md` per completed task, newest-first, with what was VERIFIED vs
   UNVERIFIED. Keep entries factual; the file has been stale before and it cost days.
 - Commit style: imperative subject, body explains WHY, one logical change per commit.

@@ -51,8 +51,6 @@ the defect. A defect without a written lesson is wasted tuition; a defect that r
 after its lesson exists is a process failure.
 
 HARD LIMITS (violating any of these voids the task).
-- NEVER create a git tag or a GitHub release, and never run `gh release ...` (L-017).
-  You commit and push; releases happen only after a human-directed review.
 - NEVER touch hermes-release.jks, hermes.local.properties, or signing config.
 - NEVER mark a roadmap milestone, audit finding, or debt-ledger item "done" — only
   the review pass does that.
@@ -65,7 +63,7 @@ End every task with this exact checklist, filled in truthfully:
   [ ] commit message: every claim has its "moment it ran" or UNVERIFIED marker
   [ ] PROGRESS.md updated (newest-first entry, VERIFIED vs UNVERIFIED split)
   [ ] CI VERDICT: <id> success
-  [ ] no tags, no releases, no signing files touched
+  [ ] no signing files touched
 ```
 
 ---

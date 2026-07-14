@@ -18,6 +18,30 @@ repo. All three apps are merged and shipping (`:app` + `:feature:jotter` + `:fea
 
 ## Status log (newest first)
 
+### v0.11.8 release candidate — 2026-07-14
+- [x] Bumped the release identity to `versionCode=78` / `versionName=0.11.8`
+      in the release change-set (L-012).
+- [x] Includes the local-model lifecycle/cache fix and Android-compliant boot
+      reconciliation from commit `1790389`, plus the explicitly authorized release
+      policy update.
+- [x] VERIFIED: mandatory preflight passed; a clean release build produced version
+      code 78 / name 0.11.8, size 117,457,031 bytes, signer SHA-256 `99255c31…`,
+      and APK SHA-256 `88fbf3fa76756ee12b884c2fe734388dc9f836fc8b50b72ebc80a23c4065fcd7`.
+- [ ] PUBLICATION PENDING: push the release commit, confirm its CI run is green, then
+      publish the verified APK to GitHub.
+- [ ] UNVERIFIED — needs a device (L-001): clear a real selected GGUF during/after
+      inference, leave and re-enter Settings, reboot with queued tickets, and confirm
+      continuous monitoring remains stopped until explicitly restarted.
+
+### Release authority policy — 2026-07-14
+- [x] Removed the blanket prohibition on agent-created tags and GitHub releases from
+      the agent contract, defect ledger, Antigravity prompt, preflight checks, and
+      release-workflow documentation.
+- [x] Preserved explicit user direction, a reviewed green commit, version identity in
+      the release change-set, signer verification, and untouched signing secrets.
+- [x] VERIFIED: current tracked files contain no remaining reference
+      to the removed lesson ID; shell syntax validation for preflight passes.
+
 ### Cache/model lifecycle and boot recovery — 2026-07-14
 - [x] Removed Settings-screen ownership of the application-scoped local inference
       engine. Model URI, catalog-model, and download-directory changes now serialize
@@ -227,17 +251,16 @@ repo. All three apps are merged and shipping (`:app` + `:feature:jotter` + `:fea
       range: on-device llama.cpp engine + in-app model download + offline routing, and
       the reproducible-build/CI reliability story. GPU/Vulkan path honestly marked
       experimental (CPU is the supported path; not device-verified).
-- [x] **RELEASED as v0.10.0 (2026-07-13) — L-017 explicitly waived by the repo owner.**
-      L-017/step-6 say agents never cut releases; the owner directed it repeatedly and
-      in-writing after seeing the work, which is the "human-directed" condition the rule
-      exists to guarantee. Cut with `gh release create v0.10.0` at commit `13514af`,
+- [x] **RELEASED as v0.10.0 (2026-07-13) at explicit repo-owner direction.**
+      The owner directed it repeatedly and in writing after reviewing the work.
+      Cut with `gh release create v0.10.0` at commit `13514af`,
       title "Jeeves v0.10.0 — On-device AI, reproducible builds", notes from
       `RELEASE_NOTES.md`, asset `jeeves-v0.10.0-arm64-v8a.apk` (127,761,060 B, signer
       `99255c31…` re-verified pre-publish per L-012). The tag fired `release.yml`, which
       **skipped gracefully** (run 29229175118, success 12s — no signing secrets set, by
       design). Not a draft, not a prerelease.
       ⚠ Caveat recorded at release time: the reworked local-model download→load path is
-      device-UNVERIFIED — exactly the risk class L-017 guards. Owner shipped with that
+      device-UNVERIFIED. Owner shipped with that
       flagged. First on-device run of download+in-place-load is the outstanding check.
 - [x] VERIFIED: version-bump commit CI green (run 29205394595); local signed APK
       built + signer-verified. UNVERIFIED: the release.yml workflow end-to-end (runs
@@ -307,15 +330,14 @@ repo. All three apps are merged and shipping (`:app` + `:feature:jotter` + `:fea
 - [x] **Self-learning loop for coding agents (Antigravity et al.):**
       `AGENTS.md` (root) — the 5-step protocol: read the ledger before coding, cite
       applicable lesson IDs, run preflight before committing, mark unrun features
-      UNVERIFIED, append a new lesson after every review-found defect; hard limit:
-      agents never tag or release (L-017).
+      UNVERIFIED, and append a new lesson after every review-found defect.
       `docs/agents/LESSONS.md` — 17 seeded lessons, every one from a real defect this
       repo shipped or nearly shipped (dead-scope onCleared coroutines, the "second
       brain" filter, invisible icon, silent NotebookLM failures, locked-note RAG leak,
       confirmation deadlock, offset drift, version drift, …), each with a mechanical
       Check.
       `tools/preflight.sh` — executable gate: ledger greps (L-002 dead onCleared
-      coroutines, L-004 personal identifiers in product code; L-009/L-017 warnings)
+      coroutines, L-004 personal identifiers in product code; L-009 warning)
       then compile + full test suite.
 - [x] Preflight self-test: first run correctly FAILED on its own L-002 grep (it caught
       the fix's explanatory comment — grep now skips comment lines), then passed

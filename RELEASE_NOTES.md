@@ -1,5 +1,23 @@
 # Release Notes
 
+## Version 0.11.8 - Local model lifecycle and reboot recovery
+
+### Fixed
+* **Clear custom model no longer crashes Settings:** leaving Settings no longer
+  destroys the application-scoped inference engine, and clearing or switching a
+  model unloads it safely before the selection changes.
+* **Model changes cannot race active inference:** generation, model selection, and
+  download-folder changes now share one serialized lifecycle. Failures produce an
+  actionable Settings message instead of disappearing in a coroutine.
+* **Reboot recovery follows current Android restrictions:** Jeeves no longer tries
+  to launch a prohibited data-sync foreground service from the boot receiver.
+  Persisted queued tickets are reconciled with finite, unique WorkManager work.
+* **Regression protection:** lifecycle and boot-action tests plus ledger preflight
+  checks cover both shipped defect classes.
+
+> Device verification is still outstanding for clearing a real GGUF during active
+> inference and rebooting with queued tickets.
+
 ## Version 0.11.6 - LLM Prompt Formatting Decoupled & Stability Fixes
 
 *   **Gibberish Output Fix**: Fixed an issue where the local Llama 3 model produced total gibberish. The Kotlin layer was manually wrapping prompts in `<|begin_of_text|>` tags, while the C++ engine's Jinja templates applied its own tags. This caused double-wrapping and corrupted the KV cache. Prompt string formatting has now been fully delegated to the native C++ engine.

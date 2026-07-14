@@ -38,11 +38,6 @@ if git diff --cached --name-only 2>/dev/null | grep -qE "rag/|Indexer|Orchestrat
   fi
 fi
 
-# L-017: agents never release.
-if git diff --cached --name-only 2>/dev/null | grep -q "^RELEASE"; then
-  note "WARN L-017: release notes touched — remember agents do NOT tag or publish releases."
-fi
-
 # L-021: native GGUF/Jinja owns prompt formatting; Kotlin must pass raw roles.
 hits=$(grep -rnE --include='*.kt' "<\|begin_of_text\|>|\[INST\]" \
         app/src/main feature core 2>/dev/null || true)

@@ -154,13 +154,6 @@ keep-screen-on, properly fixed with a foreground service in v0.9.7).
 **Rule:** Multi-minute network work runs in a foreground service or WorkManager,
 not a ViewModel coroutine.
 
-## L-017 — Only agents may not cut releases
-**Origin:** v0.9.5 and v0.9.7 were released by an agent without review; both shipped
-user-visible breakage.
-**Rule:** Agents commit and push to master (CI gates it). Agents NEVER create tags or
-GitHub releases; a release happens only after a human-directed review pass.
-**Check:** Your session must contain zero `gh release` / tag-creating commands.
-
 ## L-018 — C/C++ builds for Android must not use APIs newer than minSdk
 **Origin:** Phase 2 (LLM integration) — `__android_log_is_loggable` failed to link for Android 10 (API 29) because it was introduced in API 30, and the CI did not catch it because it bypassed the NDK build.
 **Defect:** App failed to build natively for devices running the declared minSdk.

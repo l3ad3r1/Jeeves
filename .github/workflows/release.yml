@@ -2,8 +2,7 @@ name: Release
 
 # Builds and signs the release APK, verifies the signer, and attaches it to
 # the GitHub Release for the pushed tag. Triggered ONLY by a tag push
-# (v*) - per AGENTS.md L-017, agents never create that tag or the release
-# itself; a human pushes the tag, this workflow does the mechanical build.
+# (v*); the tag initiator explicitly authorizes this mechanical release build.
 #
 # Required repo secrets (set these yourself in GitHub Settings -> Secrets
 # and variables -> Actions; nothing here or in any agent session ever sees
