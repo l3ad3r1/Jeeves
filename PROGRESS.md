@@ -21,6 +21,12 @@ repo. All three apps are merged and shipping (`:app` + `:feature:jotter` + `:fea
 ### Chat connection-abort recovery — 2026-07-15
 - [x] Bumped the release identity to `versionCode=79` / `versionName=0.11.9` in
       the same change-set (L-012).
+- [x] Published GitHub release `v0.11.9` from commit `63b1dbf` after CI run
+      `29371092581` passed. The locally clean-built and signer-verified
+      `Jeeves-v0.11.9.apk` is 117,458,447 bytes with SHA-256
+      `ebb6609ef880536a70c223e0a31af42180008f4919e32cd0069ebeb39ffc2e80`.
+      Tag workflow `29372038302` completed with signing steps skipped because repository
+      signing secrets are not configured; the verified local APK was uploaded manually.
 - [x] Cloud chat now retries one transient `IOException` transport failure in the
       provider layer; HTTP authentication, rate-limit, and server responses retain
       their existing immediate handling.
