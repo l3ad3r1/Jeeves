@@ -18,7 +18,7 @@ repo. All three apps are merged and shipping (`:app` + `:feature:jotter` + `:fea
 
 ## Status log (newest first)
 
-### v0.11.8 release candidate — 2026-07-14
+### v0.11.8 released — 2026-07-14
 - [x] Bumped the release identity to `versionCode=78` / `versionName=0.11.8`
       in the release change-set (L-012).
 - [x] Includes the local-model lifecycle/cache fix and Android-compliant boot
@@ -27,8 +27,10 @@ repo. All three apps are merged and shipping (`:app` + `:feature:jotter` + `:fea
 - [x] VERIFIED: mandatory preflight passed; a clean release build produced version
       code 78 / name 0.11.8, size 117,457,031 bytes, signer SHA-256 `99255c31…`,
       and APK SHA-256 `88fbf3fa76756ee12b884c2fe734388dc9f836fc8b50b72ebc80a23c4065fcd7`.
-- [ ] PUBLICATION PENDING: push the release commit, confirm its CI run is green, then
-      publish the verified APK to GitHub.
+- [x] Published GitHub release `v0.11.8` from release commit `0d73de6` after CI run
+      `29341601770` passed. Tag-triggered Release run `29342429365` also passed; the
+      uploaded `Jeeves-v0.11.8.apk` is 117,457,031 bytes with SHA-256
+      `88fbf3fa76756ee12b884c2fe734388dc9f836fc8b50b72ebc80a23c4065fcd7`.
 - [ ] UNVERIFIED — needs a device (L-001): clear a real selected GGUF during/after
       inference, leave and re-enter Settings, reboot with queued tickets, and confirm
       continuous monitoring remains stopped until explicitly restarted.
