@@ -7,8 +7,8 @@ import android.net.Uri
 import android.os.Build
 import android.os.Environment
 import androidx.core.content.ContextCompat
-import com.arm.aichat.AiChat
 import com.arm.aichat.InferenceEngine
+import com.arm.aichat.InferenceEngine.State
 import com.arm.aichat.isModelLoaded
 import com.hermes.agent.data.settings.SettingsRepository
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -18,16 +18,21 @@ import javax.inject.Singleton
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOn
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
+import timber.log.Timber
 
 @Singleton
 class LocalLlmManager @Inject constructor(
     @ApplicationContext private val context: Context,
     private val settingsRepository: SettingsRepository,
     private val downloadCoordinator: LocalModelDownloadCoordinator,
+    private val engine: InferenceEngine,
 ) {
-    private val engine: InferenceEngine = AiChat.getInferenceEngine(context)
+    private val modelMutex = Mutex()
 
     private suspend fun activeModel(): DownloadableModel =
         ModelCatalog.byId(settingsRepository.current().selectedModelId)
@@ -70,33 +75,67 @@ class LocalLlmManager @Inject constructor(
 
     fun clearDownloadError() = downloadCoordinator.clearError()
 
-    suspend fun initialize() {
+    private suspend fun initializeLocked() {
+        val settledState = engine.state.first {
+            it !is State.Uninitialized && it !is State.Initializing
+        }
+        when {
+            settledState.isModelLoaded -> return
+            settledState is State.Error -> engine.cleanUp()
+            settledState !is State.Initialized -> throw IllegalStateException(
+                "Local model is busy (${settledState.javaClass.simpleName}). Try again.",
+            )
+        }
         if (!isModelDownloaded()) {
             throw IllegalStateException("Model not downloaded yet. Please download it in settings.")
         }
-        if (!engine.state.value.isModelLoaded) {
-            val customUri = settingsRepository.current().localModelUri
-            if (customUri.isNotBlank()) {
-                val uri = Uri.parse(customUri)
-                context.contentResolver.openFileDescriptor(uri, "r")?.use { descriptor ->
-                    engine.loadModel("/proc/self/fd/${descriptor.fd}")
-                } ?: throw IllegalStateException("Cannot open the custom model file. Choose it again.")
-            } else {
-                engine.loadModel(currentModelFile().absolutePath)
-            }
+        val customUri = settingsRepository.current().localModelUri
+        if (customUri.isNotBlank()) {
+            val uri = Uri.parse(customUri)
+            context.contentResolver.openFileDescriptor(uri, "r")?.use { descriptor ->
+                engine.loadModel("/proc/self/fd/${descriptor.fd}")
+            } ?: throw IllegalStateException("Cannot open the custom model file. Choose it again.")
+        } else {
+            engine.loadModel(currentModelFile().absolutePath)
         }
     }
 
     fun generateResponse(systemPrompt: String, userPrompt: String): Flow<String> = flow {
-        if (!engine.state.value.isModelLoaded) initialize()
-        // Always reset native chat state: the provider supplies a bounded transcript
-        // on every call, including internal calls that have no explicit system message.
-        engine.setSystemPrompt(systemPrompt.ifBlank { DEFAULT_SYSTEM_PROMPT })
-        engine.sendUserPrompt(userPrompt).collect { emit(it) }
+        modelMutex.withLock {
+            if (!engine.state.value.isModelLoaded) initializeLocked()
+            // Always reset native chat state: the provider supplies a bounded transcript
+            // on every call, including internal calls that have no explicit system message.
+            engine.setSystemPrompt(systemPrompt.ifBlank { DEFAULT_SYSTEM_PROMPT })
+            engine.sendUserPrompt(userPrompt).collect { emit(it) }
+        }
     }.flowOn(Dispatchers.IO)
 
-    fun close() {
-        engine.cleanUp()
+    suspend fun setLocalModelUri(uri: String) = updateModelSelection("change the custom model") {
+        settingsRepository.setLocalModelUri(uri)
+    }
+
+    suspend fun setSelectedModelId(id: String) = updateModelSelection("select that model") {
+        settingsRepository.setSelectedModelId(id)
+    }
+
+    suspend fun setModelDownloadDir(dir: String) = updateModelSelection("change the model folder") {
+        settingsRepository.setModelDownloadDir(dir)
+    }
+
+    private suspend fun updateModelSelection(
+        action: String,
+        persist: suspend () -> Unit,
+    ) = modelMutex.withLock {
+        try {
+            engine.cleanUp()
+            persist()
+        } catch (error: Exception) {
+            Timber.e(error, "Could not %s", action)
+            downloadCoordinator.reportError(
+                "Couldn't $action. Stop any active response and try again. " +
+                    (error.message ?: "The local model could not be unloaded."),
+            )
+        }
     }
 
     companion object {

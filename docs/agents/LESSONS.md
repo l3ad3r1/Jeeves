@@ -207,3 +207,30 @@ because `assembleDebug` was not in the workflow yet).
 **Defect:** Local Llama 3 model produced total gibberish due to KV cache corruption. Kotlin code was manually injecting `<|begin_of_text|><|start_header_id|>...` tokens and passing the raw string to the C++ core. Meanwhile, the C++ core's Jinja engine `add_special=true` setting auto-injected a second set of headers, causing double-wrapping.
 **Rule:** When bridging between higher-level logic (Kotlin/Java) and lower-level inference engines (C++ llama.cpp), pass the raw system and user prompts as distinct string arguments. Do not manually construct LLM templates (e.g. ChatML, Llama 3) in the host language if the native engine employs Jinja templates. Let the engine natively format the template exactly as the `.gguf` metadata expects it.
 **Check:** Grep for `<|begin_of_text|>` or `[INST]` inside Kotlin files. If the model logic natively supports templating (Jinja/gguf), the Kotlin layer should not be concatenating string tags.
+
+## L-022 — Screen teardown must not own application-singleton cleanup
+**Origin:** v0.11.7 settings/cache defect — leaving Settings invoked
+`LocalLlmManager.close()` from `SettingsViewModel.onCleared()`.
+**Defect:** The application-scoped native inference engine was unloaded whenever one
+screen was destroyed. Cleanup threw in the normal `Initialized` state, producing the
+reported clear-cache/settings crash, and could race a request owned elsewhere.
+**Rule:** A screen may request an explicit model switch, but it must never destroy an
+application singleton. Native model switches are serialized with generation, and
+unload is a suspending, idempotent no-op when no model is loaded.
+**Check:** ViewModel `onCleared` methods must not call LLM `close`/`cleanUp`.
+Tests must verify explicit model URI/id/directory changes unload before persistence.
+
+## L-023 — Boot receivers must not start restricted foreground-service types
+**Origin:** v0.11.7 device logs — `BootReceiver` started the data-sync foreground
+service from `BOOT_COMPLETED`.
+**Defect:** Android rejected the launch with
+`ForegroundServiceStartNotAllowedException`, so reboot recovery crashed instead of
+recovering queued work. `LOCKED_BOOT_COMPLETED` also ran before the app's
+credential-protected Room/WorkManager state was available.
+**Rule:** Reboot recovery is finite, idempotent work enqueued after
+`BOOT_COMPLETED`. Continuous foreground monitoring remains an explicit user action
+unless Android provides a permitted exemption. Do not touch credential-protected app
+state at locked boot.
+**Check:** `BootReceiver` contains no service-start call, the manifest does not
+register `LOCKED_BOOT_COMPLETED`, and a regression test rejects locked/unrelated
+broadcast actions.

@@ -52,6 +52,30 @@ if [ -n "$hits" ]; then
   fail=1
 fi
 
+# L-022: screen teardown must not destroy the application-scoped LLM engine.
+hits=$(grep -rnE --include='*ViewModel.kt' \
+        "localLlmManager\.(close|cleanUp)|inferenceEngine\.(close|cleanUp)|engine\.cleanUp" \
+        app/src/main feature core 2>/dev/null || true)
+if [ -n "$hits" ]; then
+  note "FAIL L-022: a ViewModel owns shared inference-engine cleanup:"
+  note "$hits"
+  fail=1
+fi
+
+# L-023: current Android releases reject data-sync FGS starts from boot.
+hits=$(
+  grep -nE "AgentServiceController\.start|startForeground(Service)?" \
+       app/src/main/kotlin/com/hermes/agent/service/BootReceiver.kt 2>/dev/null
+  grep -n "android.intent.action.LOCKED_BOOT_COMPLETED" \
+       app/src/main/AndroidManifest.xml 2>/dev/null
+  true
+)
+if [ -n "$hits" ]; then
+  note "FAIL L-023: boot path starts a restricted service or enters locked storage:"
+  note "$hits"
+  fail=1
+fi
+
 if [ "$fail" -ne 0 ]; then
   note ""
   note "Preflight FAILED on ledger greps. Fix before compiling."

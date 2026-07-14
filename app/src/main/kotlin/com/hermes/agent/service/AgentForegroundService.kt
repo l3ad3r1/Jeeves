@@ -13,12 +13,8 @@ import androidx.core.app.NotificationCompat
 import androidx.core.app.ServiceCompat
 import com.hermes.agent.MainActivity
 import com.hermes.agent.R
-import com.hermes.agent.domain.agent.Orchestrator
-import com.hermes.agent.domain.agent.OrchestratorEvent
-import com.hermes.agent.domain.model.KanbanStatus
-import com.hermes.agent.domain.repository.KanbanRepository
-import com.hermes.agent.data.tools.WebhookTool
 import dagger.hilt.android.AndroidEntryPoint
+import com.hermes.agent.domain.repository.KanbanRepository
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -26,12 +22,9 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.distinctUntilChanged
-import kotlinx.coroutines.flow.toList
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withTimeoutOrNull
-import kotlinx.serialization.json.JsonElement
-import kotlinx.serialization.json.JsonPrimitive
 import timber.log.Timber
 import javax.inject.Inject
 
@@ -56,10 +49,9 @@ import javax.inject.Inject
 @AndroidEntryPoint
 class AgentForegroundService : Service() {
 
-    @Inject lateinit var kanbanRepository: KanbanRepository
-    @Inject lateinit var orchestrator: Orchestrator
-    @Inject lateinit var webhookTool: WebhookTool
+    @Inject lateinit var taskProcessor: KanbanTaskProcessor
 
+    @Inject lateinit var kanbanRepository: KanbanRepository
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
     private var loopJob: Job? = null
     private var wakeWatcherJob: Job? = null
@@ -134,48 +126,19 @@ class AgentForegroundService : Service() {
     }
 
     /** Works the oldest TODO ticket. Returns false when the queue is empty. */
-    private suspend fun tick(): Boolean {
-        val ticket = kanbanRepository.nextTodo() ?: run {
-            AgentServiceController.setWorkingOn(null)
-            return false
-        }
-
-        AgentServiceController.setWorkingOn(ticket.title)
-        updateNotification("Working: ${ticket.title.take(28)}", "Ticket ${ticket.id} in progress")
-        kanbanRepository.moveTo(ticket.id, KanbanStatus.IN_PROGRESS)
-
-        val prompt = buildString {
-            append(ticket.title)
-            if (ticket.body.isNotBlank()) append("\n\n${ticket.body}")
-        }
-
-        val result = runCatching {
-            val events = orchestrator.run(
-                conversationId = "kanban-${ticket.id}",
-                userMessage = prompt,
-                recentMessages = emptyList(),
-            ).toList()
-
-            events.filterIsInstance<OrchestratorEvent.ReplyComplete>()
-                .firstOrNull()?.finalText
-                ?: events.filterIsInstance<OrchestratorEvent.ReplyToken>()
-                    .joinToString("") { it.text }
-                    .ifBlank { "Completed (no reply)." }
-        }.getOrElse { e ->
-            Timber.e(e, "Orchestrator failed for ticket ${ticket.id}")
-            "Agent error: ${e.message}"
-        }
-        kanbanRepository.complete(ticket.id, result)
-        // Celebrate: the home screen's eyes do a happy bounce.
-        AgentServiceController.emitTaskCompleted(ticket.title)
-
-        runCatching {
-            val args: Map<String, JsonElement> =
-                mapOf("message" to JsonPrimitive("✅ Completed ticket ${ticket.id}: ${ticket.title}"))
-            webhookTool.execute(args)
-        }.onFailure { Timber.w(it, "notify after ticket completion failed") }
-        return true
-    }
+    private suspend fun tick(): Boolean = taskProcessor.processNext(
+        onStarted = { ticket ->
+            AgentServiceController.setWorkingOn(ticket.title)
+            updateNotification(
+                "Working: ${ticket.title.take(28)}",
+                "Ticket ${ticket.id} in progress",
+            )
+        },
+        onCompleted = { ticket ->
+            // Celebrate: the home screen's eyes do a happy bounce.
+            AgentServiceController.emitTaskCompleted(ticket.title)
+        },
+    )
 
     private fun stopAgent() {
         loopJob?.cancel()

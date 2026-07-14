@@ -137,7 +137,7 @@ internal class InferenceEngineImpl private constructor(
 
             } catch (e: Exception) {
                 Log.e(TAG, "Failed to load native library", e)
-                throw e
+                _state.value = InferenceEngine.State.Error(e)
             }
         }
     }
@@ -271,9 +271,9 @@ internal class InferenceEngineImpl private constructor(
     /**
      * Unloads the model and frees resources, or reset error states
      */
-    override fun cleanUp() {
+    override suspend fun cleanUp() {
         _cancelGeneration = true
-        runBlocking(llamaDispatcher) {
+        withContext(llamaDispatcher) {
             when (val state = _state.value) {
                 is InferenceEngine.State.ModelReady -> {
                     Log.i(TAG, "Unloading model and free resources...")
@@ -293,7 +293,19 @@ internal class InferenceEngineImpl private constructor(
                     Unit
                 }
 
-                else -> throw IllegalStateException("Cannot unload model in ${state.javaClass.simpleName}")
+                is InferenceEngine.State.Uninitialized,
+                is InferenceEngine.State.Initializing,
+                is InferenceEngine.State.Initialized,
+                -> Unit
+
+                // Operations are serialized on llamaDispatcher. By the time
+                // cleanup obtains it, active work normally settles to ModelReady
+                // or Error. A residual transition is safely deferred instead of
+                // issuing a concurrent native unload.
+                else -> Log.i(
+                    TAG,
+                    "Deferring cleanup while engine is ${state.javaClass.simpleName}",
+                )
             }
         }
     }

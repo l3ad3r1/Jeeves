@@ -181,14 +181,13 @@
             android:permission="android.permission.BIND_VOICE_INTERACTION"
             android:exported="true" />
 
-        <!-- Restarts the agent service after device reboot. -->
+        <!-- Reconciles persisted queued work after credential-protected storage is available. -->
         <receiver
             android:name=".service.BootReceiver"
             android:exported="true"
             android:enabled="true">
             <intent-filter>
                 <action android:name="android.intent.action.BOOT_COMPLETED" />
-                <action android:name="android.intent.action.LOCKED_BOOT_COMPLETED" />
             </intent-filter>
         </receiver>
 

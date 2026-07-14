@@ -181,13 +181,13 @@ class SettingsViewModel @Inject constructor(
 
     /** Persist the chosen catalog model; the download check follows the switch. */
     fun setSelectedModelId(id: String) = viewModelScope.launch {
-        settingsRepository.setSelectedModelId(id)
+        localLlmManager.setSelectedModelId(id)
         isModelDownloaded.value = localLlmManager.isModelDownloaded()
     }
 
     /** Persist a custom download directory (blank = default "AI Models"). */
     fun setModelDownloadDir(dir: String) = viewModelScope.launch {
-        settingsRepository.setModelDownloadDir(dir.trim())
+        localLlmManager.setModelDownloadDir(dir.trim())
         isModelDownloaded.value = localLlmManager.isModelDownloaded()
     }
 
@@ -266,7 +266,7 @@ class SettingsViewModel @Inject constructor(
     }
 
     fun setLocalModelUri(uri: String) = viewModelScope.launch {
-        settingsRepository.setLocalModelUri(uri)
+        localLlmManager.setLocalModelUri(uri)
         isModelDownloaded.value = localLlmManager.isModelDownloaded()
     }
 
@@ -444,10 +444,5 @@ class SettingsViewModel @Inject constructor(
 
     fun dismissExportState() {
         _exportState.value = ExportUiState.Idle
-    }
-
-    override fun onCleared() {
-        super.onCleared()
-        localLlmManager.close()
     }
 }

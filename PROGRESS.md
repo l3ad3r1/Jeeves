@@ -18,6 +18,26 @@ repo. All three apps are merged and shipping (`:app` + `:feature:jotter` + `:fea
 
 ## Status log (newest first)
 
+### Cache/model lifecycle and boot recovery — 2026-07-14
+- [x] Removed Settings-screen ownership of the application-scoped local inference
+      engine. Model URI, catalog-model, and download-directory changes now serialize
+      native unload with generation, unload safely when already initialized/unloaded,
+      and persist only after cleanup (L-007, L-013, L-022).
+- [x] Wait for asynchronous native initialization before loading a model and expose
+      native initialization failure through engine state instead of throwing from an
+      unobserved background coroutine.
+- [x] Replaced the forbidden boot-time data-sync foreground-service launch with unique
+      finite WorkManager reconciliation of persisted kanban tickets after
+      `BOOT_COMPLETED`; locked boot no longer enters credential-protected app state
+      (L-019, L-023).
+- [x] VERIFIED: focused lifecycle/boot regression tests pass; mandatory
+      `tools/preflight.sh` exits 0 with ledger scans, all-module Kotlin compilation,
+      native debug APK assembly, and the complete unit suite.
+- [ ] UNVERIFIED — needs a device (L-001): clear a selected custom model, leave and
+      re-enter Settings during/after local inference, reboot with queued tickets, and
+      confirm the user-started continuous agent remains stopped until explicitly
+      restarted.
+
 ### v0.11.7 released — 2026-07-14
 - [x] Bumped the release identity to `versionCode=77` / `versionName=0.11.7` in
       the release change-set (L-012).

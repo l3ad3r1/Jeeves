@@ -1,5 +1,8 @@
 package com.hermes.agent.di
 
+import android.content.Context
+import com.arm.aichat.AiChat
+import com.arm.aichat.InferenceEngine
 import com.hermes.agent.data.llm.CloudLlmProvider
 import com.hermes.agent.data.llm.CloudModelSource
 import com.hermes.agent.data.llm.LlmProvider
@@ -18,6 +21,7 @@ import dagger.Binds
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
+import dagger.hilt.android.qualifiers.ApplicationContext
 import dagger.hilt.components.SingletonComponent
 import kotlinx.serialization.json.Json
 import javax.inject.Named
@@ -48,6 +52,12 @@ abstract class LlmModule {
     abstract fun bindCloudLlmProvider(impl: CloudLlmProvider): LlmProvider
 
     companion object {
+
+        @Provides
+        @Singleton
+        fun provideInferenceEngine(
+            @ApplicationContext context: Context,
+        ): InferenceEngine = AiChat.getInferenceEngine(context)
 
         /**
          * Default (unqualified) [CloudModelSource]. Every bare

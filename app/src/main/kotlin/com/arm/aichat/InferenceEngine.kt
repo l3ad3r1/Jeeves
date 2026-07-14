@@ -38,7 +38,7 @@ interface InferenceEngine {
     /**
      * Unloads the currently loaded model.
      */
-    fun cleanUp()
+    suspend fun cleanUp()
 
     /**
      * Cleans up resources when the engine is no longer needed.
