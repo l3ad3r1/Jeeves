@@ -18,6 +18,19 @@ repo. All three apps are merged and shipping (`:app` + `:feature:jotter` + `:fea
 
 ## Status log (newest first)
 
+### Chat connection-abort recovery — 2026-07-15
+- [x] Bumped the release identity to `versionCode=79` / `versionName=0.11.9` in
+      the same change-set (L-012).
+- [x] Cloud chat now retries one transient `IOException` transport failure in the
+      provider layer; HTTP authentication, rate-limit, and server responses retain
+      their existing immediate handling.
+- [x] Repeated transport failures now surface an actionable connection message instead
+      of Android's raw `Software caused connection abort` socket text (L-007, L-024).
+- [x] VERIFIED: focused provider tests simulate abort-then-success and repeated abort;
+      mandatory `tools/preflight.sh` exits 0 with all-module compilation, native debug
+      APK assembly, the complete unit suite, and ledger checks.
+- [ ] UNVERIFIED — needs a connected device (L-001): reproduce cloud chat while the
+      phone changes networks and confirm a real request recovers after one socket abort.
 ### v0.11.8 released — 2026-07-14
 - [x] Bumped the release identity to `versionCode=78` / `versionName=0.11.8`
       in the release change-set (L-012).

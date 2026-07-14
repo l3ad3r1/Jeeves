@@ -227,3 +227,16 @@ state at locked boot.
 **Check:** `BootReceiver` contains no service-start call, the manifest does not
 register `LOCKED_BOOT_COMPLETED`, and a regression test rejects locked/unrelated
 broadcast actions.
+## L-024 — Retry transient interactive network failures at the provider boundary
+**Origin:** v0.11.8 user report — cloud chat displayed `Software caused connection
+abort` and ended the turn.
+**Defect:** The orchestrated chat path used a single non-streaming cloud request. A
+transient socket abort escaped immediately and its raw operating-system message was
+shown to the user, even though repeating the safe request could recover.
+**Rule:** For user-triggered remote operations that are safe to replay, the owning
+infrastructure provider performs a small bounded retry for transport `IOException`s
+and maps exhaustion to an actionable message. Do not blindly retry HTTP authentication,
+configuration, rate-limit, or application errors.
+**Check:** Simulate a `SocketException` followed by success and verify the bounded
+retry; simulate repeated aborts and verify the final user-facing message. Existing HTTP
+error tests must still prove those responses are not retried by this policy.

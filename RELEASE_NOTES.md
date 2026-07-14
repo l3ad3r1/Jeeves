@@ -1,5 +1,21 @@
 # Release Notes
 
+## Version 0.11.9 - Chat connection recovery
+
+### Fixed
+* **Transient cloud chat aborts recover automatically:** Jeeves retries one safe
+  cloud request when Android reports a temporary socket failure such as
+  `Software caused connection abort`.
+* **Connection failures are actionable:** if the retry also fails, chat asks the
+  user to check the internet connection and try again instead of showing raw
+  operating-system socket text.
+* **HTTP errors remain immediate:** authentication, rate-limit, and server responses
+  are not blindly replayed by the transport retry policy.
+* **Regression protection:** focused tests cover abort-then-success and repeated
+  abort behavior; the full repository preflight passes.
+
+> A real network-switch recovery remains device-unverified because no Android device
+> was connected during the final verification pass.
 ## Version 0.11.8 - Local model lifecycle and reboot recovery
 
 ### Fixed

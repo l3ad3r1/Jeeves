@@ -24,6 +24,7 @@ import okhttp3.RequestBody.Companion.toRequestBody
 import okhttp3.ResponseBody
 import timber.log.Timber
 import java.io.BufferedReader
+import java.io.IOException
 import java.io.InputStreamReader
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -68,6 +69,13 @@ class CloudLlmProvider @Inject constructor(
     private val json: Json,
     private val modelSource: CloudModelSource,
 ) : LlmProvider {
+
+    private companion object {
+        const val NETWORK_ATTEMPTS = 2
+        const val NETWORK_RETRY_DELAY_MS = 350L
+        const val NETWORK_ERROR_MESSAGE =
+            "Couldn't reach the cloud model. Check your internet connection and try again."
+    }
 
     override val name: String =
         if (modelSource == CloudModelSource.AUX) "Hermes-Cloud-Specialised" else "Hermes-Cloud"
@@ -120,7 +128,9 @@ class CloudLlmProvider @Inject constructor(
         )
         val auth = "Bearer ${s.activeApiKey().cleaned()}"
         val resp = try {
-            api.completion(chatUrl(s.activeBaseUrl()), auth, request)
+            retryTransientNetwork {
+                api.completion(chatUrl(s.activeBaseUrl()), auth, request)
+            }
         } catch (t: Throwable) {
             Timber.tag("CloudLlm").w(t, "Cloud completion failed")
             throw t
@@ -158,11 +168,13 @@ class CloudLlmProvider @Inject constructor(
 
         val auth = "Bearer ${s.activeApiKey().cleaned()}"
         val rawJson: String = try {
-            api.completionRaw(
-                chatUrl(s.activeBaseUrl()),
-                auth,
-                requestJson.toRequestBody("application/json; charset=utf-8".toMediaType()),
-            ).string()
+            retryTransientNetwork {
+                api.completionRaw(
+                    chatUrl(s.activeBaseUrl()),
+                    auth,
+                    requestJson.toRequestBody("application/json; charset=utf-8".toMediaType()),
+                ).string()
+            }
         } catch (e: retrofit2.HttpException) {
             val errBody = runCatching { e.response()?.errorBody()?.string() }.getOrNull()
             Timber.tag("CloudLlm").w(e, "completion-with-tools HTTP %d: %s", e.code(), errBody)
@@ -282,6 +294,32 @@ class CloudLlmProvider @Inject constructor(
         }
         emit(LlmStreamChunk.Done)
     }.flowOn(dispatchers.io)
+
+    /**
+     * Retry one transient transport failure. HTTP responses are deliberately
+     * excluded: authentication, rate-limit, and server errors must retain
+     * their existing handling instead of replaying a request blindly.
+     */
+    private suspend fun <T> retryTransientNetwork(block: suspend () -> T): T {
+        var lastFailure: IOException? = null
+        repeat(NETWORK_ATTEMPTS) { attempt ->
+            try {
+                return block()
+            } catch (failure: IOException) {
+                lastFailure = failure
+                Timber.tag("CloudLlm").w(
+                    failure,
+                    "Cloud transport failed (attempt %d/%d)",
+                    attempt + 1,
+                    NETWORK_ATTEMPTS,
+                )
+                if (attempt + 1 < NETWORK_ATTEMPTS) {
+                    delay(NETWORK_RETRY_DELAY_MS)
+                }
+            }
+        }
+        throw IOException(NETWORK_ERROR_MESSAGE, lastFailure)
+    }
 
     // --- helpers ---
 
