@@ -20,6 +20,9 @@ interface NoteDao {
     @Query("SELECT * FROM notes WHERE deletedAt IS NULL AND lastModifiedLocally >= :sinceMillis ORDER BY lastModifiedLocally DESC")
     suspend fun getRecentNotes(sinceMillis: Long): List<NoteEntity>
 
+    @Query("SELECT * FROM notes WHERE deletedAt IS NULL AND locked = 0 AND encrypted = 0 AND lastModifiedLocally >= :sinceMillis ORDER BY lastModifiedLocally DESC")
+    suspend fun getPromptSafeRecentNotes(sinceMillis: Long): List<NoteEntity>
+
     @Query("SELECT * FROM notes WHERE id = :id")
     suspend fun getNoteById(id: Int): NoteEntity?
 
@@ -40,6 +43,9 @@ interface NoteDao {
 
     @Query("SELECT * FROM notes WHERE deletedAt IS NULL AND (title LIKE :query OR content LIKE :query) ORDER BY pinned DESC, lastModifiedLocally DESC")
     fun searchNotesFlow(query: String): Flow<List<NoteEntity>>
+
+    @Query("SELECT * FROM notes WHERE deletedAt IS NULL AND locked = 0 AND encrypted = 0 AND (title LIKE :query OR content LIKE :query) ORDER BY pinned DESC, lastModifiedLocally DESC")
+    fun searchPromptSafeNotesFlow(query: String): Flow<List<NoteEntity>>
 
     @Query("""
         SELECT * FROM notes 

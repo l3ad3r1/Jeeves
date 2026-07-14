@@ -43,7 +43,7 @@ class SearchNotesTool @Inject constructor(
             ?: return ToolResult.error("missing required parameter: query")
 
         return try {
-            val results = noteRepository.searchNotes(query).first()
+            val results = noteRepository.searchPromptSafeNotes(query).first()
             if (results.isEmpty()) {
                 ToolResult.ok("No notes found matching: '$query'", System.currentTimeMillis() - start)
             } else {

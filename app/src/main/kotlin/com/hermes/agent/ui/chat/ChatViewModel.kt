@@ -182,6 +182,7 @@ class ChatViewModel @Inject constructor(
             }
             is OrchestratorEvent.ToolCallRequested -> {
                 val summary = ToolCallSummary(
+                    callId = event.call.id,
                     name = event.call.name,
                     argumentsPreview = event.call.arguments.entries.joinToString { "${it.key}=${it.value}" },
                     status = ToolCallStatus.RUNNING,
@@ -193,7 +194,7 @@ class ChatViewModel @Inject constructor(
             }
             is OrchestratorEvent.ToolCallResult -> {
                 val updated = _ephemeral.value.toolCalls.map {
-                    if (it.name == event.call.name && it.status == ToolCallStatus.RUNNING) {
+                    if (it.callId == event.call.id && it.status == ToolCallStatus.RUNNING) {
                         it.copy(
                             status = if (event.success) ToolCallStatus.SUCCEEDED else ToolCallStatus.FAILED,
                             outputPreview = event.output.take(200),

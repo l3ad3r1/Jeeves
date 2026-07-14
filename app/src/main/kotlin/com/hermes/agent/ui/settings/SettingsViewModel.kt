@@ -174,7 +174,7 @@ class SettingsViewModel @Inject constructor(
     }
 
     fun downloadLocalModel() {
-        localLlmManager.startDownload()
+        viewModelScope.launch { localLlmManager.startDownload() }
     }
 
     fun clearModelDownloadError() = localLlmManager.clearDownloadError()

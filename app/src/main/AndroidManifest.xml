@@ -64,7 +64,7 @@
 
     <application
         android:name=".HermesApp"
-        android:allowBackup="true"
+        android:allowBackup="false"
         android:dataExtractionRules="@xml/data_extraction_rules"
         android:fullBackupContent="@xml/backup_rules"
         android:icon="@mipmap/ic_launcher"
@@ -143,6 +143,13 @@
             android:name=".data.update.OtaDownloadService"
             android:exported="false"
             android:foregroundServiceType="dataSync" />
+
+        <!-- Long-running local-model downloads are owned by WorkManager and
+             advertised as data-sync foreground work on Android 14+. -->
+        <service
+            android:name="androidx.work.impl.foreground.SystemForegroundService"
+            android:foregroundServiceType="dataSync"
+            tools:node="merge" />
 
         <!-- Quick Settings Tile -->
         <service

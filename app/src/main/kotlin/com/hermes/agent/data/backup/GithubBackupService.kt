@@ -8,7 +8,6 @@ import com.hermes.agent.domain.repository.CronRepository
 import com.hermes.agent.domain.repository.MemoryRepository
 import com.hermes.agent.domain.repository.SkillRepository
 import com.hermes.agent.work.CronScheduler
-import com.l3ad3r1.octojotter.data.local.NoteEntity
 import com.l3ad3r1.octojotter.data.repository.NoteRepository
 import com.sassybutler.alarm.Alarm
 import com.sassybutler.alarm.AlarmStore
@@ -91,13 +90,11 @@ class GithubBackupService @Inject constructor(
             val settingsBackup = s?.let {
                 SettingsBackup(
                     cloudEnabled = it.cloudEnabled,
-                    cloudApiKey = it.cloudApiKey,
                     cloudBaseUrl = it.cloudBaseUrl,
                     cloudModel = it.cloudModel,
                     reasoningEffort = it.reasoningEffort,
                     auxModel = it.auxModel,
                     auxBaseUrl = it.auxBaseUrl,
-                    auxApiKey = it.auxApiKey,
                     appTheme = it.appTheme,
                 )
             }
@@ -117,19 +114,7 @@ class GithubBackupService @Inject constructor(
 
             val notes = runCatching { noteRepository.getAllNotes() }
                 .getOrDefault(emptyList())
-                .map {
-                    NoteBackup(
-                        title = it.title,
-                        content = it.content,
-                        gistId = it.gistId,
-                        pinned = it.pinned,
-                        tags = it.tags,
-                        folder = it.folder,
-                        locked = it.locked,
-                        createdAt = it.lastModifiedLocally,
-                        modifiedAt = it.lastModifiedLocally,
-                    )
-                }
+                .mapNotNull { it.toBackupOrNull() }
 
             val alarms = runCatching { AlarmStore.all(context) }
                 .getOrDefault(emptyList())
@@ -252,13 +237,15 @@ class GithubBackupService @Inject constructor(
             backupData.settings?.let { sb ->
                 runCatching {
                     settingsRepository.setCloudEnabled(sb.cloudEnabled)
-                    settingsRepository.setCloudApiKey(sb.cloudApiKey)
+                    // v2-v4 backups may contain credentials. New v5 backups do not.
+                    // A blank field must not erase a key configured on this device.
+                    if (sb.cloudApiKey.isNotBlank()) settingsRepository.setCloudApiKey(sb.cloudApiKey)
                     if (sb.cloudBaseUrl.isNotBlank()) settingsRepository.setCloudBaseUrl(sb.cloudBaseUrl)
                     if (sb.cloudModel.isNotBlank()) settingsRepository.setCloudModel(sb.cloudModel)
                     if (sb.reasoningEffort.isNotBlank()) settingsRepository.setReasoningEffort(sb.reasoningEffort)
                     if (sb.auxModel.isNotBlank()) settingsRepository.setAuxModel(sb.auxModel)
                     settingsRepository.setAuxBaseUrl(sb.auxBaseUrl)
-                    settingsRepository.setAuxApiKey(sb.auxApiKey)
+                    if (sb.auxApiKey.isNotBlank()) settingsRepository.setAuxApiKey(sb.auxApiKey)
                     if (sb.appTheme.isNotBlank()) settingsRepository.setAppTheme(sb.appTheme)
                 }
                     .onSuccess { settingsRestored = true }
@@ -288,27 +275,28 @@ class GithubBackupService @Inject constructor(
             // NoteEntity ids auto-generate, so a blind insert duplicates every note
             // each time Restore is tapped. Skip notes that already exist (matched by
             // gistId when present, else exact title+content).
-            val existingNotes = runCatching { noteRepository.getAllNotes() }.getOrDefault(emptyList())
+            val existingNotes = runCatching { noteRepository.getAllNotes() }
+                .getOrDefault(emptyList())
+                .toMutableList()
             for (n in backupData.notes) {
                 val alreadyPresent = existingNotes.any {
                     (n.gistId != null && it.gistId == n.gistId) ||
-                        (it.title == n.title && it.content == n.content)
+                        (n.repository != null && n.path != null &&
+                            it.repository == n.repository && it.path == n.path) ||
+                        (n.gistId == null && n.repository == null &&
+                            it.gistId == null && it.repository == null &&
+                            it.title == n.title && it.content == n.content &&
+                            it.deletedAt == n.deletedAt)
                 }
                 if (alreadyPresent) continue
+                val entity = n.toRestoredEntity()
                 runCatching {
-                    val entity = NoteEntity(
-                        title = n.title,
-                        content = n.content,
-                        gistId = n.gistId,
-                        pinned = n.pinned,
-                        tags = n.tags,
-                        folder = n.folder,
-                        locked = n.locked,
-                        lastModifiedLocally = n.modifiedAt,
-                    )
                     noteRepository.insertNote(entity)
                 }
-                    .onSuccess { notesImported++ }
+                    .onSuccess {
+                        notesImported++
+                        existingNotes += entity
+                    }
                     .onFailure { Timber.tag("GithubBackup").w(it, "import note ${n.title}") }
             }
 

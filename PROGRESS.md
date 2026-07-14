@@ -18,6 +18,69 @@ repo. All three apps are merged and shipping (`:app` + `:feature:jotter` + `:fea
 
 ## Status log (newest first)
 
+### Audit remediation tranche 2: durable local agent - 2026-07-14
+- [x] Replaced the screen-owned `DownloadManager` polling coroutine with a unique,
+      network-constrained Hilt `CoroutineWorker`. WorkManager now persists ownership and
+      progress across screen and process loss, runs the transfer as foreground data-sync
+      work, retries transient connection failures, and resumes from a `.part` file (L-016).
+- [x] The model worker validates the selected model and destination, checks temporary and
+      destination space, rejects invalid resume ranges and oversized/incomplete responses,
+      reports actionable failure output, and promotes only an exact-size staged file while
+      retaining the previous valid model until replacement succeeds (L-001, L-007, L-019).
+- [x] Local inference now receives a bounded role-labelled transcript containing recent
+      user, assistant, and tool-result turns instead of discarding everything except the
+      last user message. Native Jinja still owns model-specific formatting; host code adds
+      no Llama/ChatML template tokens (L-021).
+- [x] The local provider advertises the actual granted tool descriptors, parses the same
+      textual tool-call envelope as the cloud fallback, emits terminal stream events, and
+      resets native state for each supplied transcript. Delegated child calls now use the
+      standard executor for timing, redaction, error shaping, and confirmation policy while
+      retaining the explicit read-only allowlist (L-007, L-008, L-014).
+- [x] VERIFIED: app/Hilt compilation and focused tests for persisted download-state mapping,
+      rollback-safe installation, bounded conversation history, shared text-tool parsing,
+      local tool invocation, and delegated standard-executor use.
+- [ ] UNVERIFIED - needs a device (L-001): foreground WorkManager notification, interrupted
+      multi-gigabyte resume after process death/reboot, shared-storage promotion, real GGUF
+      multi-turn coherence, and a real local-model tool-call round trip. Catalog models still
+      have exact-size validation but not cryptographic checksums; the raw-path folder UI also
+      remains scheduled for replacement with a validated directory picker.
+
+### Audit remediation tranche 1: privacy and execution safety - 2026-07-14
+- [x] Added the implementation sequence and verification gates in
+      `docs/REMEDIATION_PLAN_2026-07-14.md`; audit findings remain open until the
+      review pass closes them.
+- [x] Enforced a shared prompt-safe note boundary for agent search, briefings, habit
+      extraction, and community-plugin note access. Locked, encrypted, and deleted
+      notes no longer enter those prompt/network/plugin paths (L-009).
+- [x] Advanced Gist backup schema to v5. New backups omit LLM credentials and
+      locked/encrypted notes, preserve note sync/trash identity for eligible notes,
+      and deduplicate repeated restores. Android platform backup/device transfer is
+      disabled and sensitive database/preferences/model paths are explicitly excluded
+      (L-005, L-006, L-009).
+- [x] Restricted delegated agents to an explicit five-tool read-only allowlist;
+      serialized confirmation requests with timeout/fail-closed behavior; emitted
+      requested and terminal result events keyed by tool-call id; fixed real execution
+      dependencies (L-007, L-008, L-014).
+- [x] Added a cumulative Rhino instruction budget for community scripts and made the
+      security-audit states describe the remaining gaps instead of reporting them as
+      fully enforced.
+- [x] Propagated native prompt failures, corrected truncated-token/generation position
+      accounting, removed unused hard-coded prompt formatting, and added an L-021
+      ledger grep plus native APK assembly to preflight (L-018, L-020, L-021).
+- [x] Hardened local-model acquisition with readable/exact-size validation, storage
+      checks, visible failures with `finally` cleanup, stale-download detection, and
+      staged promotion that retains the previous valid model until replacement succeeds
+      (L-001, L-007, L-016, L-019).
+- [x] VERIFIED: focused regression tests for privacy, backup serialization, delegated
+      capabilities, confirmation concurrency, plugin budget, security reporting, and
+      model installation; `tools/preflight.sh` exit 0 including all-module compile,
+      debug APK/native assembly, full unit suite, and ledger greps.
+- [ ] UNVERIFIED - needs a device (L-001): real Gist backup/restore round-trip,
+      Android storage grant and DownloadManager lifecycle/process death, GGUF load and
+      inference after download, confirmation UI interaction, and community-plugin UI
+      behavior. Durable WorkManager ownership, full local conversation/tool support,
+      ambient-surface completion, and the remaining plan tranches are still open.
+
 ### v0.11.6: LLM Prompt Format Decoupling + Native Engine Fix — 2026-07-13
 - [x] **Gibberish output fix:** The local Llama 3 model was previously outputting complete gibberish (Llama 3 KV cache corruption). Root cause was a prompt formatting conflict: Kotlin (`LocalLlmProvider`, `JotterAiProviderImpl`) was manually appending `<|begin_of_text|><|start_header_id|>system...` and passing it as the `user` prompt down to C++. Meanwhile, `use_jinja = true` inside `ai_chat.cpp` meant the C++ core was auto-injecting its own Llama-3 system prompt and wrapping the Kotlin-provided formatted string inside a second set of `user` tags. 
 - [x] **Decoupling formatting to C++:** Removed manual `StringBuilder` Llama 3 prompt construction from the Kotlin layer entirely. `generateResponse` now takes `systemPrompt` and `userPrompt` as separate parameters and bridges them down natively. Now, the C++ Jinja engine dynamically and natively formats it exactly as the `.gguf` file expects it.

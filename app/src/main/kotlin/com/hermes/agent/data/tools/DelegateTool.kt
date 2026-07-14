@@ -4,6 +4,7 @@ import com.hermes.agent.data.llm.LlmMessage
 import com.hermes.agent.data.llm.LlmRouter
 import com.hermes.agent.data.llm.RoutingDecision
 import com.hermes.agent.data.llm.ToolCall
+import com.hermes.agent.data.tool.ToolCallExecutor
 import com.hermes.agent.domain.tool.Tool
 import com.hermes.agent.domain.tool.ToolDescriptor
 import com.hermes.agent.domain.tool.ToolParameter
@@ -17,6 +18,19 @@ import kotlinx.serialization.json.contentOrNull
 import javax.inject.Inject
 import javax.inject.Singleton
 
+/** Explicit capabilities granted to isolated delegated agents. */
+internal object DelegateChildCapabilities {
+    val allowedToolNames: Set<String> = setOf(
+        "web_search",
+        "web_fetch",
+        "calculator",
+        "get_current_datetime",
+        "search_conversations",
+    )
+
+    fun allows(toolName: String): Boolean = toolName in allowedToolNames
+}
+
 /**
  * Spawn one or more isolated subagents to handle focused subtasks, then return
  * their results to the parent. Ported from hermes-agent's `delegate_tool.py`.
@@ -24,11 +38,11 @@ import javax.inject.Singleton
  * Each subagent runs with a **fresh context** (none of the parent's
  * conversation history), a focused system prompt built from the delegated
  * goal, and a **restricted toolset** — read/research/compute tools only. The
- * blocklist ([CHILD_BLOCKED_TOOLS]) strips recursion (`delegate`), user
- * interaction (`clarify`), shared-state writes (`memory`, `notes`, `todo`),
- * scheduling, and device/network/code side effects, mirroring upstream's
- * `DELEGATE_BLOCKED_TOOLS`. Stripping `delegate` makes recursive delegation
- * impossible. The parent blocks until every subagent finishes and only sees
+ * explicit allowlist ([DelegateChildCapabilities]) grants only read/research
+ * operations. New tools remain unavailable until deliberately reviewed and added,
+ * so recursion, user interaction, writes, scheduling, and device/code side effects
+ * cannot appear merely because a tool was registered globally. The parent blocks
+ * until every subagent finishes and only sees
  * the summarised results, never their intermediate reasoning or tool calls.
  *
  * Supply a single `prompt`, or a `prompts` array to fan out in parallel.
@@ -41,6 +55,7 @@ import javax.inject.Singleton
 class DelegateTool @Inject constructor(
     private val router: LlmRouter,
     private val toolRegistry: dagger.Lazy<ToolRegistry>,
+    private val toolCallExecutor: dagger.Lazy<ToolCallExecutor>,
 ) : Tool {
 
     override val descriptor = ToolDescriptor(
@@ -123,7 +138,7 @@ class DelegateTool @Inject constructor(
         val provider = decision.provider
         val childTools = toolRegistry.get().all()
             .map { it.descriptor }
-            .filter { it.name !in CHILD_BLOCKED_TOOLS }
+            .filter { DelegateChildCapabilities.allows(it.name) }
 
         return runCatching {
             repeat(MAX_TOOL_ROUNDS) {
@@ -151,15 +166,17 @@ class DelegateTool @Inject constructor(
         }.getOrElse { t -> "[subagent failed: ${t.message ?: "unknown error"}]" }
     }
 
-    /** Execute a subagent's tool call, enforcing the child blocklist. */
+    /** Execute a subagent's tool call, enforcing the explicit child allowlist. */
     private suspend fun executeChildTool(call: ToolCall): String {
-        if (call.name in CHILD_BLOCKED_TOOLS) {
+        if (!DelegateChildCapabilities.allows(call.name)) {
             return "[tool '${call.name}' is not available to subagents]"
         }
-        val tool = toolRegistry.get().byName(call.name)
-            ?: return "[unknown tool '${call.name}']"
-        val result = runCatching { tool.execute(call.arguments) }
-            .getOrElse { return "[tool '${call.name}' error: ${it.message ?: "unknown"}]" }
+        val result = toolCallExecutor.get().execute(
+            call = call,
+            // The child allowlist contains only non-confirming read tools. If a
+            // descriptor changes later, fail closed instead of approving it.
+            confirmationGate = ToolCallExecutor.ConfirmationGate { _, _ -> false },
+        )
         return (if (result.success) result.output else result.errorMessage ?: "(tool error)")
             .ifBlank { "(no output)" }
             .take(CHILD_TOOL_OUTPUT_CAP)
@@ -170,27 +187,6 @@ class DelegateTool @Inject constructor(
         const val MAX_TOOL_ROUNDS = 4
         const val MAX_RESULT_CHARS = 4000
         const val CHILD_TOOL_OUTPUT_CAP = 2000
-
-        /**
-         * Tools a subagent must never have, mirroring upstream's
-         * DELEGATE_BLOCKED_TOOLS: no recursion, no user interaction, no
-         * shared-state writes, no scheduling, no device/network/code side
-         * effects. What's left is the read/research/compute set.
-         */
-        val CHILD_BLOCKED_TOOLS = setOf(
-            "delegate",            // no recursive delegation
-            "clarify",             // children can't interact with the user
-            "memory", "notes",     // no writes to shared long-term memory
-            "todo",                // no mutating the parent's shared todo list
-            "scheduler",           // no scheduling work in the parent's name
-            "skill_manager",       // no skill writes
-            "speak",               // no audio side effects from a background child
-            "shell", "terminal", "termux", // no code execution
-            "device_settings",     // no mutating the device
-            "calendar_add_event",  // no calendar writes
-            "notify",              // no outbound webhooks / cross-platform sends
-            "generate_image",      // no paid image generation from a child
-        )
 
         const val SUBAGENT_SYSTEM_PROMPT =
             "You are a focused Jeeves subagent. You have been given a single, self-contained task " +

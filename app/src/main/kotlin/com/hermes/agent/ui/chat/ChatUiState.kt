@@ -94,6 +94,7 @@ enum class StepStatus { PENDING, RUNNING, SUCCEEDED, FAILED, SKIPPED }
 
 /** Slimmed-down view of a [com.hermes.agent.data.llm.ToolCall] + result. */
 data class ToolCallSummary(
+    val callId: String,
     val name: String,
     val argumentsPreview: String,
     val status: ToolCallStatus,

@@ -43,6 +43,15 @@ if git diff --cached --name-only 2>/dev/null | grep -q "^RELEASE"; then
   note "WARN L-017: release notes touched — remember agents do NOT tag or publish releases."
 fi
 
+# L-021: native GGUF/Jinja owns prompt formatting; Kotlin must pass raw roles.
+hits=$(grep -rnE --include='*.kt' "<\|begin_of_text\|>|\[INST\]" \
+        app/src/main feature core 2>/dev/null || true)
+if [ -n "$hits" ]; then
+  note "FAIL L-021: manual model prompt tags found in Kotlin â€” native Jinja must format prompts:"
+  note "$hits"
+  fail=1
+fi
+
 if [ "$fail" -ne 0 ]; then
   note ""
   note "Preflight FAILED on ledger greps. Fix before compiling."
@@ -52,6 +61,9 @@ fi
 note "== Compile all modules =="
 ./gradlew :app:compileDebugKotlin :feature:jotter:compileDebugKotlin \
           :feature:butler:compileDebugKotlin --console=plain || exit 1
+
+note "== Build debug APK (native/CMake/resource/manifest gate) =="
+./gradlew :app:assembleDebug --console=plain || exit 1
 
 note "== Unit tests =="
 ./gradlew :app:testDebugUnitTest --console=plain || exit 1

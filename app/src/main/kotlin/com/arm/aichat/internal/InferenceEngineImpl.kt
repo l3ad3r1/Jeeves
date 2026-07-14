@@ -225,8 +225,7 @@ internal class InferenceEngineImpl private constructor(
 
             processUserPrompt(message, predictLength).let { result ->
                 if (result != 0) {
-                    Log.e(TAG, "Failed to process user prompt: $result")
-                    return@flow
+                    throw IllegalStateException("Native model could not process the user prompt (code $result). Reload the model and try again.")
                 }
             }
 

@@ -163,14 +163,26 @@ class OrchestratorImpl @Inject constructor(
             }
             lastProviderWasOnDevice = provider.isOnDevice
 
-            val (finalReply, stepTools) = runToolLoop(provider, llmMessages, tools) { call, requiresConfirmation ->
-                emit(OrchestratorEvent.ToolCallRequested(call, requiresConfirmation))
-                if (requiresConfirmation) {
-                    toolConfirmationService.awaitConfirmation(call)
-                } else {
-                    true
-                }
-            }
+            val (finalReply, stepTools) = runToolLoop(
+                provider = provider,
+                initialMessages = llmMessages,
+                tools = tools,
+                onToolRequested = { call, requiresConfirmation ->
+                    emit(OrchestratorEvent.ToolCallRequested(call, requiresConfirmation))
+                },
+                confirmationGate = ToolCallExecutor.ConfirmationGate { call, requiresConfirmation ->
+                    if (requiresConfirmation) toolConfirmationService.awaitConfirmation(call) else true
+                },
+                onToolResult = { call, result ->
+                    emit(
+                        OrchestratorEvent.ToolCallResult(
+                            call = call,
+                            output = result.output.ifEmpty { result.errorMessage.orEmpty() },
+                            success = result.success,
+                        ),
+                    )
+                },
+            )
 
             if (finalReply == null) {
                 emit(OrchestratorEvent.Failed("tool loop exhausted without final reply"))
@@ -223,7 +235,9 @@ class OrchestratorImpl @Inject constructor(
         provider: LlmProvider,
         initialMessages: List<LlmMessage>,
         tools: List<com.hermes.agent.domain.tool.ToolDescriptor>,
+        onToolRequested: suspend (ToolCall, Boolean) -> Unit,
         confirmationGate: ToolCallExecutor.ConfirmationGate?,
+        onToolResult: suspend (ToolCall, com.hermes.agent.domain.tool.ToolResult) -> Unit,
     ): Pair<String?, List<String>> {
         var messages = initialMessages
         val toolsInvoked = mutableListOf<String>()
@@ -246,24 +260,32 @@ class OrchestratorImpl @Inject constructor(
 
             for (call in response.toolCalls) {
                 toolsInvoked += call.name
-                
+
+                val requiresConfirmation =
+                    toolRegistry.byName(call.name)?.descriptor?.requiresConfirmation ?: false
+                onToolRequested(call, requiresConfirmation)
+
                 // Enforce Tool Allowlist (Security Audit fix)
                 if (tools.none { it.name == call.name }) {
                     val errorResult = com.hermes.agent.domain.tool.ToolResult.error("unauthorized tool: ${call.name}")
+                    onToolResult(call, errorResult)
                     messages = messages.toMutableList().apply {
                         add(LlmMessage(role = "tool", content = errorResult.errorMessage!!, toolCallId = call.id))
                     }
                     continue
                 }
-                
-                val requiresConfirmation =
-                    toolRegistry.byName(call.name)?.descriptor?.requiresConfirmation ?: false
-                val approved = confirmationGate?.confirm(call, requiresConfirmation) ?: true
+
+                val approved = if (requiresConfirmation) {
+                    confirmationGate?.confirm(call, true) ?: false
+                } else {
+                    true
+                }
                 val result = if (approved) {
                     toolCallExecutor.execute(call, confirmationGate = null)
                 } else {
                     com.hermes.agent.domain.tool.ToolResult.error("user declined")
                 }
+                onToolResult(call, result)
                 messages = messages.toMutableList().apply {
                     add(
                         LlmMessage(
@@ -293,14 +315,19 @@ class OrchestratorImpl @Inject constructor(
                     description = "Handle user request: ${userMessage.take(80)}",
                 )
             )
-            is RoutingResult.MultiAgent -> routing.agents.mapIndexed { i, role ->
-                ExecutionStep(
-                    id = IdGenerator.newId(),
-                    agentRole = role,
-                    description = if (i == 0) "Research: ${userMessage.take(80)}"
-                    else "Creative: draft based on research.",
-                    dependsOn = if (i == 0) emptyList() else listOf("step-0"),
-                )
+            is RoutingResult.MultiAgent -> buildList {
+                routing.agents.forEachIndexed { i, role ->
+                    val previousStepId = lastOrNull()?.id
+                    add(
+                        ExecutionStep(
+                            id = IdGenerator.newId(),
+                            agentRole = role,
+                            description = if (i == 0) "Research: ${userMessage.take(80)}"
+                            else "Continue using the previous agent's result.",
+                            dependsOn = previousStepId?.let(::listOf).orEmpty(),
+                        ),
+                    )
+                }
             }
             is RoutingResult.Fallback -> listOf(
                 ExecutionStep(

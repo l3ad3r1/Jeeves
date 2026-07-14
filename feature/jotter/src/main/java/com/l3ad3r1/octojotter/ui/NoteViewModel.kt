@@ -327,13 +327,15 @@ class NoteViewModel(application: Application) : AndroidViewModel(application) {
     private fun readablePluginNotes(): List<PluginNote> =
         kotlinx.coroutines.runBlocking {
             repository.getAllNotes()
-                .filter { it.deletedAt == null }
+                // Community scripts are remote input. Private notes are omitted
+                // entirely so titles, tags, paths, and content never enter Rhino.
+                .filter { it.deletedAt == null && !it.locked && !it.encrypted }
                 .map { note ->
                     PluginNote(
                         id = note.id,
                         title = note.title,
                         displayTitle = note.displayTitle,
-                        content = if (note.locked) "" else note.content,
+                        content = note.content,
                         tags = note.tags,
                         folder = note.folder ?: note.folderPath.joinToString("/").ifBlank { null },
                         path = note.path,

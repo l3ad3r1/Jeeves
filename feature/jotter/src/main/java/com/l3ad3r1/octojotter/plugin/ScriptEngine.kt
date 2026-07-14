@@ -212,8 +212,12 @@ class ScriptEngine(private val host: PluginHost? = null) {
 
     /** Denies Java-class access and enforces the per-run instruction budget. */
     private class SandboxContextFactory : ContextFactory() {
+        private class BudgetContext(factory: ContextFactory) : Context(factory) {
+            var observedInstructions: Long = 0L
+        }
+
         override fun makeContext(): Context {
-            val cx = super.makeContext()
+            val cx = BudgetContext(this)
             cx.optimizationLevel = -1
             cx.instructionObserverThreshold = 10_000
             cx.setClassShutter { false }
@@ -221,7 +225,10 @@ class ScriptEngine(private val host: PluginHost? = null) {
         }
 
         override fun observeInstructionCount(cx: Context?, instructionCount: Int) {
-            if (instructionCount > INSTRUCTION_BUDGET) {
+            val budgetContext = cx as? BudgetContext
+                ?: throw Error("Plugin instruction counter unavailable")
+            budgetContext.observedInstructions += instructionCount.toLong()
+            if (budgetContext.observedInstructions > INSTRUCTION_BUDGET) {
                 throw Error("Plugin exceeded its instruction budget")
             }
         }

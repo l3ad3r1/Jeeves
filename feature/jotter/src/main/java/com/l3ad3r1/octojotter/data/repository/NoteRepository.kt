@@ -44,6 +44,14 @@ class NoteRepository(
         return noteDao.searchNotesFlow("%$query%")
     }
 
+    /**
+     * Search notes that may safely leave the local Notes UI and enter an
+     * agent prompt, ambient surface, or network-backed tool result.
+     */
+    fun searchPromptSafeNotes(query: String): Flow<List<NoteEntity>> {
+        return noteDao.searchPromptSafeNotesFlow("%$query%")
+    }
+
     fun getNotesFilteredAndSorted(query: String, sortBy: String): Flow<List<NoteEntity>> {
         val searchPattern = "%$query%"
         return noteDao.getNotesFilteredAndSorted(searchPattern, sortBy)
@@ -59,6 +67,11 @@ class NoteRepository(
 
     suspend fun getRecentNotes(sinceMillis: Long): List<NoteEntity> {
         return noteDao.getRecentNotes(sinceMillis)
+    }
+
+    /** Recent notes safe for prompts, speech, notifications, and network flows. */
+    suspend fun getPromptSafeRecentNotes(sinceMillis: Long): List<NoteEntity> {
+        return noteDao.getPromptSafeRecentNotes(sinceMillis)
     }
 
     suspend fun insertNote(note: NoteEntity): Long {

@@ -44,7 +44,9 @@ class HabitExtractor @Inject constructor(
                 }
             }
 
-            val recentNotes = noteRepository.getRecentNotes(System.currentTimeMillis() - 7L * 24 * 60 * 60 * 1000)
+            val recentNotes = noteRepository.getPromptSafeRecentNotes(
+                System.currentTimeMillis() - 7L * 24 * 60 * 60 * 1000,
+            )
             if (recentNotes.isNotEmpty()) {
                 val tagCounts = recentNotes.flatMap { it.tags }
                     .groupingBy { it }

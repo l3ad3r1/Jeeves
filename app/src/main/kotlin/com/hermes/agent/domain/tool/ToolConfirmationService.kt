@@ -4,17 +4,20 @@ import com.hermes.agent.data.llm.ToolCall
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import javax.inject.Inject
 import javax.inject.Singleton
 
 @Singleton
 class ToolConfirmationService @Inject constructor() {
+    private val requestMutex = Mutex()
     private var pendingDeferred: CompletableDeferred<Boolean>? = null
     
     private val _pendingRequest = MutableStateFlow<ToolCall?>(null)
     val pendingRequest: StateFlow<ToolCall?> = _pendingRequest
 
-    suspend fun awaitConfirmation(call: ToolCall): Boolean {
+    suspend fun awaitConfirmation(call: ToolCall): Boolean = requestMutex.withLock {
         val deferred = CompletableDeferred<Boolean>()
         pendingDeferred = deferred
         _pendingRequest.value = call
@@ -23,8 +26,9 @@ class ToolConfirmationService @Inject constructor() {
             // with NO confirmation UI attached (Telegram connector, local API
             // server, cron worker), and an unanswered await would hang that
             // turn permanently. Denial is the safe default for a tool that
-            // asked for confirmation.
-            return kotlinx.coroutines.withTimeoutOrNull(CONFIRMATION_TIMEOUT_MS) {
+            // asked for confirmation. The mutex serializes concurrent requests
+            // so one turn cannot overwrite another turn's deferred response.
+            kotlinx.coroutines.withTimeoutOrNull(CONFIRMATION_TIMEOUT_MS) {
                 deferred.await()
             } ?: false
         } finally {

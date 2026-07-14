@@ -65,7 +65,7 @@ class BriefingComposer @Inject constructor(
         // Recent Notes (last 24h)
         if (com.sassybutler.alarm.ButlerPrefs.briefingNotes(context)) {
             val oneDayAgo = System.currentTimeMillis() - 24 * 60 * 60 * 1000L
-            val recentNotes = noteRepository.getRecentNotes(oneDayAgo)
+            val recentNotes = noteRepository.getPromptSafeRecentNotes(oneDayAgo)
             if (recentNotes.isNotEmpty()) {
                 sb.append("Recently Modified Notes:\n")
                 recentNotes.take(3).forEach { note ->
