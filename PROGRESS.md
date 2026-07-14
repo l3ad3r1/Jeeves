@@ -18,13 +18,16 @@ repo. All three apps are merged and shipping (`:app` + `:feature:jotter` + `:fea
 
 ## Status log (newest first)
 
-### v0.11.7 release preparation — 2026-07-14
+### v0.11.7 released — 2026-07-14
 - [x] Bumped the release identity to `versionCode=77` / `versionName=0.11.7` in
       the release change-set (L-012).
 - [x] VERIFIED: `tools/preflight.sh` passed on the `0.11.7` release tree and the
       remediation commit passed GitHub CI run `29323323230`; the locally assembled
       release APK reports version code `77` and passed Android signer verification with certificate
       SHA-256 `99255c31ffba1932e4ab2abc12d99b82bf780874b8c686076497157996cf6d6f`.
+- [x] Published GitHub release `v0.11.7` from release commit `39f579a` after CI
+      run `29327185339` passed. The uploaded `Jeeves-v0.11.7.apk` digest is
+      `389ea69ba048bcd02532ab6f1c586e592ba787f35752c843e048794fadc3172c`.
 - [ ] UNVERIFIED — needs a device (L-001): real Gist backup/restore, foreground
       model-download resume across process death/reboot, shared-storage promotion,
       real GGUF multi-turn/tool calls, confirmation UI, and community-plugin UI.
