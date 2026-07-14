@@ -18,6 +18,17 @@ repo. All three apps are merged and shipping (`:app` + `:feature:jotter` + `:fea
 
 ## Status log (newest first)
 
+### v0.11.7 release preparation — 2026-07-14
+- [x] Bumped the release identity to `versionCode=77` / `versionName=0.11.7` in
+      the release change-set (L-012).
+- [x] VERIFIED: `tools/preflight.sh` passed on the `0.11.7` release tree and the
+      remediation commit passed GitHub CI run `29323323230`; the locally assembled
+      release APK reports version code `77` and passed Android signer verification with certificate
+      SHA-256 `99255c31ffba1932e4ab2abc12d99b82bf780874b8c686076497157996cf6d6f`.
+- [ ] UNVERIFIED — needs a device (L-001): real Gist backup/restore, foreground
+      model-download resume across process death/reboot, shared-storage promotion,
+      real GGUF multi-turn/tool calls, confirmation UI, and community-plugin UI.
+
 ### Audit remediation tranche 2: durable local agent - 2026-07-14
 - [x] Replaced the screen-owned `DownloadManager` polling coroutine with a unique,
       network-constrained Hilt `CoroutineWorker`. WorkManager now persists ownership and
