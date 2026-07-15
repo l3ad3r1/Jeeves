@@ -19,6 +19,12 @@ repo. All three apps are merged and shipping (`:app` + `:feature:jotter` + `:fea
 ## Status log (newest first)
 
 ### Cloud runtime failover repair and v0.12.1 - 2026-07-15
+- [x] Debug builds now keep every Agent, Notes, and Butler activity awake while it is
+      foregrounded, without changing the phone's global timeout or release behavior.
+- [x] VERIFIED: focused tests cover enabled and disabled lifecycle registration, and
+      `:app:assembleDebug` packages the debug APK successfully.
+- [ ] UNVERIFIED on device (L-001): ADB disconnected immediately before the debug APK
+      install; reconnect and confirm Android reports a held-screen window.
 - [x] Release identity bumped to `versionCode=81` / `versionName=0.12.1` in the
       same change-set (L-012).
 - [x] Reworked chat to the supplied minimal dark reference: balanced circular header

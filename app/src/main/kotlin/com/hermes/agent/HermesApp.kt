@@ -14,6 +14,7 @@ import com.hermes.agent.work.SkillImprovementWorker
 import com.hermes.agent.data.log.FileLogTree
 import com.hermes.agent.data.log.LogManager
 import com.hermes.agent.data.performance.MemoryPressureMonitor
+import com.hermes.agent.debug.DebugScreenAwake
 import com.jeeves.core.settings.JeevesSettings
 import com.l3ad3r1.octojotter.data.local.ThemePreferences
 import dagger.hilt.android.HiltAndroidApp
@@ -56,6 +57,7 @@ class HermesApp : Application(), Configuration.Provider {
 
     override fun onCreate() {
         super.onCreate()
+        DebugScreenAwake.install(this)
         // Capture logs to a file (all build types) so the user can pull them
         // from Settings → Logs; keep the console DebugTree in debug builds.
         Timber.plant(FileLogTree(logManager))
