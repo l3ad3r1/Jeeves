@@ -34,6 +34,17 @@ object JeevesSettings {
     const val THEME_DARK = "dark"
 
     const val KEY_THEME_MODE = "theme_mode"
+    const val KEY_FONT_FAMILY = "font_family"
+    const val KEY_FONT_SCALE_PERCENT = "font_scale_percent"
+
+    const val FONT_GEIST = "geist"
+    const val FONT_SYSTEM = "system"
+    const val FONT_SERIF = "serif"
+    const val FONT_MONO = "mono"
+    val FONT_FAMILIES: Set<String> = setOf(FONT_GEIST, FONT_SYSTEM, FONT_SERIF, FONT_MONO)
+    const val DEFAULT_FONT_SCALE_PERCENT = 100
+    const val MIN_FONT_SCALE_PERCENT = 85
+    const val MAX_FONT_SCALE_PERCENT = 130
 
     // Butler (was `butler_prefs` / `voice_prefs`).
     const val KEY_HONORIFIC = "honorific"
@@ -81,6 +92,38 @@ object JeevesSettings {
 
     /** True only if a theme was explicitly chosen — used by the one-time DataStore migration. */
     fun hasThemeMode(context: Context): Boolean = prefs(context).contains(KEY_THEME_MODE)
+
+    fun fontFamily(context: Context): String =
+        prefs(context).getString(KEY_FONT_FAMILY, FONT_GEIST)
+            ?.takeIf { it in FONT_FAMILIES }
+            ?: FONT_GEIST
+
+    fun setFontFamily(context: Context, family: String) =
+        prefs(context).edit().putString(
+            KEY_FONT_FAMILY,
+            family.takeIf { it in FONT_FAMILIES } ?: FONT_GEIST,
+        ).apply()
+
+    fun fontFamilyFlow(context: Context): Flow<String> = prefFlow(context) { p ->
+        p.getString(KEY_FONT_FAMILY, FONT_GEIST)
+            ?.takeIf { it in FONT_FAMILIES }
+            ?: FONT_GEIST
+    }
+
+    fun fontScalePercent(context: Context): Int =
+        prefs(context).getInt(KEY_FONT_SCALE_PERCENT, DEFAULT_FONT_SCALE_PERCENT)
+            .coerceIn(MIN_FONT_SCALE_PERCENT, MAX_FONT_SCALE_PERCENT)
+
+    fun setFontScalePercent(context: Context, percent: Int) =
+        prefs(context).edit().putInt(
+            KEY_FONT_SCALE_PERCENT,
+            percent.coerceIn(MIN_FONT_SCALE_PERCENT, MAX_FONT_SCALE_PERCENT),
+        ).apply()
+
+    fun fontScalePercentFlow(context: Context): Flow<Int> = prefFlow(context) { p ->
+        p.getInt(KEY_FONT_SCALE_PERCENT, DEFAULT_FONT_SCALE_PERCENT)
+            .coerceIn(MIN_FONT_SCALE_PERCENT, MAX_FONT_SCALE_PERCENT)
+    }
 
     // ─── Butler ─────────────────────────────────────────────────────────────
 

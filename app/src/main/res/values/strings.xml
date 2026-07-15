@@ -9,7 +9,7 @@
     <string name="nav_settings">Settings</string>
 
     <!-- Chat -->
-    <string name="chat_placeholder">Ask Jeeves anything…</string>
+    <string name="chat_placeholder">Ask Jeeves</string>
     <string name="chat_send">Send</string>
     <string name="chat_typing">Jeeves is thinking…</string>
     <string name="chat_new_conversation">New conversation</string>

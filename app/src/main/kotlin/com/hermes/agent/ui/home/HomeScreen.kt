@@ -39,7 +39,6 @@ import com.hermes.agent.domain.model.Conversation
 import com.hermes.agent.ui.components.ExpressiveEyes
 import com.hermes.agent.ui.components.HermesDiamond
 import com.jeeves.core.theme.GeistMono
-import com.hermes.agent.ui.theme.HermesAccentDeep
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material3.Icon
@@ -124,7 +123,7 @@ fun HomeScreen(
             modifier = Modifier
                 .fillMaxWidth()
                 .clip(MaterialTheme.shapes.large)
-                .background(Brush.linearGradient(listOf(HermesAccentDeep, scheme.primary)))
+                .background(Brush.linearGradient(listOf(scheme.surfaceVariant, scheme.surfaceContainerHigh)))
                 .padding(18.dp),
         ) {
             Text("Active model", color = Color.White.copy(alpha = 0.85f), style = MaterialTheme.typography.labelSmall)

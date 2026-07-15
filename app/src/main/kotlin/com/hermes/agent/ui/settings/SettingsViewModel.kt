@@ -112,6 +112,20 @@ class SettingsViewModel @Inject constructor(
 
     fun setThemeMode(mode: String) = JeevesSettings.setThemeMode(appContext, mode)
 
+    val fontFamily: StateFlow<String> = JeevesSettings.fontFamilyFlow(appContext)
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), JeevesSettings.FONT_GEIST)
+
+    val fontScalePercent: StateFlow<Int> = JeevesSettings.fontScalePercentFlow(appContext)
+        .stateIn(
+            viewModelScope,
+            SharingStarted.WhileSubscribed(5_000),
+            JeevesSettings.DEFAULT_FONT_SCALE_PERCENT,
+        )
+
+    fun setFontFamily(family: String) = JeevesSettings.setFontFamily(appContext, family)
+
+    fun setFontScalePercent(percent: Int) = JeevesSettings.setFontScalePercent(appContext, percent)
+
     /** Butler's preferences, editable here as well as in Butler's own sheet. */
     private val _alarmSettings = MutableStateFlow(readAlarmSettings())
     val alarmSettings: StateFlow<AlarmSettings> = _alarmSettings.asStateFlow()

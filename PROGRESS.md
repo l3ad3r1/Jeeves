@@ -18,6 +18,42 @@ repo. All three apps are merged and shipping (`:app` + `:feature:jotter` + `:fea
 
 ## Status log (newest first)
 
+### Cloud runtime failover repair and v0.12.1 - 2026-07-15
+- [x] Release identity bumped to `versionCode=81` / `versionName=0.12.1` in the
+      same change-set (L-012).
+- [x] Reworked chat to the supplied minimal dark reference: balanced circular header
+      controls, bottom-aligned quick prompts, and a rounded plus/text/mic/voice-send
+      composer with a real new-chat action and functional quick-action menu.
+- [x] VERIFIED on Samsung SM-S928B (L-011): empty state, dark foreground/background
+      contrast, new-chat navigation, quick-action popup, typed send state, and Samsung
+      Keyboard layout were visually exercised without overlap.
+- [x] Enforced an app-wide Monochrome theme: pure-black OLED dark surfaces and a
+      pure-white light counterpart, grayscale depth/status/Kanban accents, and shared
+      rendering across Agent, Notes, and Butler.
+- [x] Added functional Appearance controls for a binary Dark Mode toggle, four font
+      families, and four app-wide font sizes. Choices persist in the unified settings
+      store and update Agent, Notes, and Butler typography live.
+- [x] VERIFIED: appearance persistence, flow updates, invalid-family normalization,
+      and font-size bounds execute in `JeevesSettingsMigrationTest`.
+- [x] VERIFIED: all three affected modules compile and release lint/assembly succeeds.
+- [ ] UNVERIFIED on final device build (L-001, L-011): ADB disconnected before the
+      OLED APK could be installed; reconnect and visually inspect Home, Chat, Notes,
+      Butler, and Appearance before publication.
+- [x] Corrected the v0.12.0 routing gap: a cloud transport failure now moves the
+      current operation to an available on-device model instead of ending the turn
+      with a generic connection message (L-025).
+- [x] Failover is sticky for later tool rounds in the same turn, while HTTP/auth/model
+      errors remain visible and streams never restart after emitting partial output.
+- [x] Cloud transport exhaustion now distinguishes DNS, refused connection, timeout,
+      TLS, insecure HTTP, and interrupted socket failures with actionable messages
+      when no offline model is available (L-007, L-024).
+- [x] VERIFIED: focused tests execute ordinary completion, tool completion, stream
+      failover, same-turn stickiness, HTTP non-failover, and partial-stream safety.
+- [x] VERIFIED on Samsung SM-S928B (L-001): with Wi-Fi and mobile data temporarily
+      disabled, both NVIDIA requests failed with `UnknownHostException`; Jeeves loaded
+      `Llama-3.2-1B-Instruct-Q4_K_M.gguf`, completed locally, rendered the reply, and
+      retained conversations/settings through the signer-matched in-place install.
+
 ### Cloud model discovery and About updates - 2026-07-15
 - [x] Release identity bumped to `versionCode=80` / `versionName=0.12.0` in the
       same change-set (L-012).

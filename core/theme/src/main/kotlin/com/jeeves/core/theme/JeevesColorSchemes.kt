@@ -5,106 +5,101 @@ import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.ui.graphics.Color
 
-/**
- * The one Jeeves palette, shared by the agent surfaces, Notes and (via mirrored XML) Alarms.
- *
- * There is a single palette with a light and a dark variant, not three separate app themes.
- * What used to be Hermes' "Paper" and "Midnight" themes were always a light/dark pair of the
- * same monochrome design, so they became [JeevesLight] and [JeevesDark]; the user's Dark mode
- * setting picks between them. "Blue" survives as a genuinely different accent brand, and is
- * dark-only.
- *
- * Butler's Views cannot consume a Compose [ColorScheme]. Its XML themes mirror these hex
- * values in `feature/butler/src/main/res/values/colors.xml` (light) and `values-night/`
- * (dark). Change one, change the other.
- */
+/** Shared, app-wide OLED-dark palette: pure black surfaces, white content, grayscale depth. */
 object JeevesPalette {
-
-    // ── Dark — deep slate / indigo undertone (Premium aesthetics) ────────
-    val DarkBackground = Color(0xFF0F111A)
-    val DarkSurface = Color(0xFF161925)
-    val DarkSurfaceVariant = Color(0xFF1E2233)
-    val DarkOnBackground = Color(0xFFF1F2F6)
-    val DarkOnSurfaceVariant = Color(0xFFA1A5B7)
-    val DarkOutline = Color(0xFF32364A)
-    val DarkPrimary = Color(0xFF64B5F6) // Sleek cyan/periwinkle accent
-    val DarkOnPrimary = Color(0xFF000000)
-    val DarkPrimaryContainer = Color(0xFF193B59)
-    val DarkSecondary = Color(0xFFE2E2E2)
-    val DarkSecondaryContainer = Color(0xFF2A2D3D)
-    val DarkError = Color(0xFFFF5252)
-
-    // ── Light — warm sleek off-white (Premium aesthetics) ────────────────
-    val LightBackground = Color(0xFFF8F9FA)
-    val LightSurface = Color(0xFFFFFFFF)
-    val LightSurfaceVariant = Color(0xFFF1F3F5)
-    val LightOnBackground = Color(0xFF1A1C23)
-    val LightOnSurfaceVariant = Color(0xFF6C7280)
-    val LightOutline = Color(0xFFDEE2E6)
-    val LightPrimary = Color(0xFF5C6BC0) // Soft indigo accent
-    val LightOnPrimary = Color(0xFFFFFFFF)
-    val LightPrimaryContainer = Color(0xFFE8EAF6)
-    val LightSecondary = Color(0xFF2E7D32)
-    val LightSecondaryContainer = Color(0xFFC8E6C9)
-    val LightError = Color(0xFFD32F2F)
-
-    // ── Blue accent brand (dark-only) ────────────────────────────────────
-    val BlueBackground = Color(0xFF1A00BB) // Deepened from harsh 3300FF
-    val BlueOnBackground = Color(0xFFFFFFFF)
+    val Background = Color.Black
+    val Surface = Color.Black
+    val SurfaceLow = Color(0xFF0B0B0B)
+    val SurfaceVariant = Color(0xFF181818)
+    val SurfaceHigh = Color(0xFF242424)
+    val OnBackground = Color(0xFFF7F7F7)
+    val OnSurfaceVariant = Color(0xFFB8B8B8)
+    val Outline = Color(0xFF4A4A4A)
+    val OutlineVariant = Color(0xFF292929)
+    val Primary = Color.White
+    val OnPrimary = Color.Black
+    val Container = Color(0xFF202020)
 }
 
-/** Dark variant of the Jeeves palette. */
+/** OLED-black monochrome scheme. Semantic state remains distinguishable by icon and text. */
 val JeevesDark: ColorScheme = darkColorScheme(
-    primary = JeevesPalette.DarkPrimary,
-    onPrimary = JeevesPalette.DarkOnPrimary,
-    primaryContainer = JeevesPalette.DarkPrimaryContainer,
-    onPrimaryContainer = JeevesPalette.DarkOnBackground,
-    secondary = JeevesPalette.DarkSecondary,
-    onSecondary = JeevesPalette.DarkOnPrimary,
-    secondaryContainer = JeevesPalette.DarkSecondaryContainer,
+    primary = JeevesPalette.Primary,
+    onPrimary = JeevesPalette.OnPrimary,
+    primaryContainer = JeevesPalette.Container,
+    onPrimaryContainer = JeevesPalette.OnBackground,
+    secondary = Color(0xFFD8D8D8),
+    onSecondary = Color.Black,
+    secondaryContainer = Color(0xFF202020),
+    onSecondaryContainer = JeevesPalette.OnBackground,
     tertiary = Color(0xFFAAAAAA),
-    onTertiary = Color(0xFF000000),
-    background = JeevesPalette.DarkBackground,
-    onBackground = JeevesPalette.DarkOnBackground,
-    surface = JeevesPalette.DarkSurface,
-    onSurface = JeevesPalette.DarkOnBackground,
-    surfaceVariant = JeevesPalette.DarkSurfaceVariant,
-    onSurfaceVariant = JeevesPalette.DarkOnSurfaceVariant,
-    surfaceContainer = JeevesPalette.DarkSurface,
-    surfaceContainerHigh = JeevesPalette.DarkSurfaceVariant,
-    outline = JeevesPalette.DarkOutline,
-    outlineVariant = JeevesPalette.DarkSurfaceVariant,
-    error = JeevesPalette.DarkError,
+    onTertiary = Color.Black,
+    tertiaryContainer = Color(0xFF292929),
+    onTertiaryContainer = JeevesPalette.OnBackground,
+    background = JeevesPalette.Background,
+    onBackground = JeevesPalette.OnBackground,
+    surface = JeevesPalette.Surface,
+    onSurface = JeevesPalette.OnBackground,
+    surfaceVariant = JeevesPalette.SurfaceVariant,
+    onSurfaceVariant = JeevesPalette.OnSurfaceVariant,
+    surfaceTint = Color.White,
+    surfaceDim = Color.Black,
+    surfaceBright = JeevesPalette.SurfaceHigh,
+    surfaceContainerLowest = Color.Black,
+    surfaceContainerLow = JeevesPalette.SurfaceLow,
+    surfaceContainer = Color(0xFF111111),
+    surfaceContainerHigh = JeevesPalette.SurfaceVariant,
+    surfaceContainerHighest = JeevesPalette.SurfaceHigh,
+    outline = JeevesPalette.Outline,
+    outlineVariant = JeevesPalette.OutlineVariant,
+    inverseSurface = Color.White,
+    inverseOnSurface = Color.Black,
+    inversePrimary = Color(0xFF333333),
+    error = Color.White,
     onError = Color.Black,
+    errorContainer = Color(0xFF2A2A2A),
+    onErrorContainer = Color.White,
+    scrim = Color.Black,
 )
 
-/** Light variant of the Jeeves palette. */
+/** Pure-white monochrome counterpart used when the Dark Mode toggle is off. */
 val JeevesLight: ColorScheme = lightColorScheme(
-    primary = JeevesPalette.LightPrimary,
-    onPrimary = JeevesPalette.LightOnPrimary,
-    primaryContainer = JeevesPalette.LightPrimaryContainer,
-    onPrimaryContainer = JeevesPalette.LightPrimary,
-    secondary = JeevesPalette.LightSecondary,
-    onSecondary = JeevesPalette.LightOnPrimary,
-    secondaryContainer = JeevesPalette.LightSecondaryContainer,
-    tertiary = JeevesPalette.LightSecondary,
+    primary = Color.Black,
+    onPrimary = Color.White,
+    primaryContainer = Color(0xFFE5E5E5),
+    onPrimaryContainer = Color.Black,
+    secondary = Color(0xFF2E2E2E),
+    onSecondary = Color.White,
+    secondaryContainer = Color(0xFFE8E8E8),
+    onSecondaryContainer = Color.Black,
+    tertiary = Color(0xFF555555),
     onTertiary = Color.White,
-    background = JeevesPalette.LightBackground,
-    onBackground = JeevesPalette.LightOnBackground,
-    surface = JeevesPalette.LightSurface,
-    onSurface = JeevesPalette.LightOnBackground,
-    surfaceVariant = JeevesPalette.LightSurfaceVariant,
-    onSurfaceVariant = JeevesPalette.LightOnSurfaceVariant,
-    surfaceContainer = JeevesPalette.LightSurface,
-    surfaceContainerHigh = JeevesPalette.LightSurfaceVariant,
-    outline = JeevesPalette.LightOutline,
-    outlineVariant = JeevesPalette.LightSurfaceVariant,
-    error = JeevesPalette.LightError,
+    tertiaryContainer = Color(0xFFDDDDDD),
+    onTertiaryContainer = Color.Black,
+    background = Color.White,
+    onBackground = Color.Black,
+    surface = Color.White,
+    onSurface = Color.Black,
+    surfaceVariant = Color(0xFFF0F0F0),
+    onSurfaceVariant = Color(0xFF4A4A4A),
+    surfaceTint = Color.Black,
+    surfaceDim = Color(0xFFD8D8D8),
+    surfaceBright = Color.White,
+    surfaceContainerLowest = Color.White,
+    surfaceContainerLow = Color(0xFFFAFAFA),
+    surfaceContainer = Color(0xFFF5F5F5),
+    surfaceContainerHigh = Color(0xFFECECEC),
+    surfaceContainerHighest = Color(0xFFE2E2E2),
+    outline = Color(0xFF777777),
+    outlineVariant = Color(0xFFC8C8C8),
+    inverseSurface = Color.Black,
+    inverseOnSurface = Color.White,
+    inversePrimary = Color(0xFFCCCCCC),
+    error = Color.Black,
     onError = Color.White,
+    errorContainer = Color(0xFFDDDDDD),
+    onErrorContainer = Color.Black,
+    scrim = Color.Black,
 )
 
-/**
- * Pick the Jeeves scheme for the current mode.
- * Callers pass the app-wide dark-mode setting, not `isSystemInDarkTheme()` directly.
- */
+/** Both modes remain strictly monochrome; Dark Mode selects the OLED black half. */
 fun jeevesColorScheme(darkTheme: Boolean): ColorScheme = if (darkTheme) JeevesDark else JeevesLight

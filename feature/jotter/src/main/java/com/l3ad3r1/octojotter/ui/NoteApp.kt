@@ -3192,7 +3192,6 @@ fun SettingsScreen(
     val token by viewModel.githubToken.collectAsState()
     val isSyncing by viewModel.isSyncing.collectAsState()
     val syncMessage by viewModel.syncMessage.collectAsState()
-    val themeMode by viewModel.themeMode.collectAsState()
     val exportStatus by viewModel.exportStatus.collectAsState()
     val appLockEnabled by viewModel.appLockEnabled.collectAsState()
 
@@ -3687,30 +3686,21 @@ fun SettingsScreen(
                         text = "App Theme",
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                        color = MaterialTheme.colorScheme.onSurface
                     )
                     Spacer(modifier = Modifier.height(4.dp))
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.SpaceBetween
-                    ) {
-                        Text(
-                            text = "Dark mode",
-                            style = MaterialTheme.typography.bodyLarge,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                        Switch(
-                            checked = themeMode == "dark",
-                            onCheckedChange = { isDark ->
-                                viewModel.setThemeMode(if (isDark) "dark" else "light")
-                            },
-                            modifier = Modifier.testTag("theme_toggle")
-                        )
-                    }
+                    Text(
+                        text = "OLED Monochrome",
+                        style = MaterialTheme.typography.bodyLarge,
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+                    Text(
+                        text = "Pure black, white, and grayscale across Jeeves.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
                 }
             }
-
             Card(
                 colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
                 modifier = Modifier.fillMaxWidth().testTag("backup_settings_card")
@@ -4377,17 +4367,17 @@ fun formatRelativeTimestamp(timestamp: Long): String {
 fun SyncStatusIndicator(syncState: SyncState) {
     val backgroundColor by animateColorAsState(
         targetValue = when (syncState) {
-            SyncState.Synced -> Color(0xFFE8F5E9)
-            SyncState.Syncing -> Color(0xFFE3F2FD)
-            SyncState.Offline -> Color(0xFFFFEBEE)
+            SyncState.Synced -> Color(0xFF101010)
+            SyncState.Syncing -> Color(0xFF1A1A1A)
+            SyncState.Offline -> Color(0xFF242424)
         },
         label = "syncBgColor"
     )
     val contentColor by animateColorAsState(
         targetValue = when (syncState) {
-            SyncState.Synced -> Color(0xFF2E7D32)
-            SyncState.Syncing -> Color(0xFF1565C0)
-            SyncState.Offline -> Color(0xFFC62828)
+            SyncState.Synced -> Color.White
+            SyncState.Syncing -> Color(0xFFD0D0D0)
+            SyncState.Offline -> Color(0xFFA0A0A0)
         },
         label = "syncContentColor"
     )
@@ -4474,7 +4464,7 @@ fun highlightMarkdown(text: String, isDark: Boolean): AnnotatedString {
                 addStyle(
                     style = SpanStyle(
                         fontWeight = FontWeight.Bold,
-                        color = Color(0xFF2F80ED),
+                        color = sc.wikiLink,
                         fontSize = 20.sp
                     ),
                     start = currentOffset,
@@ -4484,7 +4474,7 @@ fun highlightMarkdown(text: String, isDark: Boolean): AnnotatedString {
                 addStyle(
                     style = SpanStyle(
                         fontWeight = FontWeight.Bold,
-                        color = Color(0xFF2196F3),
+                        color = sc.wikiLink,
                         fontSize = 18.sp
                     ),
                     start = currentOffset,
@@ -4494,7 +4484,7 @@ fun highlightMarkdown(text: String, isDark: Boolean): AnnotatedString {
                 addStyle(
                     style = SpanStyle(
                         fontWeight = FontWeight.Bold,
-                        color = Color(0xFF00BCD4),
+                        color = sc.wikiLink,
                         fontSize = 16.sp
                     ),
                     start = currentOffset,

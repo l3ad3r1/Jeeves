@@ -6,12 +6,6 @@ import androidx.compose.runtime.ReadOnlyComposable
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.graphics.Color
 
-/**
- * Semantic colors that aren't part of the standard Material color scheme
- * (sync states, markdown accents). Defined per-theme so every pairing meets
- * WCAG AA contrast in both light and dark mode instead of using hardcoded hex
- * that only looked right on a white background.
- */
 data class OctoStatusColors(
   val syncOk: Color,
   val syncPending: Color,
@@ -23,28 +17,27 @@ data class OctoStatusColors(
 )
 
 val LightStatusColors = OctoStatusColors(
-  syncOk = Color(0xFF2E7D32),
-  syncPending = Color(0xFF8A5000),
-  localOnly = Color(0xFF5F6368),
-  wikiLink = Color(0xFF1565C0),
-  hashtag = Color(0xFF8A5000),
-  code = Color(0xFFB3123C),
-  codeBackground = Color(0xFFEFEFF2),
+  syncOk = Color.Black,
+  syncPending = Color(0xFF333333),
+  localOnly = Color(0xFF666666),
+  wikiLink = Color.Black,
+  hashtag = Color(0xFF444444),
+  code = Color.Black,
+  codeBackground = Color(0xFFE8E8E8),
 )
 
 val DarkStatusColors = OctoStatusColors(
-  syncOk = Color(0xFF7FD98A),
-  syncPending = Color(0xFFFFB77C),
-  localOnly = Color(0xFFB0B4BB),
-  wikiLink = Color(0xFF9DCAFF),
-  hashtag = Color(0xFFFFB77C),
-  code = Color(0xFFFF9EB1),
-  codeBackground = Color(0xFF2A2D31),
+  syncOk = Color.White,
+  syncPending = Color(0xFFD0D0D0),
+  localOnly = Color(0xFF9A9A9A),
+  wikiLink = Color.White,
+  hashtag = Color(0xFFB8B8B8),
+  code = Color.White,
+  codeBackground = Color(0xFF171717),
 )
 
-val LocalOctoStatusColors = staticCompositionLocalOf { LightStatusColors }
+val LocalOctoStatusColors = staticCompositionLocalOf { DarkStatusColors }
 
-/** Convenience accessor: `MaterialTheme.octoStatus.syncOk`. */
 val MaterialTheme.octoStatus: OctoStatusColors
   @Composable
   @ReadOnlyComposable

@@ -6,13 +6,13 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.viewModels
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
-import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import com.l3ad3r1.octojotter.ui.NoteApp
 import com.l3ad3r1.octojotter.ui.NoteViewModel
 import com.l3ad3r1.octojotter.ui.theme.MyApplicationTheme
 import androidx.fragment.app.FragmentActivity
+import com.jeeves.core.settings.JeevesSettings
 
 class MainActivity : FragmentActivity() {
   private val viewModel: NoteViewModel by viewModels()
@@ -35,16 +35,14 @@ class MainActivity : FragmentActivity() {
     enableEdgeToEdge()
     setContent {
       val themeMode by viewModel.themeMode.collectAsState()
-      val pluginTheme by viewModel.activePluginTheme.collectAsState()
-      // An enabled theme plugin overrides both the palette and dark/light.
-      val darkTheme = pluginTheme?.dark ?: when (themeMode) {
-        "dark" -> true
-        "light" -> false
-        else -> isSystemInDarkTheme()
-      }
+      val fontFamily by JeevesSettings.fontFamilyFlow(this)
+        .collectAsState(initial = JeevesSettings.fontFamily(this))
+      val fontScalePercent by JeevesSettings.fontScalePercentFlow(this)
+        .collectAsState(initial = JeevesSettings.fontScalePercent(this))
       MyApplicationTheme(
-        darkTheme = darkTheme,
-        overrideColorScheme = pluginTheme?.colorScheme
+        darkTheme = themeMode != JeevesSettings.THEME_LIGHT,
+        fontFamilyName = fontFamily,
+        fontScalePercent = fontScalePercent,
       ) {
         NoteApp(viewModel = viewModel)
       }

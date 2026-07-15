@@ -4,7 +4,6 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
-import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.CircularProgressIndicator
@@ -15,12 +14,11 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.lifecycle.lifecycleScope
 import com.hermes.agent.data.settings.SettingsRepository
-import com.jeeves.core.settings.JeevesSettings
 import com.hermes.agent.ui.navigation.HermesNavGraph
 import com.hermes.agent.ui.onboarding.OnboardingScreen
-import com.hermes.agent.ui.theme.AppTheme
 import com.hermes.agent.ui.theme.HermesTheme
 import com.hermes.agent.work.OtaUpdateWorker
+import com.jeeves.core.settings.JeevesSettings
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.launch
@@ -52,22 +50,18 @@ class MainActivity : ComponentActivity() {
         handleIntent(intent)
 
         setContent {
-            val settingsState by settings.observe().collectAsState(initial = null)
-
-            val appTheme = settingsState?.appTheme?.let { name ->
-                runCatching { AppTheme.valueOf(name) }.getOrDefault(AppTheme.MIDNIGHT)
-            }
-
-            // App-wide light/dark/system, from the one settings store shared with Notes.
             val themeMode by JeevesSettings.themeModeFlow(this)
                 .collectAsState(initial = JeevesSettings.themeMode(this))
-            val darkTheme = when (themeMode) {
-                JeevesSettings.THEME_DARK -> true
-                JeevesSettings.THEME_LIGHT -> false
-                else -> isSystemInDarkTheme()
-            }
+            val fontFamily by JeevesSettings.fontFamilyFlow(this)
+                .collectAsState(initial = JeevesSettings.fontFamily(this))
+            val fontScalePercent by JeevesSettings.fontScalePercentFlow(this)
+                .collectAsState(initial = JeevesSettings.fontScalePercent(this))
 
-            HermesTheme(appTheme = appTheme, darkTheme = darkTheme) {
+            HermesTheme(
+                darkTheme = themeMode != JeevesSettings.THEME_LIGHT,
+                fontFamilyName = fontFamily,
+                fontScalePercent = fontScalePercent,
+            ) {
                 Surface(modifier = Modifier.fillMaxSize()) {
                     val state by onboardingState.collectAsState()
                     when (state) {

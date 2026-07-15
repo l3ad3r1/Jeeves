@@ -85,17 +85,17 @@ val BlueBrandAssistantBubble      = Color(0xFF2200CC)
 val BlueBrandAssistantBubbleText  = Color(0xFFFFFFFF)
 
 // ── Kanban board status + priority colors (ported from Hermes App 2) ──
-val KanbanTodo        = Color(0xFF607D8B)
-val KanbanInProgress  = Color(0xFFF0B13B)  // aligns with HermesWarn
-val KanbanReview      = Color(0xFF8A7FD4)
-val KanbanBlocked     = Color(0xFFFF6B6B)
-val KanbanDone        = Color(0xFF46D399)  // aligns with HermesGood
-val KanbanCancelled   = Color(0xFF65667A)
+val KanbanTodo        = Color(0xFF707070)
+val KanbanInProgress  = Color(0xFFF0F0F0)
+val KanbanReview      = Color(0xFFBDBDBD)
+val KanbanBlocked     = Color(0xFF4A4A4A)
+val KanbanDone        = Color(0xFFFFFFFF)
+val KanbanCancelled   = Color(0xFF333333)
 
-val PriorityCritical  = Color(0xFFD32F2F)
-val PriorityHigh      = Color(0xFFFF5722)
-val PriorityMedium    = Color(0xFFF0B13B)
-val PriorityLow       = Color(0xFF46D399)
+val PriorityCritical  = Color(0xFFFFFFFF)
+val PriorityHigh      = Color(0xFFD0D0D0)
+val PriorityMedium    = Color(0xFF9A9A9A)
+val PriorityLow       = Color(0xFF666666)
 
 // ── Legacy palette (kept for any composables still referencing these) ─
 val HermesPrimary              = Color(0xFF1E3A8A)

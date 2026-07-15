@@ -161,4 +161,26 @@ class JeevesSettingsMigrationTest {
         assertEquals(21, ButlerPrefs.snoozeMinutes(context))
         assertEquals("Madam", ButlerPrefs.honorific(context))
     }
-}
+
+    @Test
+    fun `appearance font settings persist and flow from the unified store`() = runTest {
+        JeevesSettings.setFontFamily(context, JeevesSettings.FONT_SERIF)
+        JeevesSettings.setFontScalePercent(context, 115)
+
+        assertEquals(JeevesSettings.FONT_SERIF, JeevesSettings.fontFamily(context))
+        assertEquals(JeevesSettings.FONT_SERIF, JeevesSettings.fontFamilyFlow(context).first())
+        assertEquals(115, JeevesSettings.fontScalePercent(context))
+        assertEquals(115, JeevesSettings.fontScalePercentFlow(context).first())
+    }
+
+    @Test
+    fun `appearance settings normalise invalid fonts and clamp font size`() {
+        JeevesSettings.setFontFamily(context, "comic-sans")
+        JeevesSettings.setFontScalePercent(context, 500)
+
+        assertEquals(JeevesSettings.FONT_GEIST, JeevesSettings.fontFamily(context))
+        assertEquals(JeevesSettings.MAX_FONT_SCALE_PERCENT, JeevesSettings.fontScalePercent(context))
+
+        JeevesSettings.setFontScalePercent(context, -20)
+        assertEquals(JeevesSettings.MIN_FONT_SCALE_PERCENT, JeevesSettings.fontScalePercent(context))
+    }}

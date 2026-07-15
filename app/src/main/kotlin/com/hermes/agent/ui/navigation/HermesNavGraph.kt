@@ -116,6 +116,10 @@ fun HermesNavGraph(startAtSettings: Boolean = false) {
                 ChatScreen(
                     conversationId = entry.arguments?.getString("conversationId").orEmpty(),
                     onBack = { navController.popBackStack() },
+                    onNewChat = {
+                        val newId = java.util.UUID.randomUUID().toString()
+                        navController.navigate(TopLevelDestination.chatRoute(newId))
+                    },
                 )
             }
             composable(TopLevelDestination.DOCUMENTS.route) { DocumentsScreen(onBack = { navController.popBackStack() }) }
