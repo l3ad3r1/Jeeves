@@ -21,6 +21,11 @@ repo. All three apps are merged and shipping (`:app` + `:feature:jotter` + `:fea
 ### Cloud model discovery and About updates - 2026-07-15
 - [x] Release identity bumped to `versionCode=80` / `versionName=0.12.0` in the
       same change-set (L-012).
+- [x] Published GitHub release `v0.12.0` from commit `fbca561` after CI run
+      `29382153538` passed. Clean release APK size is 117,475,651 bytes, signer
+      SHA-256 begins `99255c31`, and APK SHA-256 is
+      `e36fbb46ac4a7fb68aa341fdde43b551dda348d9ce86d4f70c5f527d66d71bbd`.
+      Tag-triggered Release workflow `29382874517` also passed.
 - [x] Cloud remains the first routing choice when enabled and available; the on-device
       model is explicitly presented as the private offline fallback.
 - [x] Primary and specialist cloud settings now discover every model exposed by each
