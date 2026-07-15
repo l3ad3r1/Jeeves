@@ -23,8 +23,9 @@ repo. All three apps are merged and shipping (`:app` + `:feature:jotter` + `:fea
       foregrounded, without changing the phone's global timeout or release behavior.
 - [x] VERIFIED: focused tests cover enabled and disabled lifecycle registration, and
       `:app:assembleDebug` packages the debug APK successfully.
-- [ ] UNVERIFIED on device (L-001): ADB disconnected immediately before the debug APK
-      install; reconnect and confirm Android reports a held-screen window.
+- [x] VERIFIED on Samsung SM-S928B (L-001): installed `0.12.1-debug`; Android reported
+      its MainActivity as `mHoldScreenWindow`, and it remained `Awake` after 40 seconds
+      against the phone's normal 30-second screen timeout.
 - [x] Release identity bumped to `versionCode=81` / `versionName=0.12.1` in the
       same change-set (L-012).
 - [x] Reworked chat to the supplied minimal dark reference: balanced circular header
