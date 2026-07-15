@@ -465,7 +465,7 @@ class CloudLlmProviderTest {
 
         assertTrue(failure is java.io.IOException)
         assertEquals(
-            "Couldn't reach the cloud model. Check your internet connection and try again.",
+            "The cloud connection was interrupted. Check the network or provider status and try again.",
             failure?.message,
         )
         coVerify(exactly = 2) { api.completionRaw(any(), any(), any()) }

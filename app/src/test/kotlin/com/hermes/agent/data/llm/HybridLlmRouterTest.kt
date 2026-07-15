@@ -3,6 +3,8 @@ package com.hermes.agent.data.llm
 import com.hermes.agent.data.settings.SettingsRepository
 import com.hermes.agent.data.settings.UserSettings
 import io.mockk.coEvery
+import io.mockk.coVerify
+import java.io.IOException
 import io.mockk.mockk
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
@@ -26,19 +28,27 @@ class HybridLlmRouterTest {
     }
 
     @Test
-    fun `routes to cloud when enabled and key is set`() = runTest {
+    fun `routes through cloud-first failover when local is also available`() = runTest {
         coEvery { settings.current() } returns UserSettings(
             cloudEnabled = true,
             cloudApiKey = "sk-test",
         )
         coEvery { cloud.isAvailable() } returns true
         coEvery { local.isAvailable() } returns true
+        val messages = listOf(LlmMessage("user", "hello"))
+        val localResponse = LlmResponse("offline answer", 4, "local-model")
+        coEvery { cloud.complete(messages) } throws IOException("network down")
+        coEvery { local.complete(messages) } returns localResponse
 
         val router = HybridLlmRouter(cloud, specialised, local, settings)
-        val decision = router.route(listOf(LlmMessage("user", "hello")))
+        val decision = router.route(messages)
 
         assertTrue("expected Ready decision", decision is RoutingDecision.Ready)
-        assertEquals(cloud, (decision as RoutingDecision.Ready).provider)
+        val provider = (decision as RoutingDecision.Ready).provider
+        assertTrue(provider is FailoverLlmProvider)
+        assertEquals(localResponse, provider.complete(messages))
+        coVerify(exactly = 1) { cloud.complete(messages) }
+        coVerify(exactly = 1) { local.complete(messages) }
     }
 
     @Test

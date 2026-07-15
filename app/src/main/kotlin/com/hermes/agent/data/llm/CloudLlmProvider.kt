@@ -73,8 +73,6 @@ class CloudLlmProvider @Inject constructor(
     private companion object {
         const val NETWORK_ATTEMPTS = 2
         const val NETWORK_RETRY_DELAY_MS = 350L
-        const val NETWORK_ERROR_MESSAGE =
-            "Couldn't reach the cloud model. Check your internet connection and try again."
     }
 
     override val name: String =
@@ -247,7 +245,7 @@ class CloudLlmProvider @Inject constructor(
             emit(LlmStreamChunk.Done)
         } catch (t: Throwable) {
             Timber.tag("CloudLlm").w(t, "SSE-with-tools stream failed")
-            emit(LlmStreamChunk.Error(t.message ?: "SSE stream failed"))
+            emit(LlmStreamChunk.Error(t.message ?: "SSE stream failed", t))
         }
     }.flowOn(dispatchers.io)
 
@@ -284,7 +282,7 @@ class CloudLlmProvider @Inject constructor(
         val response = try {
             complete(messages)
         } catch (t: Throwable) {
-            emit(LlmStreamChunk.Error(t.message ?: "Cloud completion failed"))
+            emit(LlmStreamChunk.Error(t.message ?: "Cloud completion failed", t))
             return@flow
         }
         val tokens = response.content.split(" ").map { if (it.endsWith('\n')) it else "$it " }
@@ -318,7 +316,8 @@ class CloudLlmProvider @Inject constructor(
                 }
             }
         }
-        throw IOException(NETWORK_ERROR_MESSAGE, lastFailure)
+        val failure = requireNotNull(lastFailure)
+        throw IOException(failure.toCloudFailureMessage(), failure)
     }
 
     // --- helpers ---

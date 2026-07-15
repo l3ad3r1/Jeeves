@@ -240,3 +240,15 @@ configuration, rate-limit, or application errors.
 **Check:** Simulate a `SocketException` followed by success and verify the bounded
 retry; simulate repeated aborts and verify the final user-facing message. Existing HTTP
 error tests must still prove those responses are not retried by this policy.
+## L-025 — Runtime fallback must wrap execution, not only routing
+**Origin:** v0.12.0 cloud-first model release; first device report after release.
+**Defect:** The router selected a cloud provider when configured and mentioned the local
+model as a fallback, but a transport failure after selection ended the turn with a
+network error. The downloaded offline model was never invoked.
+**Rule:** A cloud-first/offline-fallback promise is an execution policy: after bounded
+cloud transport retries fail, retry the operation once through an available local
+provider. Preserve HTTP/auth/configuration errors, never restart a stream after output,
+and keep later tool rounds on the provider that accepted the failover.
+**Check:** Route with cloud and local available; simulate cloud `IOException` for plain
+completion, tool completion, and a stream before its first token. Each must return local
+output. Simulate HTTP failure and partial stream output; neither may restart locally.

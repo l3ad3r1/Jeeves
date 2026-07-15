@@ -161,8 +161,6 @@ class OrchestratorImpl @Inject constructor(
                     return@flow
                 }
             }
-            lastProviderWasOnDevice = provider.isOnDevice
-
             val (finalReply, stepTools) = runToolLoop(
                 provider = provider,
                 initialMessages = llmMessages,
@@ -189,6 +187,7 @@ class OrchestratorImpl @Inject constructor(
                 return@flow
             }
 
+            lastProviderWasOnDevice = provider.isOnDevice
             allToolsUsed += stepTools
             aggregator.append(finalReply)
             emit(OrchestratorEvent.ReplyToken(finalReply))

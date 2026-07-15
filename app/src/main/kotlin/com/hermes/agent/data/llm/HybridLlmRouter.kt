@@ -51,12 +51,15 @@ class HybridLlmRouter @Inject constructor(
             RequestComplexity.COMPLEX -> {
                 val target = if (specialised.isAvailable()) specialised else cloud
                 Timber.tag("LlmRouter").d("Route=cloud/specialist, model=${target.model}")
-                RoutingDecision.Ready(target, "complex task → specialist model ${target.model}")
+                RoutingDecision.Ready(withLocalFailover(target), "complex task → specialist model ${target.model}")
             }
             RequestComplexity.SIMPLE -> {
                 Timber.tag("LlmRouter").d("Route=cloud/primary, model=${cloud.model}")
-                RoutingDecision.Ready(cloud, "simple task → primary model ${cloud.model}")
+                RoutingDecision.Ready(withLocalFailover(cloud), "simple task → primary model ${cloud.model}")
             }
         }
     }
+
+    private suspend fun withLocalFailover(primary: LlmProvider): LlmProvider =
+        if (local.isAvailable()) FailoverLlmProvider(primary, local) else primary
 }
