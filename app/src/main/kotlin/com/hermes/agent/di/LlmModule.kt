@@ -4,6 +4,8 @@ import android.content.Context
 import com.arm.aichat.AiChat
 import com.arm.aichat.InferenceEngine
 import com.hermes.agent.data.llm.CloudLlmProvider
+import com.hermes.agent.data.llm.CloudModelCatalog
+import com.hermes.agent.data.llm.OpenAiCloudModelCatalog
 import com.hermes.agent.data.llm.CloudModelSource
 import com.hermes.agent.data.llm.LlmProvider
 import com.hermes.agent.data.llm.LlmRouter
@@ -46,6 +48,10 @@ abstract class LlmModule {
     @Binds
     @Singleton
     abstract fun bindLlmRouter(impl: HybridLlmRouter): LlmRouter
+
+    @Binds
+    @Singleton
+    abstract fun bindCloudModelCatalog(impl: OpenAiCloudModelCatalog): CloudModelCatalog
 
     @Binds
     @Singleton

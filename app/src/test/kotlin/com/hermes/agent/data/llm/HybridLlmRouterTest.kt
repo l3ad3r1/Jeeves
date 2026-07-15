@@ -32,11 +32,13 @@ class HybridLlmRouterTest {
             cloudApiKey = "sk-test",
         )
         coEvery { cloud.isAvailable() } returns true
+        coEvery { local.isAvailable() } returns true
 
         val router = HybridLlmRouter(cloud, specialised, local, settings)
         val decision = router.route(listOf(LlmMessage("user", "hello")))
 
         assertTrue("expected Ready decision", decision is RoutingDecision.Ready)
+        assertEquals(cloud, (decision as RoutingDecision.Ready).provider)
     }
 
     @Test

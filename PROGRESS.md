@@ -18,6 +18,26 @@ repo. All three apps are merged and shipping (`:app` + `:feature:jotter` + `:fea
 
 ## Status log (newest first)
 
+### Cloud model discovery and About updates - 2026-07-15
+- [x] Release identity bumped to `versionCode=80` / `versionName=0.12.0` in the
+      same change-set (L-012).
+- [x] Cloud remains the first routing choice when enabled and available; the on-device
+      model is explicitly presented as the private offline fallback.
+- [x] Primary and specialist cloud settings now discover every model exposed by each
+      configured OpenAI-compatible `/models` endpoint and require selection from the
+      available list. Blank specialist credentials reuse the primary endpoint and list.
+- [x] Model discovery retries one transient transport abort, preserves HTTP errors,
+      reports actionable failures, and does not convert coroutine cancellation into a
+      connection error (L-007, L-024).
+- [x] Moved the over-the-air update controls from Advanced settings to About without
+      changing the update workflow.
+- [x] VERIFIED: cloud-first routing, endpoint discovery/retry, and shared specialist
+      discovery unit tests pass; mandatory `tools/preflight.sh` exits 0 with ledger
+      checks, all-module compilation, native debug APK assembly, and the full unit suite.
+- [ ] UNVERIFIED - needs a connected device (L-001): confirm model dropdown contents
+      against real primary and specialist providers, send chat through cloud with local
+      fallback available, and exercise OTA controls from About.
+
 ### Chat connection-abort recovery — 2026-07-15
 - [x] Bumped the release identity to `versionCode=79` / `versionName=0.11.9` in
       the same change-set (L-012).

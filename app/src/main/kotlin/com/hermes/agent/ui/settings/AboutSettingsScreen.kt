@@ -1,5 +1,7 @@
 package com.hermes.agent.ui.settings
 
+import android.content.Intent
+import android.net.Uri
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
@@ -21,10 +23,13 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.hermes.agent.BuildConfig
 import com.hermes.agent.R
 
@@ -34,6 +39,9 @@ fun AboutSettingsScreen(
     onBack: () -> Unit,
     viewModel: SettingsViewModel = hiltViewModel(),
 ) {
+    val updateState by viewModel.updateState.collectAsStateWithLifecycle()
+    val context = LocalContext.current
+
     Scaffold(
         topBar = {
             TopAppBar(
@@ -81,6 +89,22 @@ fun AboutSettingsScreen(
                     )
                     InfoRow(title = "Build type", value = BuildConfig.BUILD_TYPE)
                 }
+            }
+
+            if (BuildConfig.OTA_ENABLED) {
+                SectionHeader(text = "Updates")
+                UpdateSection(
+                    state = updateState,
+                    canInstall = viewModel.canInstallPackages(),
+                    onCheck = viewModel::checkForUpdate,
+                    onDownload = viewModel::downloadAndInstall,
+                    onManagePermission = viewModel::promptInstallPermission,
+                    onOpenUrl = { url ->
+                        context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url)))
+                        viewModel.dismissUpdateState()
+                    },
+                    onDismiss = viewModel::dismissUpdateState,
+                )
             }
         }
     }

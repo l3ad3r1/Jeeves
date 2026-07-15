@@ -4,6 +4,7 @@ import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.hermes.agent.data.backup.GithubBackupService
+import com.hermes.agent.data.llm.CloudModelCatalog
 import com.hermes.agent.data.security.KeystoreManager
 import com.hermes.agent.data.security.KnoxSecurityManager
 import com.hermes.agent.data.settings.SettingsRepository
@@ -17,6 +18,9 @@ import com.sassybutler.alarm.VoiceCatalog
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import java.io.File
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -24,6 +28,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import javax.inject.Inject
+import retrofit2.HttpException
 
 /**
  * The alarm settings, mirrored from the one settings store. Butler's own preferences sheet
@@ -63,6 +68,13 @@ sealed class UpdateUiState {
     data class Error(val message: String) : UpdateUiState()
 }
 
+sealed class ModelDiscoveryUiState {
+    object Idle : ModelDiscoveryUiState()
+    object Loading : ModelDiscoveryUiState()
+    data class Ready(val models: List<String>) : ModelDiscoveryUiState()
+    object Empty : ModelDiscoveryUiState()
+    data class Error(val message: String) : ModelDiscoveryUiState()
+}
 sealed class BackupUiState {
     object Idle : BackupUiState()
     object InProgress : BackupUiState()
@@ -88,6 +100,7 @@ class SettingsViewModel @Inject constructor(
     private val otaInstaller: OtaInstaller,
     private val githubBackupService: GithubBackupService,
     private val sessionExporter: SessionExporter,
+    private val cloudModelCatalog: CloudModelCatalog,
     private val localLlmManager: com.hermes.agent.data.llm.LocalLlmManager,
 ) : ViewModel() {
 
@@ -145,6 +158,14 @@ class SettingsViewModel @Inject constructor(
             initialValue = UserSettings(),
         )
 
+    private val _primaryModelDiscovery = MutableStateFlow<ModelDiscoveryUiState>(ModelDiscoveryUiState.Idle)
+    val primaryModelDiscovery: StateFlow<ModelDiscoveryUiState> = _primaryModelDiscovery.asStateFlow()
+
+    private val _specialistModelDiscovery = MutableStateFlow<ModelDiscoveryUiState>(ModelDiscoveryUiState.Idle)
+    val specialistModelDiscovery: StateFlow<ModelDiscoveryUiState> = _specialistModelDiscovery.asStateFlow()
+
+    private var modelDiscoveryJob: Job? = null
+
     val isModelDownloaded = MutableStateFlow(false)
     val isModelDownloading: StateFlow<Boolean> = localLlmManager.isDownloading
     val modelDownloadProgress: StateFlow<Float> = localLlmManager.downloadProgress
@@ -166,6 +187,7 @@ class SettingsViewModel @Inject constructor(
                 }
             }
         }
+        scheduleModelDiscovery(delayMillis = 0L)
     }
 
     /** Re-evaluate whether the selected model exists in the current folder. */
@@ -222,18 +244,81 @@ class SettingsViewModel @Inject constructor(
 
     val isKnoxAvailable: Boolean get() = knox.isKnoxAvailable
 
+    // --- Cloud model discovery ---
+
+    fun refreshCloudModels() = scheduleModelDiscovery(delayMillis = 0L)
+
+    private fun scheduleModelDiscovery(delayMillis: Long = MODEL_DISCOVERY_DEBOUNCE_MS) {
+        modelDiscoveryJob?.cancel()
+        modelDiscoveryJob = viewModelScope.launch {
+            if (delayMillis > 0L) delay(delayMillis)
+            val current = settingsRepository.current()
+            if (!current.cloudEnabled) {
+                _primaryModelDiscovery.value = ModelDiscoveryUiState.Idle
+                _specialistModelDiscovery.value = ModelDiscoveryUiState.Idle
+                return@launch
+            }
+
+            val primary = CloudEndpoint(current.cloudBaseUrl, current.cloudApiKey)
+            val specialist = CloudEndpoint(
+                baseUrl = current.auxBaseUrl.ifBlank { primary.baseUrl },
+                apiKey = current.auxApiKey.ifBlank { primary.apiKey },
+            )
+
+            _primaryModelDiscovery.value = loadingStateFor(primary)
+            _specialistModelDiscovery.value = loadingStateFor(specialist)
+
+            val primaryState = discoverModels(primary)
+            _primaryModelDiscovery.value = primaryState
+            _specialistModelDiscovery.value = if (specialist == primary) {
+                primaryState
+            } else {
+                discoverModels(specialist)
+            }
+        }
+    }
+
+    private fun loadingStateFor(endpoint: CloudEndpoint): ModelDiscoveryUiState =
+        if (endpoint.baseUrl.isBlank()) ModelDiscoveryUiState.Idle else ModelDiscoveryUiState.Loading
+
+    private suspend fun discoverModels(endpoint: CloudEndpoint): ModelDiscoveryUiState {
+        if (endpoint.baseUrl.isBlank()) return ModelDiscoveryUiState.Idle
+        return try {
+            val models = cloudModelCatalog.listModels(endpoint.baseUrl, endpoint.apiKey)
+            if (models.isEmpty()) ModelDiscoveryUiState.Empty else ModelDiscoveryUiState.Ready(models)
+        } catch (cancelled: CancellationException) {
+            throw cancelled
+        } catch (failure: Throwable) {
+            ModelDiscoveryUiState.Error(modelDiscoveryError(failure))
+        }
+    }
+
+    private fun modelDiscoveryError(failure: Throwable): String = when (failure) {
+        is HttpException -> when (failure.code()) {
+            401, 403 -> "The provider rejected model discovery. Check the API key and retry."
+            404 -> "This provider does not expose a /models endpoint at that URL. Check the API base URL."
+            else -> "The provider returned HTTP ${failure.code()} while loading models."
+        }
+        else -> failure.message ?: "Couldn't load models from this provider."
+    }
+
+    private data class CloudEndpoint(val baseUrl: String, val apiKey: String)
+
     // --- Cloud settings ---
 
     fun setCloudEnabled(enabled: Boolean) = viewModelScope.launch {
         settingsRepository.setCloudEnabled(enabled)
+        scheduleModelDiscovery()
     }
 
     fun setCloudApiKey(key: String) = viewModelScope.launch {
         settingsRepository.setCloudApiKey(key)
+        scheduleModelDiscovery()
     }
 
     fun setCloudBaseUrl(url: String) = viewModelScope.launch {
         settingsRepository.setCloudBaseUrl(url)
+        scheduleModelDiscovery()
     }
 
     fun setCloudModel(model: String) = viewModelScope.launch {
@@ -248,11 +333,13 @@ class SettingsViewModel @Inject constructor(
     /** Optional separate endpoint for the specialist provider (blank = use primary's). */
     fun setAuxBaseUrl(url: String) = viewModelScope.launch {
         settingsRepository.setAuxBaseUrl(url)
+        scheduleModelDiscovery()
     }
 
     /** Optional separate API key for the specialist provider (blank = use primary's). */
     fun setAuxApiKey(key: String) = viewModelScope.launch {
         settingsRepository.setAuxApiKey(key)
+        scheduleModelDiscovery()
     }
 
     fun setAppTheme(themeName: String) = viewModelScope.launch {
@@ -314,6 +401,10 @@ class SettingsViewModel @Inject constructor(
             keystore.ensureKey(KeystoreManager.ALIAS_CLOUD_API_KEY)
             true
         }.onSuccess(onResult).onFailure { onResult(false) }
+    }
+
+    private companion object {
+        const val MODEL_DISCOVERY_DEBOUNCE_MS = 600L
     }
 
     // --- OTA update ---
