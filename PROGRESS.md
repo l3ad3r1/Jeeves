@@ -18,6 +18,17 @@ repo. All three apps are merged and shipping (`:app` + `:feature:jotter` + `:fea
 
 ## Status log (newest first)
 
+### v0.12.1 publication - 2026-07-16
+- [x] Committed the guarded agent loop and durable execution plans as `5e2586a`
+      (`Harden and persist agent execution`) after a fresh `tools/preflight.sh`
+      exit 0; CI run `29489763852` passed.
+- [x] Published GitHub release `v0.12.1` from commit `5e2586a`. Clean release APK
+      size is 117,520,795 bytes, signer SHA-256 begins `99255c31`, and APK SHA-256 is
+      `d246cabc62f5d97c9c988b0fd5b77dd89a953549bd594e759f96fdd621190c79`.
+      Tag-triggered Release workflow `29490464763` also passed.
+- [ ] UNVERIFIED on device (L-001): the tool-repetition recovery checkbox from the
+      guarded-loop entry below remains open; the phone was not on ADB.
+
 ### Durable execution plans - 2026-07-15
 - [x] Added Room-backed execution plans and ordered steps with a version 8-to-9
       migration, foreign-key cleanup, stable step IDs, timestamps, terminal status,
