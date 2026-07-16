@@ -1,6 +1,7 @@
 package com.hermes.agent.service
 
 import com.hermes.agent.data.tools.WebhookTool
+import com.hermes.agent.domain.agent.ExecutionOrigin
 import com.hermes.agent.domain.agent.Orchestrator
 import com.hermes.agent.domain.agent.OrchestratorEvent
 import com.hermes.agent.domain.model.KanbanStatus
@@ -40,6 +41,7 @@ class KanbanTaskProcessor @Inject constructor(
                 conversationId = "kanban-${ticket.id}",
                 userMessage = prompt,
                 recentMessages = emptyList(),
+                origin = ExecutionOrigin.BACKGROUND,
             ).toList()
             events.filterIsInstance<OrchestratorEvent.ReplyComplete>()
                 .firstOrNull()?.finalText

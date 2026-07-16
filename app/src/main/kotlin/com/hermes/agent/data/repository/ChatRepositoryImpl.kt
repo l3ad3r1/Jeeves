@@ -4,6 +4,7 @@ import com.hermes.agent.data.llm.LlmMessage
 import com.hermes.agent.data.llm.LlmRouter
 import com.hermes.agent.data.llm.LlmStreamChunk
 import com.hermes.agent.data.llm.RoutingDecision
+import com.hermes.agent.domain.agent.ExecutionOrigin
 import com.hermes.agent.domain.agent.Orchestrator
 import com.hermes.agent.domain.agent.OrchestratorEvent
 import com.hermes.agent.domain.model.AgentRole
@@ -189,7 +190,7 @@ class ChatRepositoryImpl @Inject constructor(
         var finalIsOnDevice: Boolean = true
         var replyCompleted = false
 
-        orchestrator.run(conversationId, content, llmMessages).collect { event ->
+        orchestrator.run(conversationId, content, llmMessages, ExecutionOrigin.INTERACTIVE).collect { event ->
             when (event) {
                 is OrchestratorEvent.ReplyToken -> accumulator.append(event.text)
                 is OrchestratorEvent.ReplyComplete -> {

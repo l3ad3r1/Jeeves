@@ -18,6 +18,29 @@ repo. All three apps are merged and shipping (`:app` + `:feature:jotter` + `:fea
 
 ## Status log (newest first)
 
+### Context-aware confirmation policy - 2026-07-16
+- [x] Added `ExecutionOrigin` (INTERACTIVE/BACKGROUND) plumbed explicitly through
+      `Orchestrator.run` from every entry point: chat repository is interactive;
+      the Kanban processor and both API-server paths are background.
+- [x] Added `ToolExecutionPolicy` (roadmap v0.13 slice): background turns deny
+      never-autonomous tools (`shell`, `termux`, `device_settings`) outright and
+      deny confirmation-required tools immediately instead of burning the 60 s
+      dialog timeout with nobody to ask; interactive turns gate never-autonomous
+      tools behind the dialog even if a descriptor forgets its confirmation flag.
+      The policy check sits beside the allowlist check in `AgentLoopRunner`, and
+      denials carry actionable text (L-007).
+- [x] Fixed D9: `ToolConfirmationService` requests are now addressed by unique id
+      (`PendingConfirmation`); a verdict for a request that already timed out or
+      was replaced is ignored, so a stale dialog can never approve a different
+      call than the one it displayed. Chat dialog submits the id it rendered.
+- [x] VERIFIED: focused unit tests pass — six policy verdicts, keyed/stale-id
+      confirmation behavior, background denial of never-autonomous and
+      confirmation-required tools without consulting the gate or executor, plus
+      the pre-existing loop-runner suite; `tools/preflight.sh` exit 0.
+- [ ] UNVERIFIED on device (L-001): a background (Kanban/API) turn requesting
+      `shell` shows the denial text in the result, and the interactive dialog
+      still approves; phone remains off ADB.
+
 ### v0.12.1 publication - 2026-07-16
 - [x] Committed the guarded agent loop and durable execution plans as `5e2586a`
       (`Harden and persist agent execution`) after a fresh `tools/preflight.sh`

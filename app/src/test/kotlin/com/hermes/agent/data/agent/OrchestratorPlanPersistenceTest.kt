@@ -7,6 +7,7 @@ import com.hermes.agent.data.memory.ConversationLearner
 import com.hermes.agent.data.memory.UserModelService
 import com.hermes.agent.domain.agent.Agent
 import com.hermes.agent.domain.agent.AgentRouter
+import com.hermes.agent.domain.agent.ExecutionOrigin
 import com.hermes.agent.domain.agent.OrchestratorEvent
 import com.hermes.agent.domain.agent.RoutingResult
 import com.hermes.agent.domain.model.AgentRole
@@ -35,7 +36,7 @@ class OrchestratorPlanPersistenceTest {
     fun `successful turn persists plan running and succeeded transitions`() = runTest {
         val fixture = fixture(AgentLoopOutcome.Completed("answer", emptyList()))
 
-        val events = fixture.orchestrator.run("conversation", "hello", emptyList()).toList()
+        val events = fixture.orchestrator.run("conversation", "hello", emptyList(), ExecutionOrigin.INTERACTIVE).toList()
 
         val planSlot = slot<ExecutionPlan>()
         coVerify(exactly = 1) { fixture.plans.save(capture(planSlot)) }
@@ -57,7 +58,7 @@ class OrchestratorPlanPersistenceTest {
             ),
         )
 
-        val events = fixture.orchestrator.run("conversation", "hello", emptyList()).toList()
+        val events = fixture.orchestrator.run("conversation", "hello", emptyList(), ExecutionOrigin.INTERACTIVE).toList()
 
         val planSlot = slot<ExecutionPlan>()
         coVerify { fixture.plans.save(capture(planSlot)) }
@@ -88,7 +89,7 @@ class OrchestratorPlanPersistenceTest {
         coEvery { llmRouter.route(any()) } returns RoutingDecision.Ready(provider, "test")
 
         val loopRunner = mockk<AgentLoopRunner>()
-        coEvery { loopRunner.run(any(), any(), any(), any(), any(), any()) } returns outcome
+        coEvery { loopRunner.run(any(), any(), any(), any(), any(), any(), any()) } returns outcome
         val plans = mockk<ExecutionPlanRepository>(relaxed = true)
 
         val orchestrator = OrchestratorImpl(

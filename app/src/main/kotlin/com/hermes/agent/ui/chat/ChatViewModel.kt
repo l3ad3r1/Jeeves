@@ -49,8 +49,8 @@ class ChatViewModel @Inject constructor(
 
     val pendingToolConfirmation = toolConfirmationService.pendingRequest
 
-    fun submitToolConfirmation(approved: Boolean) {
-        toolConfirmationService.submitConfirmation(approved)
+    fun submitToolConfirmation(requestId: String, approved: Boolean) {
+        toolConfirmationService.submitConfirmation(requestId, approved)
     }
 
     private val _ephemeral = MutableStateFlow(ChatEphemeralState())

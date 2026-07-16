@@ -5,9 +5,12 @@ import com.hermes.agent.data.llm.LlmProvider
 import com.hermes.agent.data.llm.ToolCall
 import com.hermes.agent.data.tool.ToolCallExecutor
 import com.hermes.agent.domain.agent.ExecutionGuard
+import com.hermes.agent.domain.agent.ExecutionOrigin
 import com.hermes.agent.domain.agent.ExecutionStopReason
 import com.hermes.agent.domain.agent.ToolExecutionObservation
 import com.hermes.agent.domain.tool.ToolDescriptor
+import com.hermes.agent.domain.tool.ToolExecutionDecision
+import com.hermes.agent.domain.tool.ToolExecutionPolicy
 import com.hermes.agent.domain.tool.ToolRegistry
 import com.hermes.agent.domain.tool.ToolResult
 import kotlinx.coroutines.withTimeoutOrNull
@@ -42,11 +45,13 @@ class AgentLoopRunner @Inject constructor(
     private val toolRegistry: ToolRegistry,
     private val toolCallExecutor: ToolCallExecutor,
     private val executionGuard: ExecutionGuard,
+    private val executionPolicy: ToolExecutionPolicy,
 ) {
     suspend fun run(
         provider: LlmProvider,
         initialMessages: List<LlmMessage>,
         tools: List<ToolDescriptor>,
+        origin: ExecutionOrigin,
         onToolRequested: suspend (ToolCall, Boolean) -> Unit,
         confirmationGate: ToolCallExecutor.ConfirmationGate?,
         onToolResult: suspend (ToolCall, ToolResult) -> Unit,
@@ -55,6 +60,7 @@ class AgentLoopRunner @Inject constructor(
             provider,
             initialMessages,
             tools,
+            origin,
             onToolRequested,
             confirmationGate,
             onToolResult,
@@ -69,6 +75,7 @@ class AgentLoopRunner @Inject constructor(
         provider: LlmProvider,
         initialMessages: List<LlmMessage>,
         tools: List<ToolDescriptor>,
+        origin: ExecutionOrigin,
         onToolRequested: suspend (ToolCall, Boolean) -> Unit,
         confirmationGate: ToolCallExecutor.ConfirmationGate?,
         onToolResult: suspend (ToolCall, ToolResult) -> Unit,
@@ -94,11 +101,14 @@ class AgentLoopRunner @Inject constructor(
                 toolsInvoked += call.name
                 val requiresConfirmation =
                     toolRegistry.byName(call.name)?.descriptor?.requiresConfirmation ?: false
-                onToolRequested(call, requiresConfirmation)
+                val decision = executionPolicy.evaluate(origin, call.name, requiresConfirmation)
+                val mustConfirm = decision is ToolExecutionDecision.Confirm
+                onToolRequested(call, mustConfirm)
 
                 val result = when {
                     tools.none { it.name == call.name } -> ToolResult.error("unauthorized tool: ${call.name}")
-                    requiresConfirmation && confirmationGate?.confirm(call, true) != true ->
+                    decision is ToolExecutionDecision.Deny -> ToolResult.error(decision.reason)
+                    mustConfirm && confirmationGate?.confirm(call, true) != true ->
                         ToolResult.error("user declined")
                     else -> toolCallExecutor.execute(call, confirmationGate = null)
                 }

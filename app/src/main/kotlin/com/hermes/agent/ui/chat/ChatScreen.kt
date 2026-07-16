@@ -204,33 +204,33 @@ fun ChatScreen(
         } // closes Scaffold
     } // closes ModalNavigationDrawer
 
-    pendingConfirmation?.let { call ->
+    pendingConfirmation?.let { pending ->
         androidx.compose.material3.AlertDialog(
-            onDismissRequest = { viewModel.submitToolConfirmation(false) },
+            onDismissRequest = { viewModel.submitToolConfirmation(pending.id, false) },
             title = { Text("Approve Action") },
             text = {
                 Column {
                     Text("Jeeves wants to run the following tool:")
                     Spacer(Modifier.height(8.dp))
                     Text(
-                        text = call.name,
+                        text = pending.call.name,
                         style = MaterialTheme.typography.bodyMedium,
                         fontWeight = FontWeight.Bold
                     )
                     Text(
-                        text = call.arguments.entries.joinToString("\n") { "${it.key}: ${it.value}" },
+                        text = pending.call.arguments.entries.joinToString("\n") { "${it.key}: ${it.value}" },
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
             },
             confirmButton = {
-                TextButton(onClick = { viewModel.submitToolConfirmation(true) }) {
+                TextButton(onClick = { viewModel.submitToolConfirmation(pending.id, true) }) {
                     Text("Allow")
                 }
             },
             dismissButton = {
-                TextButton(onClick = { viewModel.submitToolConfirmation(false) }) {
+                TextButton(onClick = { viewModel.submitToolConfirmation(pending.id, false) }) {
                     Text("Deny")
                 }
             }

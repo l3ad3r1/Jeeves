@@ -8,8 +8,10 @@ import com.hermes.agent.data.llm.LlmToolResponse
 import com.hermes.agent.data.llm.ToolCall
 import com.hermes.agent.data.tool.ToolCallExecutor
 import com.hermes.agent.data.tool.ToolRegistryImpl
+import com.hermes.agent.domain.agent.ExecutionOrigin
 import com.hermes.agent.domain.tool.Tool
 import com.hermes.agent.domain.tool.ToolDescriptor
+import com.hermes.agent.domain.tool.ToolExecutionPolicy
 import com.hermes.agent.domain.tool.ToolResult
 import io.mockk.coEvery
 import io.mockk.coVerify
@@ -20,6 +22,7 @@ import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.test.runTest
 import kotlinx.serialization.json.JsonPrimitive
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -33,6 +36,7 @@ class AgentLoopRunnerTest {
             fixture.provider,
             listOf(LlmMessage("user", "hello")),
             emptyList(),
+            ExecutionOrigin.INTERACTIVE,
             { _, _ -> },
             null,
             { _, _ -> },
@@ -90,6 +94,47 @@ class AgentLoopRunnerTest {
     }
 
     @Test
+    fun `background origin denies never-autonomous tools outright`() = runTest {
+        val call = ToolCall("c", "shell", emptyMap())
+        val fixture = fixture { LlmToolResponse("", listOf(call), 1, "fake", "tool_calls") }
+        fixture.registry.register(stubTool("shell"))
+        val results = mutableListOf<ToolResult>()
+
+        val result = fixture.runWithTools(
+            origin = ExecutionOrigin.BACKGROUND,
+            onToolResult = { _, r -> results += r },
+        )
+
+        assertTrue(result is AgentLoopOutcome.Failed)
+        coVerify(exactly = 0) { fixture.executor.execute(any(), any()) }
+        assertTrue(
+            "denial must be actionable",
+            results.first().errorMessage.orEmpty().contains("never allowed from background"),
+        )
+    }
+
+    @Test
+    fun `background origin denies confirmation-required tools without consulting the gate`() = runTest {
+        val call = ToolCall("c", "write", emptyMap())
+        val fixture = fixture { LlmToolResponse("", listOf(call), 1, "fake", "tool_calls") }
+        fixture.registry.register(stubTool("write", requiresConfirmation = true))
+        var gateConsulted = false
+        val gate = ToolCallExecutor.ConfirmationGate { _, _ ->
+            gateConsulted = true
+            true
+        }
+
+        val result = fixture.runWithTools(
+            origin = ExecutionOrigin.BACKGROUND,
+            confirmationGate = gate,
+        )
+
+        assertTrue(result is AgentLoopOutcome.Failed)
+        assertFalse("background turns must not wait on a confirmation gate", gateConsulted)
+        coVerify(exactly = 0) { fixture.executor.execute(any(), any()) }
+    }
+
+    @Test
     fun `round limit reports a distinct failure`() = runTest {
         val fixture = fixture { round ->
             LlmToolResponse(
@@ -121,9 +166,17 @@ class AgentLoopRunnerTest {
                 return LlmToolResponse("late", emptyList(), 1, "fake", "stop")
             }
         }
-        val runner = AgentLoopRunner(registry, executor, RepeatedExecutionGuard())
+        val runner = AgentLoopRunner(registry, executor, RepeatedExecutionGuard(), ToolExecutionPolicy())
 
-        val result = runner.run(provider, emptyList(), emptyList(), { _, _ -> }, null, { _, _ -> })
+        val result = runner.run(
+            provider,
+            emptyList(),
+            emptyList(),
+            ExecutionOrigin.INTERACTIVE,
+            { _, _ -> },
+            null,
+            { _, _ -> },
+        )
 
         assertEquals(AgentLoopFailureReason.TIMED_OUT, (result as AgentLoopOutcome.Failed).reason)
     }
@@ -135,7 +188,7 @@ class AgentLoopRunnerTest {
             registry,
             executor,
             FakeProvider(response),
-            AgentLoopRunner(registry, executor, RepeatedExecutionGuard()),
+            AgentLoopRunner(registry, executor, RepeatedExecutionGuard(), ToolExecutionPolicy()),
         )
     }
 
@@ -151,14 +204,17 @@ class AgentLoopRunnerTest {
         val runner: AgentLoopRunner,
     ) {
         suspend fun runWithTools(
+            origin: ExecutionOrigin = ExecutionOrigin.INTERACTIVE,
             confirmationGate: ToolCallExecutor.ConfirmationGate? = null,
+            onToolResult: suspend (ToolCall, ToolResult) -> Unit = { _, _ -> },
         ): AgentLoopOutcome = runner.run(
             provider,
             listOf(LlmMessage("user", "test")),
             registry.descriptors(),
+            origin,
             { _, _ -> },
             confirmationGate,
-            { _, _ -> },
+            onToolResult,
         )
     }
 

@@ -9,6 +9,7 @@ import com.hermes.agent.data.tool.ToolCallExecutor
 import com.hermes.agent.domain.agent.AgentRouter
 import com.hermes.agent.domain.agent.Orchestrator
 import com.hermes.agent.domain.agent.OrchestratorEvent
+import com.hermes.agent.domain.agent.ExecutionOrigin
 import com.hermes.agent.domain.agent.RoutingResult
 import com.hermes.agent.domain.model.AgentRole
 import com.hermes.agent.domain.model.ExecutionPlan
@@ -75,6 +76,7 @@ class OrchestratorImpl @Inject constructor(
         conversationId: String,
         userMessage: String,
         recentMessages: List<LlmMessage>,
+        origin: ExecutionOrigin,
     ): Flow<OrchestratorEvent> = flow {
 
         // 1. Route.
@@ -177,6 +179,7 @@ class OrchestratorImpl @Inject constructor(
                     provider = provider,
                     initialMessages = llmMessages,
                     tools = tools,
+                    origin = origin,
                     onToolRequested = { call, requiresConfirmation ->
                         emit(OrchestratorEvent.ToolCallRequested(call, requiresConfirmation))
                     },
