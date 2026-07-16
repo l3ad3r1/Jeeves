@@ -18,6 +18,16 @@ repo. All three apps are merged and shipping (`:app` + `:feature:jotter` + `:fea
 
 ## Status log (newest first)
 
+### v0.13.0 publication - 2026-07-16
+- [x] Published GitHub release `v0.13.0` from commit `06ee78b` after CI run
+      `29493683759` passed. Clean release APK size is 117,540,919 bytes, signer
+      SHA-256 begins `99255c31`, and APK SHA-256 is
+      `2eb2982e04f807bda22490f22caddae374b1b6303b2c25faca2085ac55ce9c9d`.
+      Tag-triggered Release workflow `29494462755` also passed.
+- [ ] UNVERIFIED on device (L-001): the delegation/ledger and policy device
+      checkboxes from the two entries below remain open; the phone was not on
+      ADB for this release either.
+
 ### Background delegation and activity ledger - 2026-07-16
 - [x] Added the persisted activity ledger (Room v10, `MIGRATION_9_10`): every tool
       execution (with origin, outcome, and denial text) is recorded from the
