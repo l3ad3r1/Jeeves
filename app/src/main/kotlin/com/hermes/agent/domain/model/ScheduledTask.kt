@@ -31,6 +31,20 @@ object CronPresets {
         "Weekly (Mon 8 am)"  to WEEKLY,
     )
 
-    fun labelFor(expr: String): String =
-        ALL.firstOrNull { it.second == expr }?.first ?: expr
+    fun labelFor(expr: String): String {
+        ALL.firstOrNull { it.second == expr }?.let { return it.first }
+        // "M H * * *" from the time picker renders as a human time.
+        DAILY_AT.matchEntire(expr.trim())?.let { m ->
+            val minute = m.groupValues[1].toInt()
+            val hour = m.groupValues[2].toInt()
+            if (minute in 0..59 && hour in 0..23) {
+                val h12 = when (hour % 12) { 0 -> 12; else -> hour % 12 }
+                val ampm = if (hour < 12) "am" else "pm"
+                return "Daily at $h12:${minute.toString().padStart(2, '0')} $ampm"
+            }
+        }
+        return expr
+    }
+
+    private val DAILY_AT = Regex("""^(\d{1,2}) (\d{1,2}) \* \* \*$""")
 }

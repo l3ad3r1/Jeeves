@@ -59,6 +59,13 @@ class BudgetStateStore @Inject constructor(
         editor.apply()
     }
 
+    fun setQuietHours(start: LocalTime, end: LocalTime) {
+        prefs.edit()
+            .putInt("quiet_start_sec", start.toSecondOfDay())
+            .putInt("quiet_end_sec", end.toSecondOfDay())
+            .apply()
+    }
+
     override val dailyCap: Int
         get() = prefs.getInt("daily_cap", AnnoyanceBudget.DEFAULT_DAILY_CAP)
 

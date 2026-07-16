@@ -55,11 +55,30 @@ repo. All three apps are merged and shipping (`:app` + `:feature:jotter` + `:fea
       captured third-party text renders ONLY into the human-facing digest
       notification and is never concatenated into an LLM prompt anywhere;
       revoking the in-app switch deletes captured data.
-- [ ] Remaining for milestone v0.12.0: device gates only — each trigger fires on
-      hardware, quiet-hour suppression observed, "Less of this" round-trip,
-      notification access granted and a real digest with the summary section.
-- [ ] UNVERIFIED on device (L-001): a real cron ping suppressed during quiet
-      hours and the "Less of this" action round-trip; phone remains off ADB.
+- [x] VERIFIED on Samsung SM-S928B (2026-07-17, RZCY51R2A8D, 0.13.0-debug vc82):
+      automated device-gate sweep via a DEBUG-ONLY adb test seam
+      (`ProactiveTestReceiver`, debug source set — absent from release builds).
+      Evidence in logcat/dumpsys, raw copies under `devicegate/`:
+      · quiet-hours ping suppressed — `suppressed 'quietping': quiet hours`
+      · ping posted outside quiet hours — `GATE:PING posted=true`, visible in
+        `dumpsys notification` on the `jeeves_proactive` channel
+      · "Less of this" damping — count 2 reached, then
+        `suppressed 'mutedping': Scheduled tasks muted by "less of this"`
+      · consent default-off — `suppressed 'digestoff': Daily digest pings are
+        turned off`
+      · hard daily cap — after 4 posted pings, five consecutive attempts logged
+        `daily ping budget (4) already spent`, surviving app restart
+      · DND precedence — `suppressed 'dndping': Do Not Disturb is active`
+        (fired before the cap reason, proving rule order)
+      · digest end-to-end — posted with real calendar/headlines content and a
+        `PROACTIVE` ledger row (`success=true`)
+      · commitment nudge end-to-end — seeded commitment resurfaced,
+        "A commitment you made" posted
+      · capture boundary — `cmd notification post` third-party notification
+        captured into the digest; disabling capture cleared the store
+- [ ] UNVERIFIED on device (L-001): only the physical tap on the notification's
+      "Less of this" action (the PendingIntent → LessOfThisReceiver hop); its
+      store logic is device-verified via the seam. One human tap closes it.
 
 ### v0.13.0 publication - 2026-07-16
 - [x] Published GitHub release `v0.13.0` from commit `06ee78b` after CI run

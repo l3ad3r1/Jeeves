@@ -32,6 +32,8 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.TimePicker
+import androidx.compose.material3.rememberTimePickerState
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
@@ -218,6 +220,28 @@ private fun AddTaskDialog(
     var customCron by remember { mutableStateOf("") }
     var useCustom by remember { mutableStateOf(false) }
     var dropdownExpanded by remember { mutableStateOf(false) }
+    var showTimePicker by remember { mutableStateOf(false) }
+    val timePickerState = rememberTimePickerState()
+
+    if (showTimePicker) {
+        AlertDialog(
+            onDismissRequest = { showTimePicker = false },
+            title = { Text("Daily at…") },
+            text = { TimePicker(state = timePickerState) },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        selectedCron = "${timePickerState.minute} ${timePickerState.hour} * * *"
+                        useCustom = false
+                        showTimePicker = false
+                    },
+                ) { Text("Set") }
+            },
+            dismissButton = {
+                TextButton(onClick = { showTimePicker = false }) { Text("Cancel") }
+            },
+        )
+    }
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -266,6 +290,13 @@ private fun AddTaskDialog(
                                 },
                             )
                         }
+                        DropdownMenuItem(
+                            text = { Text("Daily at a custom time…") },
+                            onClick = {
+                                showTimePicker = true
+                                dropdownExpanded = false
+                            },
+                        )
                         DropdownMenuItem(
                             text = { Text("Custom cron expression…") },
                             onClick = {
