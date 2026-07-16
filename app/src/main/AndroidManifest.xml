@@ -138,6 +138,12 @@
             </intent-filter>
         </receiver>
 
+        <receiver android:name=".data.proactive.LessOfThisReceiver" android:exported="false">
+            <intent-filter>
+                <action android:name="com.jeeves.app.action.LESS_OF_THIS" />
+            </intent-filter>
+        </receiver>
+
         <!-- OTA download foreground service -->
         <service
             android:name=".data.update.OtaDownloadService"

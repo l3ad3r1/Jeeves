@@ -4,6 +4,7 @@ package com.hermes.agent.domain.model
 enum class ActivityKind {
     TOOL_CALL,
     DELEGATION,
+    PROACTIVE,
 }
 
 /**

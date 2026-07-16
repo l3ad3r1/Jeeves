@@ -18,6 +18,30 @@ repo. All three apps are merged and shipping (`:app` + `:feature:jotter` + `:fea
 
 ## Status log (newest first)
 
+### Proactive engine: annoyance budget and notifier gate - 2026-07-16
+- [x] Started roadmap milestone v0.12.0 (Proactive engine) now that v0.13's
+      context-aware policy is shipped first, as the roadmap's risk table requires.
+- [x] Added `AnnoyanceBudget` (pure, unit-tested): per-source consent (everything
+      defaults OFF except time-based scheduled tasks), DND wins over everything,
+      midnight-wrapping quiet hours (default 22:00–07:00), a hard daily cap (4),
+      and a per-source allowance that each "Less of this" press durably halves
+      (2 → 1 → muted).
+- [x] Added `ProactiveNotifier` — the single gate every proactive ping must pass.
+      Suppressed or posted, the outcome is recorded in the activity ledger (new
+      `PROACTIVE` kind) so proactivity is always auditable. Notifications carry a
+      one-tap "Less of this" action handled by a manifest-registered receiver.
+- [x] Routed `ScheduledTaskWorker`'s completion ping through the gate; the run
+      result stays durable in cron history, so suppression makes it quieter,
+      never lost (L-007).
+- [x] VERIFIED: nine budget unit tests (defaults, consent, DND, wrapping quiet
+      hours, daily cap, per-source cap, less-of-this damping and muting, opt-in
+      admit); all-module compile; `tools/preflight.sh` exit 0.
+- [ ] Remaining for milestone v0.12.0: daily digest template, commitment nudges
+      via the consolidator, proactive consent/quiet-hours settings UI, and the
+      notification-listener digest behind its injection boundary.
+- [ ] UNVERIFIED on device (L-001): a real cron ping suppressed during quiet
+      hours and the "Less of this" action round-trip; phone remains off ADB.
+
 ### v0.13.0 publication - 2026-07-16
 - [x] Published GitHub release `v0.13.0` from commit `06ee78b` after CI run
       `29493683759` passed. Clean release APK size is 117,540,919 bytes, signer

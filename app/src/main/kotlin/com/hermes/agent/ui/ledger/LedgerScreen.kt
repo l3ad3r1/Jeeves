@@ -98,6 +98,7 @@ private fun LedgerRow(entry: ActivityEntry) {
                 text = when (entry.kind) {
                     ActivityKind.TOOL_CALL -> entry.title
                     ActivityKind.DELEGATION -> "Delegated: ${entry.title}"
+                    ActivityKind.PROACTIVE -> "Ping: ${entry.title}"
                 },
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurface,
