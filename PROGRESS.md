@@ -18,6 +18,50 @@ repo. All three apps are merged and shipping (`:app` + `:feature:jotter` + `:fea
 
 ## Status log (newest first)
 
+### Durable execution plans - 2026-07-15
+- [x] Added Room-backed execution plans and ordered steps with a version 8-to-9
+      migration, foreign-key cleanup, stable step IDs, timestamps, terminal status,
+      and actionable failure details.
+- [x] Plan creation is transactional and insert-once: retrying the same save cannot
+      append duplicate steps or reset live/completed progress (L-006). Only running
+      steps may enter a terminal state, and successful steps cannot be overwritten.
+- [x] The orchestrator now persists the plan before announcing it, records running and
+      terminal transitions before UI events, marks unavailable/guarded/exception paths
+      failed, and records coroutine interruption as blocked rather than leaving a false
+      success or endless spinner (L-007).
+- [x] App-process startup reconciles stale running steps to blocked with a retry message.
+      Chat observes Room as its plan source of truth, restores the latest conversation
+      plan after screen/process recreation, and matches transitions by stable step ID.
+- [x] VERIFIED: ten focused durable-plan tests exercise schema migration, ordered
+      round-trip mapping, idempotent save, guarded transitions, startup reconciliation,
+      orchestration success/failure persistence, and chat restoration.
+- [x] VERIFIED on Samsung SM-S928B (L-001): signer-compatible in-place debug install
+      preserved app data; Android logged `DB version upgrading from 8 to 9`, Jeeves
+      completed a 1.14-second cold launch with the existing Hermes/Jotter databases,
+      and logcat contained no Room migration or fatal-process error.
+- [x] VERIFIED on Samsung SM-S928B (L-001): after confirming the first step of a
+      two-step Research/Creative plan was persisted as running, force-stopped Jeeves
+      mid-turn. Cold startup logged `blocked 1 interrupted steps`; reopening the same
+      conversation restored `Research · blocked` and left `Creative · pending`.
+
+### Guarded agent execution loop - 2026-07-15
+- [x] Extracted the LLM/tool exchange from the orchestrator into a bounded runner with
+      independent progress policy, structured completion/failure outcomes, a five-round
+      ceiling, and a five-minute whole-loop timeout.
+- [x] Identical tool calls and identical results now stop after three no-progress rounds;
+      argument fingerprints normalize map and nested-object key order while changed
+      results reset the repetition count.
+- [x] Loop exhaustion, timeout, and repetition surface actionable user messages and emit
+      a failed plan-step event instead of silently ending or marking the step successful
+      (L-007). Confirmation-required tools still deny safely when no UI gate is attached
+      and cannot hang the loop (L-008).
+- [x] VERIFIED: nine focused tests execute ordinary completion, repeated no-progress
+      detection, changing-result progress, headless confirmation denial, round exhaustion,
+      and virtual-time timeout. Mandatory `tools/preflight.sh` exits 0 with ledger checks,
+      all-module compilation, native debug APK assembly, and the complete unit suite.
+- [ ] UNVERIFIED on device (L-001): provoke a real local/cloud model into repeating the
+      same tool request and confirm the chat shows the recovery message and failed plan step.
+
 ### Cloud runtime failover repair and v0.12.1 - 2026-07-15
 - [x] Debug builds now keep every Agent, Notes, and Butler activity awake while it is
       foregrounded, without changing the phone's global timeout or release behavior.

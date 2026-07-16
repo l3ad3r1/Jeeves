@@ -1,11 +1,8 @@
 package com.hermes.agent.data.agent
 
 import com.hermes.agent.data.llm.LlmMessage
-import com.hermes.agent.data.llm.LlmProvider
 import com.hermes.agent.data.llm.LlmRouter
-import com.hermes.agent.data.llm.LlmStreamChunk
 import com.hermes.agent.data.llm.RoutingDecision
-import com.hermes.agent.data.llm.ToolCall
 import com.hermes.agent.data.memory.ConversationLearner
 import com.hermes.agent.data.memory.UserModelService
 import com.hermes.agent.data.tool.ToolCallExecutor
@@ -16,12 +13,16 @@ import com.hermes.agent.domain.agent.RoutingResult
 import com.hermes.agent.domain.model.AgentRole
 import com.hermes.agent.domain.model.ExecutionPlan
 import com.hermes.agent.domain.model.ExecutionStep
+import com.hermes.agent.domain.model.StepStatus
+import com.hermes.agent.domain.repository.ExecutionPlanRepository
 import com.hermes.agent.domain.repository.MemoryRepository
 import com.hermes.agent.domain.tool.ToolRegistry
 import com.hermes.agent.util.DispatcherProvider
 import com.hermes.agent.util.IdGenerator
 import com.hermes.agent.domain.agent.AgentActivity
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
@@ -29,6 +30,7 @@ import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.onCompletion
 import kotlinx.coroutines.flow.onStart
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import timber.log.Timber
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -54,7 +56,7 @@ class OrchestratorImpl @Inject constructor(
     private val agentRegistry: AgentRegistry,
     private val toolRegistry: ToolRegistry,
     private val llmRouter: LlmRouter,
-    private val toolCallExecutor: ToolCallExecutor,
+    private val agentLoopRunner: AgentLoopRunner,
     private val dispatchers: DispatcherProvider,
     private val memoryRepository: MemoryRepository,
     private val conversationLearner: ConversationLearner,
@@ -63,6 +65,7 @@ class OrchestratorImpl @Inject constructor(
     private val userModelService: UserModelService,
     private val skillMatcher: SkillMatcher,
     private val ragPipeline: com.hermes.agent.domain.rag.RagPipeline,
+    private val executionPlanRepository: ExecutionPlanRepository,
 ) : Orchestrator {
 
     // Supervisor scope for fire-and-forget post-turn learning tasks.
@@ -85,6 +88,7 @@ class OrchestratorImpl @Inject constructor(
 
         // 2. Build plan.
         val plan = buildPlan(conversationId, userMessage, routing)
+        executionPlanRepository.save(plan)
         emit(OrchestratorEvent.PlanReady(plan))
 
         // 3. Load memories + user model and inject into system prompt.
@@ -132,6 +136,7 @@ class OrchestratorImpl @Inject constructor(
         var lastProviderWasOnDevice = true
 
         for (step in plan.steps) {
+            executionPlanRepository.markStepRunning(step.id)
             emit(OrchestratorEvent.StepStarted(step.id, step.agentRole))
 
             val agent = agentRegistry.get(step.agentRole)
@@ -157,40 +162,74 @@ class OrchestratorImpl @Inject constructor(
             val provider = when (decision) {
                 is RoutingDecision.Ready -> decision.provider
                 is RoutingDecision.Unavailable -> {
+                    executionPlanRepository.markStepFinished(
+                        step.id,
+                        StepStatus.FAILED,
+                        decision.reason,
+                    )
+                    emit(OrchestratorEvent.StepFinished(step.id, success = false))
                     emit(OrchestratorEvent.Failed(decision.reason))
                     return@flow
                 }
             }
-            val (finalReply, stepTools) = runToolLoop(
-                provider = provider,
-                initialMessages = llmMessages,
-                tools = tools,
-                onToolRequested = { call, requiresConfirmation ->
-                    emit(OrchestratorEvent.ToolCallRequested(call, requiresConfirmation))
-                },
-                confirmationGate = ToolCallExecutor.ConfirmationGate { call, requiresConfirmation ->
-                    if (requiresConfirmation) toolConfirmationService.awaitConfirmation(call) else true
-                },
-                onToolResult = { call, result ->
-                    emit(
-                        OrchestratorEvent.ToolCallResult(
-                            call = call,
-                            output = result.output.ifEmpty { result.errorMessage.orEmpty() },
-                            success = result.success,
-                        ),
+            val loopOutcome = try {
+                agentLoopRunner.run(
+                    provider = provider,
+                    initialMessages = llmMessages,
+                    tools = tools,
+                    onToolRequested = { call, requiresConfirmation ->
+                        emit(OrchestratorEvent.ToolCallRequested(call, requiresConfirmation))
+                    },
+                    confirmationGate = ToolCallExecutor.ConfirmationGate { call, requiresConfirmation ->
+                        if (requiresConfirmation) toolConfirmationService.awaitConfirmation(call) else true
+                    },
+                    onToolResult = { call, result ->
+                        emit(
+                            OrchestratorEvent.ToolCallResult(
+                                call = call,
+                                output = result.output.ifEmpty { result.errorMessage.orEmpty() },
+                                success = result.success,
+                            ),
+                        )
+                    },
+                )
+            } catch (cancelled: CancellationException) {
+                withContext(NonCancellable) {
+                    executionPlanRepository.markStepFinished(
+                        step.id,
+                        StepStatus.BLOCKED,
+                        "Execution was interrupted before this step completed.",
                     )
-                },
-            )
-
-            if (finalReply == null) {
-                emit(OrchestratorEvent.Failed("tool loop exhausted without final reply"))
+                }
+                throw cancelled
+            } catch (error: Exception) {
+                val message = error.message ?: "The plan step failed unexpectedly."
+                executionPlanRepository.markStepFinished(step.id, StepStatus.FAILED, message)
+                emit(OrchestratorEvent.StepFinished(step.id, success = false))
+                emit(OrchestratorEvent.Failed(message))
                 return@flow
             }
 
+            val completed = when (loopOutcome) {
+                is AgentLoopOutcome.Completed -> loopOutcome
+                is AgentLoopOutcome.Failed -> {
+                    allToolsUsed += loopOutcome.toolsInvoked
+                    executionPlanRepository.markStepFinished(
+                        step.id,
+                        StepStatus.FAILED,
+                        loopOutcome.userMessage,
+                    )
+                    emit(OrchestratorEvent.StepFinished(step.id, success = false))
+                    emit(OrchestratorEvent.Failed(loopOutcome.userMessage))
+                    return@flow
+                }
+            }
+
             lastProviderWasOnDevice = provider.isOnDevice
-            allToolsUsed += stepTools
-            aggregator.append(finalReply)
-            emit(OrchestratorEvent.ReplyToken(finalReply))
+            allToolsUsed += completed.toolsInvoked
+            aggregator.append(completed.reply)
+            emit(OrchestratorEvent.ReplyToken(completed.reply))
+            executionPlanRepository.markStepFinished(step.id, StepStatus.SUCCEEDED)
             emit(OrchestratorEvent.StepFinished(step.id, success = true))
         }
 
@@ -224,82 +263,7 @@ class OrchestratorImpl @Inject constructor(
         .onCompletion { AgentActivity.end() }
         .flowOn(dispatchers.io)
 
-    /**
-     * Run the LLM ↔ tool-call loop until the LLM emits a content reply
-     * or [MAX_TOOL_ROUNDS] is exceeded.
-     *
-     * Returns Pair(finalReply or null, list of tool names invoked).
-     */
-    private suspend fun runToolLoop(
-        provider: LlmProvider,
-        initialMessages: List<LlmMessage>,
-        tools: List<com.hermes.agent.domain.tool.ToolDescriptor>,
-        onToolRequested: suspend (ToolCall, Boolean) -> Unit,
-        confirmationGate: ToolCallExecutor.ConfirmationGate?,
-        onToolResult: suspend (ToolCall, com.hermes.agent.domain.tool.ToolResult) -> Unit,
-    ): Pair<String?, List<String>> {
-        var messages = initialMessages
-        val toolsInvoked = mutableListOf<String>()
-
-        repeat(MAX_TOOL_ROUNDS) { round ->
-            val response = provider.completeWithTools(messages, tools)
-            if (response.toolCalls.isEmpty()) {
-                return Pair(response.content, toolsInvoked)
-            }
-
-            messages = messages.toMutableList().apply {
-                add(
-                    LlmMessage(
-                        role = "assistant",
-                        content = response.content,
-                        toolCalls = response.toolCalls,
-                    )
-                )
-            }
-
-            for (call in response.toolCalls) {
-                toolsInvoked += call.name
-
-                val requiresConfirmation =
-                    toolRegistry.byName(call.name)?.descriptor?.requiresConfirmation ?: false
-                onToolRequested(call, requiresConfirmation)
-
-                // Enforce Tool Allowlist (Security Audit fix)
-                if (tools.none { it.name == call.name }) {
-                    val errorResult = com.hermes.agent.domain.tool.ToolResult.error("unauthorized tool: ${call.name}")
-                    onToolResult(call, errorResult)
-                    messages = messages.toMutableList().apply {
-                        add(LlmMessage(role = "tool", content = errorResult.errorMessage!!, toolCallId = call.id))
-                    }
-                    continue
-                }
-
-                val approved = if (requiresConfirmation) {
-                    confirmationGate?.confirm(call, true) ?: false
-                } else {
-                    true
-                }
-                val result = if (approved) {
-                    toolCallExecutor.execute(call, confirmationGate = null)
-                } else {
-                    com.hermes.agent.domain.tool.ToolResult.error("user declined")
-                }
-                onToolResult(call, result)
-                messages = messages.toMutableList().apply {
-                    add(
-                        LlmMessage(
-                            role = "tool",
-                            content = result.output.ifEmpty { result.errorMessage ?: "(no output)" },
-                            toolCallId = call.id,
-                        )
-                    )
-                }
-            }
-            Timber.tag("Orchestrator").d("tool loop round %d, %d calls", round, response.toolCalls.size)
-        }
-        return Pair(null, toolsInvoked)
-    }
-
+    /** Build the deterministic role plan for this conversation turn. */
     private fun buildPlan(
         conversationId: String,
         userMessage: String,
@@ -345,7 +309,4 @@ class OrchestratorImpl @Inject constructor(
         )
     }
 
-    companion object {
-        const val MAX_TOOL_ROUNDS = 5
-    }
 }

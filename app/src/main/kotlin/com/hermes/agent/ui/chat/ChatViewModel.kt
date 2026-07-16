@@ -13,6 +13,7 @@ import com.hermes.agent.data.settings.SettingsRepository
 import com.hermes.agent.domain.agent.OrchestratorEvent
 import com.hermes.agent.domain.repository.ChatRepository
 import com.hermes.agent.domain.repository.ConversationRepository
+import com.hermes.agent.domain.repository.ExecutionPlanRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -41,6 +42,7 @@ class ChatViewModel @Inject constructor(
     private val todoStore: TodoStore,
     private val settingsRepository: SettingsRepository,
     private val toolConfirmationService: com.hermes.agent.domain.tool.ToolConfirmationService,
+    private val executionPlanRepository: ExecutionPlanRepository,
 ) : ViewModel() {
 
     val conversationId: String = checkNotNull(savedStateHandle["conversationId"])
@@ -101,6 +103,10 @@ class ChatViewModel @Inject constructor(
                 isOnDevice = ephemeral.streamingIsOnDevice,
                 pendingClarification = ephemeral.pendingClarification,
             )
+        }.combine(executionPlanRepository.observeLatest(conversationId)) { state, persistedPlan ->
+            // Room is the source of truth once a plan has been persisted. The
+            // ephemeral event copy remains a fallback for tests/legacy flows.
+            state.copy(currentPlan = persistedPlan?.toSummary() ?: state.currentPlan)
         }.combine(todoStore.items) { state, todos ->
             // The todo plan persists across turns (it survives _ephemeral
             // resets), so it's merged in from its own store here.
@@ -152,6 +158,7 @@ class ChatViewModel @Inject constructor(
                 val summary = PlanSummary(
                     steps = event.plan.steps.map {
                         PlanStepSummary(
+                            id = it.id,
                             description = it.description,
                             agentRole = it.agentRole,
                             status = StepStatus.PENDING,
@@ -163,20 +170,33 @@ class ChatViewModel @Inject constructor(
             }
             is OrchestratorEvent.StepStarted -> {
                 val updated = _ephemeral.value.plan?.let { plan ->
-                    val newSteps = plan.steps.mapIndexed { i, s ->
-                        if (i == plan.currentStepIndex) s.copy(status = StepStatus.RUNNING) else s
+                    val activeIndex = plan.steps.indexOfFirst { it.id == event.stepId }
+                    val newSteps = plan.steps.map { s ->
+                        if (s.id == event.stepId) s.copy(status = StepStatus.RUNNING) else s
                     }
-                    plan.copy(steps = newSteps)
+                    plan.copy(
+                        steps = newSteps,
+                        currentStepIndex = activeIndex.takeIf { it >= 0 } ?: plan.currentStepIndex,
+                    )
                 }
                 _ephemeral.value = _ephemeral.value.copy(plan = updated)
             }
             is OrchestratorEvent.StepFinished -> {
                 val updated = _ephemeral.value.plan?.let { plan ->
-                    val idx = plan.currentStepIndex
-                    val newSteps = plan.steps.mapIndexed { i, s ->
-                        if (i == idx) s.copy(status = if (event.success) StepStatus.SUCCEEDED else StepStatus.FAILED) else s
+                    val idx = plan.steps.indexOfFirst { it.id == event.stepId }
+                    val newSteps = plan.steps.map { s ->
+                        if (s.id == event.stepId) {
+                            s.copy(status = if (event.success) StepStatus.SUCCEEDED else StepStatus.FAILED)
+                        } else {
+                            s
+                        }
                     }
-                    plan.copy(steps = newSteps, currentStepIndex = (idx + 1).coerceAtMost(plan.steps.lastIndex))
+                    val nextIndex = if (idx >= 0) {
+                        (idx + 1).coerceAtMost(plan.steps.lastIndex)
+                    } else {
+                        plan.currentStepIndex
+                    }
+                    plan.copy(steps = newSteps, currentStepIndex = nextIndex)
                 }
                 _ephemeral.value = _ephemeral.value.copy(plan = updated)
             }
@@ -345,6 +365,22 @@ class ChatViewModel @Inject constructor(
         // The repository does the work on its own singleton scope.
         chatRepository.summarizeConversation(conversationId)
     }
+}
+
+private fun com.hermes.agent.domain.model.ExecutionPlan.toSummary(): PlanSummary {
+    val summaries = steps.map { step ->
+        PlanStepSummary(
+            id = step.id,
+            description = step.description,
+            agentRole = step.agentRole,
+            status = StepStatus.valueOf(step.status.name),
+        )
+    }
+    val currentIndex = summaries.indexOfFirst { it.status == StepStatus.RUNNING }
+        .takeIf { it >= 0 }
+        ?: summaries.indexOfFirst { it.status == StepStatus.PENDING }.takeIf { it >= 0 }
+        ?: summaries.lastIndex.coerceAtLeast(0)
+    return PlanSummary(summaries, currentIndex)
 }
 
 private data class ChatEphemeralState(

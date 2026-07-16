@@ -2,8 +2,12 @@ package com.hermes.agent.di
 
 import com.hermes.agent.data.agent.HeuristicIntentClassifier
 import com.hermes.agent.data.agent.OrchestratorImpl
+import com.hermes.agent.data.agent.RepeatedExecutionGuard
+import com.hermes.agent.data.repository.ExecutionPlanRepositoryImpl
 import com.hermes.agent.domain.agent.AgentRouter
+import com.hermes.agent.domain.agent.ExecutionGuard
 import com.hermes.agent.domain.agent.Orchestrator
+import com.hermes.agent.domain.repository.ExecutionPlanRepository
 import dagger.Binds
 import dagger.Module
 import dagger.hilt.InstallIn
@@ -29,4 +33,14 @@ abstract class AgentsModule {
     @Binds
     @Singleton
     abstract fun bindOrchestrator(impl: OrchestratorImpl): Orchestrator
+
+    @Binds
+    @Singleton
+    abstract fun bindExecutionGuard(impl: RepeatedExecutionGuard): ExecutionGuard
+
+    @Binds
+    @Singleton
+    abstract fun bindExecutionPlanRepository(
+        impl: ExecutionPlanRepositoryImpl,
+    ): ExecutionPlanRepository
 }

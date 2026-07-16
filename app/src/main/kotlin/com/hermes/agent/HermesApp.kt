@@ -17,6 +17,7 @@ import com.hermes.agent.data.performance.MemoryPressureMonitor
 import com.hermes.agent.debug.DebugScreenAwake
 import com.jeeves.core.settings.JeevesSettings
 import com.l3ad3r1.octojotter.data.local.ThemePreferences
+import com.hermes.agent.domain.repository.ExecutionPlanRepository
 import dagger.hilt.android.HiltAndroidApp
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -53,6 +54,9 @@ class HermesApp : Application(), Configuration.Provider {
     @Inject
     lateinit var noteIndexerProvider: Provider<com.hermes.agent.data.rag.NoteIndexer>
 
+    @Inject
+    lateinit var executionPlanRepositoryProvider: Provider<ExecutionPlanRepository>
+
     private val applicationScope = CoroutineScope(Dispatchers.Default)
 
     override fun onCreate() {
@@ -71,6 +75,13 @@ class HermesApp : Application(), Configuration.Provider {
         applicationScope.launch {
             runCatching { noteIndexerProvider.get().start(applicationScope) }
                 .onFailure { Timber.tag("NoteIndexer").w(it, "note indexing unavailable") }
+        }
+        applicationScope.launch {
+            runCatching { executionPlanRepositoryProvider.get().reconcileInterruptedSteps() }
+                .onSuccess { count ->
+                    if (count > 0) Timber.tag("ExecutionPlan").i("blocked %d interrupted steps", count)
+                }
+                .onFailure { Timber.tag("ExecutionPlan").w(it, "plan reconciliation unavailable") }
         }
 
         // Phase 4: start memory pressure polling. If the App Startup
