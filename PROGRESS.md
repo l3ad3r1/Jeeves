@@ -47,9 +47,17 @@ repo. All three apps are merged and shipping (`:app` + `:feature:jotter` + `:fea
       operation (L-005); Settings → Proactive lists per-capability switches
       (opt-in, defaults off except scheduled tasks), shows quiet hours and the
       daily cap, and lets a "Less of this"-muted source be restored.
-- [ ] Remaining for milestone v0.12.0: the notification-listener digest behind
-      its injection boundary (needs the listener permission consent flow and a
-      device gate).
+- [x] Increment 3 (2026-07-17): opt-in notification summary in the daily digest.
+      `JeevesNotificationListener` stays dormant unless BOTH the in-app switch
+      and the system notification-access grant are present; entries are scrubbed
+      by `ThirdPartySanitizer` (control/zero-width strip, whitespace collapse,
+      hard truncate) into a bounded 50-entry store. Injection boundary (L-009):
+      captured third-party text renders ONLY into the human-facing digest
+      notification and is never concatenated into an LLM prompt anywhere;
+      revoking the in-app switch deletes captured data.
+- [ ] Remaining for milestone v0.12.0: device gates only — each trigger fires on
+      hardware, quiet-hour suppression observed, "Less of this" round-trip,
+      notification access granted and a real digest with the summary section.
 - [ ] UNVERIFIED on device (L-001): a real cron ping suppressed during quiet
       hours and the "Less of this" action round-trip; phone remains off ADB.
 
