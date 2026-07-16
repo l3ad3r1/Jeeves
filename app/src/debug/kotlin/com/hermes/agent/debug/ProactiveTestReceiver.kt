@@ -5,17 +5,33 @@ import android.content.Context
 import android.content.Intent
 import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.WorkManager
+import com.hermes.agent.data.agent.AgentLoopFailureReason
+import com.hermes.agent.data.agent.AgentLoopOutcome
+import com.hermes.agent.data.agent.AgentLoopRunner
+import com.hermes.agent.data.llm.LlmMessage
+import com.hermes.agent.data.llm.LlmProvider
+import com.hermes.agent.data.llm.LlmResponse
+import com.hermes.agent.data.llm.LlmStreamChunk
+import com.hermes.agent.data.llm.LlmToolResponse
+import com.hermes.agent.data.llm.ToolCall
 import com.hermes.agent.data.proactive.BudgetStateStore
 import com.hermes.agent.data.proactive.NotificationCaptureStore
 import com.hermes.agent.data.proactive.ProactiveNotifier
+import com.hermes.agent.domain.agent.ExecutionOrigin
 import com.hermes.agent.domain.ledger.ActivityLedger
 import com.hermes.agent.domain.proactive.ProactiveSource
+import com.hermes.agent.domain.repository.AgentTaskRepository
 import com.hermes.agent.domain.repository.MemoryRepository
+import com.hermes.agent.domain.tool.ToolDescriptor
+import com.hermes.agent.domain.tool.ToolRegistry
 import com.hermes.agent.work.CommitmentNudgeWorker
 import com.hermes.agent.work.DailyDigestWorker
 import dagger.hilt.android.AndroidEntryPoint
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.runBlocking
+import kotlinx.serialization.json.JsonPrimitive
 import timber.log.Timber
 import java.time.LocalTime
 import javax.inject.Inject
@@ -38,6 +54,9 @@ class ProactiveTestReceiver : BroadcastReceiver() {
     @Inject lateinit var captureStore: NotificationCaptureStore
     @Inject lateinit var ledger: ActivityLedger
     @Inject lateinit var memoryRepository: MemoryRepository
+    @Inject lateinit var agentTaskRepository: AgentTaskRepository
+    @Inject lateinit var agentLoopRunner: AgentLoopRunner
+    @Inject lateinit var toolRegistry: ToolRegistry
 
     // Timber.tag() is one-shot and other code logs in between — re-tag per call.
     private fun gate(msg: String, vararg args: Any?) = Timber.tag("GATE").i(msg, *args)
@@ -98,6 +117,51 @@ class ProactiveTestReceiver : BroadcastReceiver() {
                 val id = memoryRepository.addMemory("Commitment: $text")
                 gate("GATE:COMMITMENT id=%s", id)
             }
+            "com.jeeves.debug.RUN_DELEGATION" -> {
+                // Real delegation lifecycle: repository persists the task AND
+                // schedules AgentTaskWorker (L-005), which runs the full
+                // BACKGROUND-origin orchestrator and posts a notification.
+                val prompt = intent.getStringExtra("text") ?: "Reply with the single word: pong."
+                val task = agentTaskRepository.add(prompt.take(40), prompt)
+                gate("GATE:DELEGATION_QUEUED id=%s label=%s", task.id, task.label)
+            }
+            "com.jeeves.debug.TEST_BG_SHELL" -> {
+                // Real AgentLoopRunner + real ToolExecutionPolicy singleton on
+                // device: a BACKGROUND turn that requests shell must be denied
+                // with actionable text. The LLM is a canned provider so the
+                // shell request is deterministic (the model isn't the thing
+                // under test — the policy wiring is).
+                val tools = toolRegistry.all().map { it.descriptor }
+                val provider = CannedToolProvider(
+                    listOf(ToolCall("bg1", "shell", mapOf("command" to JsonPrimitive("echo hi")))),
+                )
+                val outcome = agentLoopRunner.run(
+                    provider, listOf(LlmMessage("user", "run a shell command")), tools,
+                    ExecutionOrigin.BACKGROUND, { _, _ -> }, null,
+                ) { call, result ->
+                    gate(
+                        "GATE:BG_TOOL name=%s success=%s err=%s",
+                        call.name, result.success, result.errorMessage,
+                    )
+                }
+                gate("GATE:BG_SHELL outcome=%s", outcome::class.simpleName)
+            }
+            "com.jeeves.debug.TEST_REPETITION" -> {
+                // Real RepeatedExecutionGuard on device: a provider that emits
+                // the same unauthorized call every round produces identical
+                // results, so the guard must stop with the recovery message.
+                val provider = CannedToolProvider(
+                    listOf(ToolCall("rep", "nonexistent_tool", emptyMap())),
+                    repeatForever = true,
+                )
+                val outcome = agentLoopRunner.run(
+                    provider, listOf(LlmMessage("user", "loop")), emptyList(),
+                    ExecutionOrigin.INTERACTIVE, { _, _ -> }, null, { _, _ -> },
+                )
+                val reason = (outcome as? AgentLoopOutcome.Failed)?.reason
+                val msg = (outcome as? AgentLoopOutcome.Failed)?.userMessage
+                gate("GATE:REPETITION reason=%s msg=%s", reason, msg)
+            }
             "com.jeeves.debug.DUMP_LEDGER" -> {
                 ledger.observeRecent(10).first().forEach { e ->
                     gate(
@@ -115,4 +179,34 @@ class ProactiveTestReceiver : BroadcastReceiver() {
         intent.getStringExtra("source")
             ?.let { name -> ProactiveSource.entries.firstOrNull { it.name == name } }
             ?: ProactiveSource.SCHEDULED_TASK
+
+    /**
+     * Deterministic stand-in LLM for device gates: emits [calls] as tool
+     * calls, then a plain final reply — unless [repeatForever], in which case
+     * it emits [calls] on every round to drive the repetition guard.
+     */
+    private class CannedToolProvider(
+        private val calls: List<ToolCall>,
+        private val repeatForever: Boolean = false,
+    ) : LlmProvider {
+        private var round = 0
+        override val name = "canned"
+        override val isOnDevice = true
+        override val model = "canned"
+        override suspend fun complete(messages: List<LlmMessage>) = LlmResponse("", 0, model)
+        override fun stream(messages: List<LlmMessage>): Flow<LlmStreamChunk> = flowOf(LlmStreamChunk.Done)
+        override suspend fun completeWithTools(
+            messages: List<LlmMessage>,
+            tools: List<ToolDescriptor>,
+        ): LlmToolResponse {
+            val emit = repeatForever || round == 0
+            round++
+            return if (emit) {
+                LlmToolResponse("", calls, 1, model, "tool_calls")
+            } else {
+                LlmToolResponse("done", emptyList(), 1, model, "stop")
+            }
+        }
+        override suspend fun isAvailable() = true
+    }
 }

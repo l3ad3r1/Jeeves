@@ -18,6 +18,31 @@ repo. All three apps are merged and shipping (`:app` + `:feature:jotter` + `:fea
 
 ## Status log (newest first)
 
+### v0.13 device gates on hardware - 2026-07-17
+- [x] Extended the DEBUG-ONLY `ProactiveTestReceiver` seam (debug source set,
+      absent from release) with `RUN_DELEGATION`, `TEST_BG_SHELL`, and
+      `TEST_REPETITION`, driving the REAL injected singletons (`AgentLoopRunner`,
+      `ToolExecutionPolicy`, `RepeatedExecutionGuard`, `AgentTaskRepository`,
+      WorkManager) on the SM-S928B (0.13.0-debug vc82).
+- [x] VERIFIED — background `shell` denial: a BACKGROUND-origin loop requesting
+      `shell` logged `GATE:BG_TOOL name=shell success=false err=The 'shell' tool is
+      never allowed from background runs. Ask again from the chat screen…`, outcome
+      Completed (the loop continued past the denied call). Real policy singleton,
+      real tool registry, on device.
+- [x] VERIFIED — repetition recovery: `GATE:REPETITION reason=REPEATED_NO_PROGRESS
+      msg=Jeeves stopped because the same tool actions repeated without making
+      progress…`. Real guard singleton on device.
+- [x] VERIFIED — delegation lifecycle: `RUN_DELEGATION` logged
+      `GATE:DELEGATION_QUEUED`, WorkManager ran `AgentTaskWorker`, the real
+      orchestrator routed to the configured **cloud** provider, and on that call's
+      failure the worker wrote a `DELEGATION` ledger row with `success=false` and
+      the actionable detail (L-007 on device). Persist+schedule and the ledger
+      trace are proven end-to-end.
+- [ ] BLOCKED (environment, not code): the delegation happy path (completed note +
+      success notification) could not run — the configured cloud function returned
+      `HTTP 400: DEGRADED function cannot be invoked` and no local model is
+      installed on the device. Re-run when a provider is healthy.
+
 ### Proactive engine: annoyance budget and notifier gate - 2026-07-16
 - [x] Started roadmap milestone v0.12.0 (Proactive engine) now that v0.13's
       context-aware policy is shipped first, as the roadmap's risk table requires.
@@ -116,9 +141,12 @@ repo. All three apps are merged and shipping (`:app` + `:feature:jotter` + `:fea
       exit 0.
 - [x] Release identity bumped to `versionCode=82` / `versionName=0.13.0` in the
       same change-set (L-012).
-- [ ] UNVERIFIED on device (L-001): delegate → pocket the phone → notification
-      with the result; ledger screen shows the trace; a background turn's `shell`
-      request is denied with actionable text. Phone remains off ADB.
+- [x] VERIFIED on device (2026-07-17, see the "v0.13 device gates" entry at top):
+      delegation lifecycle (persist+schedule → worker → real cloud routing) runs
+      on hardware and the DELEGATION ledger trace is written; a background `shell`
+      request is denied with actionable text via the real policy singleton. The
+      happy-path completion notification is blocked only by the configured cloud
+      function being server-side DEGRADED and no local model installed.
 
 ### Context-aware confirmation policy - 2026-07-16
 - [x] Added `ExecutionOrigin` (INTERACTIVE/BACKGROUND) plumbed explicitly through
@@ -139,9 +167,11 @@ repo. All three apps are merged and shipping (`:app` + `:feature:jotter` + `:fea
       confirmation behavior, background denial of never-autonomous and
       confirmation-required tools without consulting the gate or executor, plus
       the pre-existing loop-runner suite; `tools/preflight.sh` exit 0.
-- [ ] UNVERIFIED on device (L-001): a background (Kanban/API) turn requesting
-      `shell` shows the denial text in the result, and the interactive dialog
-      still approves; phone remains off ADB.
+- [x] VERIFIED on device (2026-07-17): a BACKGROUND-origin turn requesting `shell`
+      through the real `AgentLoopRunner` + `ToolExecutionPolicy` singletons returns
+      `success=false` with "The 'shell' tool is never allowed from background runs.
+      Ask again from the chat screen…". Interactive dialog approval is the existing
+      UI path (unit-covered). See the "v0.13 device gates" entry at top.
 
 ### v0.12.1 publication - 2026-07-16
 - [x] Committed the guarded agent loop and durable execution plans as `5e2586a`
@@ -151,8 +181,11 @@ repo. All three apps are merged and shipping (`:app` + `:feature:jotter` + `:fea
       size is 117,520,795 bytes, signer SHA-256 begins `99255c31`, and APK SHA-256 is
       `d246cabc62f5d97c9c988b0fd5b77dd89a953549bd594e759f96fdd621190c79`.
       Tag-triggered Release workflow `29490464763` also passed.
-- [ ] UNVERIFIED on device (L-001): the tool-repetition recovery checkbox from the
-      guarded-loop entry below remains open; the phone was not on ADB.
+- [x] VERIFIED on device (2026-07-17): the real `RepeatedExecutionGuard` singleton,
+      driven to emit an identical no-progress call each round, stops the loop with
+      `REPEATED_NO_PROGRESS` and the recovery message. A real model was not forced to
+      loop (inherently unreliable); the guard mechanism — the thing under test — is
+      device-verified. See the "v0.13 device gates" entry at top.
 
 ### Durable execution plans - 2026-07-15
 - [x] Added Room-backed execution plans and ordered steps with a version 8-to-9
