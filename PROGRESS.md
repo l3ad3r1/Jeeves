@@ -18,6 +18,36 @@ repo. All three apps are merged and shipping (`:app` + `:feature:jotter` + `:fea
 
 ## Status log (newest first)
 
+### Background delegation and activity ledger - 2026-07-16
+- [x] Added the persisted activity ledger (Room v10, `MIGRATION_9_10`): every tool
+      execution (with origin, outcome, and denial text) is recorded from the
+      orchestrator's result seam, and every delegated background task records its
+      completion or failure. Ledger writes are fire-and-forget — a failed audit
+      write can never fail the action it records. Entries prune after 30 days.
+- [x] Surfaced the ledger as Settings → "What Jeeves did" (`activity_ledger`
+      route): newest-first list showing kind, origin, time, outcome, and detail.
+- [x] Rewired `AgentTaskWorker` from the plain no-tools LLM path to
+      `sendMessageOrchestrated` with `ExecutionOrigin.BACKGROUND`: delegated tasks
+      now get the full agent pipeline (tools, durable plans, bounded loop) while
+      the execution policy denies never-autonomous and confirmation-required
+      tools — the "isolated scope with a filtered tool subset" of roadmap v0.13.
+      `sendMessageOrchestrated` takes an explicit origin from every caller.
+- [x] Moved WorkManager enqueue into `AgentTaskRepositoryImpl.add` so persisting
+      a delegated task and scheduling its worker are one operation (L-005); the
+      Delegate screen and the new tool path share it.
+- [x] Gave the `delegate` tool a `background=true` mode that queues the goals as
+      delegated tasks and returns immediately; agent system prompts mention it
+      (L-014 — existing tool, descriptor + prompts updated together).
+- [x] VERIFIED: unit gates — migration 9→10 schema test, ledger round-trip/prune/
+      limit tests, background-delegation queueing test (no subagent runs, router
+      never consulted), updated orchestrator/chat fixtures; `tools/preflight.sh`
+      exit 0.
+- [x] Release identity bumped to `versionCode=82` / `versionName=0.13.0` in the
+      same change-set (L-012).
+- [ ] UNVERIFIED on device (L-001): delegate → pocket the phone → notification
+      with the result; ledger screen shows the trace; a background turn's `shell`
+      request is denied with actionable text. Phone remains off ADB.
+
 ### Context-aware confirmation policy - 2026-07-16
 - [x] Added `ExecutionOrigin` (INTERACTIVE/BACKGROUND) plumbed explicitly through
       `Orchestrator.run` from every entry point: chat repository is interactive;

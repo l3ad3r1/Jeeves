@@ -1,6 +1,7 @@
 package com.hermes.agent.domain.repository
 
 import com.hermes.agent.domain.model.ChatStreamEvent
+import com.hermes.agent.domain.agent.ExecutionOrigin
 import com.hermes.agent.domain.agent.OrchestratorEvent
 import kotlinx.coroutines.flow.Flow
 
@@ -45,6 +46,7 @@ interface ChatRepository {
     fun sendMessageOrchestrated(
         conversationId: String,
         content: String,
+        origin: ExecutionOrigin,
     ): Flow<OrchestratorEvent>
 
     /**

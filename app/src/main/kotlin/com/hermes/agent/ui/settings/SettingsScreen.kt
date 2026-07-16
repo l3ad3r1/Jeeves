@@ -15,6 +15,7 @@ import androidx.compose.material.icons.outlined.Alarm
 import androidx.compose.material.icons.outlined.Article
 import androidx.compose.material.icons.outlined.AutoAwesome
 import androidx.compose.material.icons.outlined.Build
+import androidx.compose.material.icons.outlined.History
 import androidx.compose.material.icons.outlined.ColorLens
 import androidx.compose.material.icons.outlined.Description
 import androidx.compose.material.icons.outlined.Info
@@ -90,6 +91,13 @@ fun SettingsScreen(
                         title = "Advanced",
                         subtitle = "Backup, updates, and session export",
                         onClick = { onNavigate("settings_advanced") },
+                    )
+                    HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp))
+                    NavRow(
+                        icon = Icons.Outlined.History,
+                        title = "What Jeeves did",
+                        subtitle = "Activity ledger: tool runs and delegated tasks",
+                        onClick = { onNavigate("activity_ledger") },
                     )
                     HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp))
                     NavRow(

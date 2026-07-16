@@ -8,6 +8,7 @@ import com.hermes.agent.data.memory.UserModelService
 import com.hermes.agent.domain.agent.Agent
 import com.hermes.agent.domain.agent.AgentRouter
 import com.hermes.agent.domain.agent.ExecutionOrigin
+import com.hermes.agent.domain.ledger.ActivityLedger
 import com.hermes.agent.domain.agent.OrchestratorEvent
 import com.hermes.agent.domain.agent.RoutingResult
 import com.hermes.agent.domain.model.AgentRole
@@ -112,6 +113,7 @@ class OrchestratorPlanPersistenceTest {
             skillMatcher = mockk<SkillMatcher>(relaxed = true),
             ragPipeline = mockk<RagPipeline>(relaxed = true),
             executionPlanRepository = plans,
+            activityLedger = mockk<ActivityLedger>(relaxed = true),
         )
         return Fixture(orchestrator, plans)
     }

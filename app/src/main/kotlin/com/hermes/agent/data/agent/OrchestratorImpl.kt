@@ -14,6 +14,9 @@ import com.hermes.agent.domain.agent.RoutingResult
 import com.hermes.agent.domain.model.AgentRole
 import com.hermes.agent.domain.model.ExecutionPlan
 import com.hermes.agent.domain.model.ExecutionStep
+import com.hermes.agent.domain.ledger.ActivityLedger
+import com.hermes.agent.domain.model.ActivityEntry
+import com.hermes.agent.domain.model.ActivityKind
 import com.hermes.agent.domain.model.StepStatus
 import com.hermes.agent.domain.repository.ExecutionPlanRepository
 import com.hermes.agent.domain.repository.MemoryRepository
@@ -67,6 +70,7 @@ class OrchestratorImpl @Inject constructor(
     private val skillMatcher: SkillMatcher,
     private val ragPipeline: com.hermes.agent.domain.rag.RagPipeline,
     private val executionPlanRepository: ExecutionPlanRepository,
+    private val activityLedger: ActivityLedger,
 ) : Orchestrator {
 
     // Supervisor scope for fire-and-forget post-turn learning tasks.
@@ -187,6 +191,17 @@ class OrchestratorImpl @Inject constructor(
                         if (requiresConfirmation) toolConfirmationService.awaitConfirmation(call) else true
                     },
                     onToolResult = { call, result ->
+                        activityLedger.record(
+                            ActivityEntry(
+                                timestamp = System.currentTimeMillis(),
+                                kind = ActivityKind.TOOL_CALL,
+                                origin = origin.name.lowercase(),
+                                conversationId = conversationId,
+                                title = call.name,
+                                detail = (result.output.ifEmpty { result.errorMessage.orEmpty() }).take(500),
+                                success = result.success,
+                            ),
+                        )
                         emit(
                             OrchestratorEvent.ToolCallResult(
                                 call = call,

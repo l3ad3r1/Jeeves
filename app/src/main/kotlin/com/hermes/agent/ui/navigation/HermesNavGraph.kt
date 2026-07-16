@@ -30,6 +30,7 @@ import com.hermes.agent.ui.home.HomeScreen
 import com.hermes.agent.ui.kanban.KanbanBoardScreen
 import com.hermes.agent.ui.kanban.TicketDetailScreen
 import com.hermes.agent.ui.learning.LearningScreen
+import com.hermes.agent.ui.ledger.LedgerScreen
 import com.hermes.agent.ui.logs.LogScreen
 import com.hermes.agent.ui.memory.MemoryScreen
 import com.hermes.agent.ui.sessions.SessionBrowserScreen
@@ -156,6 +157,7 @@ fun HermesNavGraph(startAtSettings: Boolean = false) {
             composable("settings_about") { AboutSettingsScreen(onBack = { navController.popBackStack() }) }
             
             composable("logs") { LogScreen(onBack = { navController.popBackStack() }) }
+            composable("activity_ledger") { LedgerScreen(onBack = { navController.popBackStack() }) }
             composable("learning") { LearningScreen(onBack = { navController.popBackStack() }) }
             composable("refine_skills") { RefineSkillScreen(onBack = { navController.popBackStack() }) }
         }

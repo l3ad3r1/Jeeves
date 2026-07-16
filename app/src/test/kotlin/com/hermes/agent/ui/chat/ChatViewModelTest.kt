@@ -138,7 +138,7 @@ class ChatViewModelTest {
         val conversationId = "conv-1"
         val eventFlow = MutableSharedFlow<OrchestratorEvent>(extraBufferCapacity = 10)
         val chatRepo = mockk<ChatRepository>()
-        every { chatRepo.sendMessageOrchestrated(conversationId, any()) } returns eventFlow
+        every { chatRepo.sendMessageOrchestrated(conversationId, any(), any()) } returns eventFlow
 
         val vm = buildViewModel(conversationId, chatRepo)
         backgroundScope.launch { vm.uiState.collect { } }
@@ -173,7 +173,7 @@ class ChatViewModelTest {
         val conversationId = "conv-1"
         val eventFlow = MutableSharedFlow<OrchestratorEvent>(extraBufferCapacity = 10)
         val chatRepo = mockk<ChatRepository>()
-        every { chatRepo.sendMessageOrchestrated(conversationId, any()) } returns eventFlow
+        every { chatRepo.sendMessageOrchestrated(conversationId, any(), any()) } returns eventFlow
 
         val vm = buildViewModel(conversationId, chatRepo)
         backgroundScope.launch { vm.uiState.collect { } }
@@ -209,7 +209,7 @@ class ChatViewModelTest {
         val conversationId = "conv-1"
         val eventFlow = MutableSharedFlow<OrchestratorEvent>(extraBufferCapacity = 10)
         val chatRepo = mockk<ChatRepository>()
-        every { chatRepo.sendMessageOrchestrated(conversationId, any()) } returns eventFlow
+        every { chatRepo.sendMessageOrchestrated(conversationId, any(), any()) } returns eventFlow
 
         val vm = buildViewModel(conversationId, chatRepo)
         backgroundScope.launch { vm.uiState.collect { } }
@@ -236,7 +236,7 @@ class ChatViewModelTest {
         val conversationId = "conv-1"
         val eventFlow = MutableSharedFlow<OrchestratorEvent>(extraBufferCapacity = 10)
         val chatRepo = mockk<ChatRepository>()
-        every { chatRepo.sendMessageOrchestrated(conversationId, any()) } returns eventFlow
+        every { chatRepo.sendMessageOrchestrated(conversationId, any(), any()) } returns eventFlow
 
         val vm = buildViewModel(
             conversationId, chatRepo,
@@ -267,7 +267,7 @@ class ChatViewModelTest {
         val conversationId = "conv-1"
         val eventFlow = MutableSharedFlow<OrchestratorEvent>(extraBufferCapacity = 10)
         val chatRepo = mockk<ChatRepository>()
-        every { chatRepo.sendMessageOrchestrated(conversationId, any()) } returns eventFlow
+        every { chatRepo.sendMessageOrchestrated(conversationId, any(), any()) } returns eventFlow
 
         val vm = buildViewModel(
             conversationId, chatRepo,

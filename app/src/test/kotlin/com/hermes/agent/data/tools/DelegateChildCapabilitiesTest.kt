@@ -9,6 +9,8 @@ import com.hermes.agent.data.llm.LlmToolResponse
 import com.hermes.agent.data.llm.RoutingDecision
 import com.hermes.agent.data.llm.ToolCall
 import com.hermes.agent.data.tool.ToolCallExecutor
+import com.hermes.agent.domain.model.AgentTask
+import com.hermes.agent.domain.repository.AgentTaskRepository
 import com.hermes.agent.domain.tool.Tool
 import com.hermes.agent.domain.tool.ToolDescriptor
 import com.hermes.agent.domain.tool.ToolRegistry
@@ -118,6 +120,7 @@ class DelegateChildCapabilitiesTest {
             router = router,
             toolRegistry = dagger.Lazy { registry },
             toolCallExecutor = dagger.Lazy { executor },
+            agentTaskRepository = dagger.Lazy { mockk<AgentTaskRepository>(relaxed = true) },
         )
 
         val result = delegate.execute(mapOf("prompt" to JsonPrimitive("Calculate 2+2")))
@@ -127,5 +130,36 @@ class DelegateChildCapabilitiesTest {
         coVerify(exactly = 1) {
             executor.execute(match { it.name == "calculator" }, any())
         }
+    }
+
+    @Test
+    fun `background delegation queues tasks instead of running subagents`() = runTest {
+        val router = mockk<com.hermes.agent.data.llm.LlmRouter>()
+        val registry = mockk<ToolRegistry>()
+        val executor = mockk<ToolCallExecutor>()
+        val tasks = mockk<AgentTaskRepository>()
+        coEvery { tasks.add(any(), any()) } answers {
+            AgentTask(id = "t1", label = firstArg(), prompt = secondArg())
+        }
+        val delegate = DelegateTool(
+            router = router,
+            toolRegistry = dagger.Lazy { registry },
+            toolCallExecutor = dagger.Lazy { executor },
+            agentTaskRepository = dagger.Lazy { tasks },
+        )
+
+        val result = delegate.execute(
+            mapOf(
+                "prompt" to JsonPrimitive("Summarise the weekly report"),
+                "background" to JsonPrimitive(true),
+            ),
+        )
+
+        assertTrue(result.success)
+        assertTrue(result.output.contains("Queued 1 background task"))
+        coVerify(exactly = 1) { tasks.add(any(), "Summarise the weekly report") }
+        // No subagent must run: the router is never consulted.
+        coVerify(exactly = 0) { router.route(any()) }
+        coVerify(exactly = 0) { executor.execute(any(), any()) }
     }
 }

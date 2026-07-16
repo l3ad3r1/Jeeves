@@ -10,6 +10,7 @@ import com.hermes.agent.data.voice.VoiceInputManager
 import com.hermes.agent.data.voice.VoiceOutputEvent
 import com.hermes.agent.data.voice.VoiceOutputManager
 import com.hermes.agent.data.settings.SettingsRepository
+import com.hermes.agent.domain.agent.ExecutionOrigin
 import com.hermes.agent.domain.agent.OrchestratorEvent
 import com.hermes.agent.domain.repository.ChatRepository
 import com.hermes.agent.domain.repository.ConversationRepository
@@ -136,7 +137,7 @@ class ChatViewModel @Inject constructor(
 
         sendJob = viewModelScope.launch {
             try {
-                chatRepository.sendMessageOrchestrated(conversationId, trimmed).collect { event ->
+                chatRepository.sendMessageOrchestrated(conversationId, trimmed, ExecutionOrigin.INTERACTIVE).collect { event ->
                     handleOrchestratorEvent(event)
                 }
             } catch (t: Throwable) {

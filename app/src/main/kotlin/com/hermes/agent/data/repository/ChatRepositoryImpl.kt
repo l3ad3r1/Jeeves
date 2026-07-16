@@ -149,6 +149,7 @@ class ChatRepositoryImpl @Inject constructor(
     override fun sendMessageOrchestrated(
         conversationId: String,
         content: String,
+        origin: ExecutionOrigin,
     ): Flow<OrchestratorEvent> = flow {
         // 1. Persist the user message first so the orchestrator can see it
         //    in the recent window.
@@ -190,7 +191,7 @@ class ChatRepositoryImpl @Inject constructor(
         var finalIsOnDevice: Boolean = true
         var replyCompleted = false
 
-        orchestrator.run(conversationId, content, llmMessages, ExecutionOrigin.INTERACTIVE).collect { event ->
+        orchestrator.run(conversationId, content, llmMessages, origin).collect { event ->
             when (event) {
                 is OrchestratorEvent.ReplyToken -> accumulator.append(event.text)
                 is OrchestratorEvent.ReplyComplete -> {

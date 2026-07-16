@@ -47,7 +47,8 @@ class ConversationalAgent @Inject constructor() : Agent {
             "- todo: keep a task list to plan and track multi-step work\n" +
             "- clarify: ask the user a question (with optional choices) when a request is " +
             "ambiguous — prefer asking once over guessing\n" +
-            "- delegate: hand focused or parallel subtasks to isolated subagents, get results back\n" +
+            "- delegate: hand focused or parallel subtasks to isolated subagents, get results back; " +
+            "pass background=true for long tasks — the user is notified when done\n" +
             "- speak: read text aloud through the device speaker, using the natural on-device " +
             "Butler voice by default (pass voice='system' for the plain platform engine)\n" +
             "- generate_image: create an image from a text prompt and return its URL\n\n" +

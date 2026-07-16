@@ -5,6 +5,7 @@ import com.hermes.agent.data.llm.LlmRouter
 import com.hermes.agent.data.llm.RoutingDecision
 import com.hermes.agent.data.llm.ToolCall
 import com.hermes.agent.data.tool.ToolCallExecutor
+import com.hermes.agent.domain.repository.AgentTaskRepository
 import com.hermes.agent.domain.tool.Tool
 import com.hermes.agent.domain.tool.ToolDescriptor
 import com.hermes.agent.domain.tool.ToolParameter
@@ -56,6 +57,7 @@ class DelegateTool @Inject constructor(
     private val router: LlmRouter,
     private val toolRegistry: dagger.Lazy<ToolRegistry>,
     private val toolCallExecutor: dagger.Lazy<ToolCallExecutor>,
+    private val agentTaskRepository: dagger.Lazy<AgentTaskRepository>,
 ) : Tool {
 
     override val descriptor = ToolDescriptor(
@@ -82,6 +84,15 @@ class DelegateTool @Inject constructor(
                     "subagent each. Combined with `prompt` if both are given.",
                 required = false,
             ),
+            ToolParameter(
+                name = "background",
+                type = ToolParameterType.BOOLEAN,
+                description = "If true, run the task in the background instead of blocking this " +
+                    "turn: it is queued as a delegated task, survives the app being closed, and " +
+                    "the user gets a notification with the result. Use for long-running or " +
+                    "deferrable work. Background tasks cannot use tools that need user approval.",
+                required = false,
+            ),
         ),
         category = "productivity",
         maxResultSizeChars = 12_000,
@@ -101,6 +112,23 @@ class DelegateTool @Inject constructor(
         if (goals.isEmpty()) {
             return ToolResult.error(
                 "provide a non-empty `prompt` or `prompts`", System.currentTimeMillis() - start,
+            )
+        }
+
+        val background = (arguments["background"] as? JsonPrimitive)?.contentOrNull?.toBoolean() ?: false
+        if (background) {
+            // Queue via WorkManager instead of blocking this turn. Persisting
+            // the task also schedules its worker (L-005 — see the repository);
+            // the worker runs a BACKGROUND-origin turn, so the execution
+            // policy denies never-autonomous and confirmation-required tools.
+            val queued = goals.map { goal ->
+                agentTaskRepository.get().add(label = goal.take(60), prompt = goal)
+            }
+            return ToolResult.ok(
+                "Queued ${queued.size} background task(s): " +
+                    queued.joinToString("; ") { it.label } +
+                    ". The user will get a notification with each result — do not wait for it.",
+                System.currentTimeMillis() - start,
             )
         }
 
