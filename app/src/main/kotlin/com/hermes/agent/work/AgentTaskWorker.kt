@@ -77,7 +77,7 @@ class AgentTaskWorker @AssistedInject constructor(
                     success = true,
                 ),
             )
-            postNotification(label, result)
+            postNotification(label, result, success = true)
             Result.success()
         } catch (e: Exception) {
             Timber.e(e, "AgentTaskWorker failed: $taskId")
@@ -94,22 +94,27 @@ class AgentTaskWorker @AssistedInject constructor(
                     success = false,
                 ),
             )
+            // A delegated task the user pocketed the phone for must not fail
+            // silently — tell them, with the reason, so they can retry from the
+            // Delegate screen (L-007). No retry: a re-run would re-notify.
+            postNotification(label, reason, success = false)
             Result.failure()
         }
     }
 
-    private fun postNotification(label: String, summary: String) {
+    private fun postNotification(label: String, summary: String, success: Boolean) {
         val nm = applicationContext.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             nm.createNotificationChannel(
                 NotificationChannel(CHANNEL_ID, "Delegated Tasks", NotificationManager.IMPORTANCE_DEFAULT)
             )
         }
+        val title = if (success) "✓ $label" else "✗ $label failed"
         nm.notify(
             label.hashCode() + 1000,
             NotificationCompat.Builder(applicationContext, CHANNEL_ID)
                 .setSmallIcon(android.R.drawable.ic_dialog_info)
-                .setContentTitle("✓ $label")
+                .setContentTitle(title)
                 .setContentText(summary)
                 .setStyle(NotificationCompat.BigTextStyle().bigText(summary))
                 .setAutoCancel(true)

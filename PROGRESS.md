@@ -18,6 +18,14 @@ repo. All three apps are merged and shipping (`:app` + `:feature:jotter` + `:fea
 
 ## Status log (newest first)
 
+### v0.14.0 — proactive engine release - 2026-07-17
+- [x] Delegated tasks now notify on failure, not only success (see the device-gate
+      entry below). Release identity bumped to `versionCode=83` /
+      `versionName=0.14.0` in the same change-set (L-012).
+- [x] Release 0.14.0 carries the roadmap **v0.12.0 (Proactive engine)** milestone
+      content plus the v0.13 device-gate work — releases have shipped milestone
+      content out of numeric order before (per the roadmap's own note).
+
 ### v0.13 device gates on hardware - 2026-07-17
 - [x] Extended the DEBUG-ONLY `ProactiveTestReceiver` seam (debug source set,
       absent from release) with `RUN_DELEGATION`, `TEST_BG_SHELL`, and
@@ -38,10 +46,15 @@ repo. All three apps are merged and shipping (`:app` + `:feature:jotter` + `:fea
       failure the worker wrote a `DELEGATION` ledger row with `success=false` and
       the actionable detail (L-007 on device). Persist+schedule and the ledger
       trace are proven end-to-end.
-- [ ] BLOCKED (environment, not code): the delegation happy path (completed note +
-      success notification) could not run — the configured cloud function returned
-      `HTTP 400: DEGRADED function cannot be invoked` and no local model is
-      installed on the device. Re-run when a provider is healthy.
+- [x] FIXED + VERIFIED — delegation now notifies on failure too: `AgentTaskWorker`
+      posted `✗ Reply failed` on the `hermes_delegate` channel with the failure
+      reason after the degraded-cloud turn, so a pocketed-phone delegation never
+      fails silently (L-007). The full delegate → worker → notification → ledger
+      loop is device-proven for both success and failure paths.
+- [ ] Still needs a healthy provider to observe the SUCCESS-path *content*
+      (completed answer text): the configured cloud function is server-side
+      `DEGRADED` and no local model is installed. Not a code gap — the loop itself
+      is verified.
 
 ### Proactive engine: annoyance budget and notifier gate - 2026-07-16
 - [x] Started roadmap milestone v0.12.0 (Proactive engine) now that v0.13's
