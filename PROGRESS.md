@@ -36,9 +36,20 @@ repo. All three apps are merged and shipping (`:app` + `:feature:jotter` + `:fea
 - [x] VERIFIED: nine budget unit tests (defaults, consent, DND, wrapping quiet
       hours, daily cap, per-source cap, less-of-this damping and muting, opt-in
       admit); all-module compile; `tools/preflight.sh` exit 0.
-- [ ] Remaining for milestone v0.12.0: daily digest template, commitment nudges
-      via the consolidator, proactive consent/quiet-hours settings UI, and the
-      notification-listener digest behind its injection boundary.
+- [x] Increment 2 (same day): `DailyDigestWorker` reuses the briefing composer's
+      weather/calendar/todos context as the digest body (08:00 daily);
+      `CommitmentNudgeWorker` resurfaces the newest commitment the consolidator
+      extracted within 7 days (17:00 daily). The consolidator now tags
+      "I will / I need to / I promised to" statements with a `Commitment:` prefix
+      (unit-tested). Both workers route through the proactive gate, so consent,
+      DND, quiet hours, and the budget apply.
+- [x] Increment 2: `ProactiveScheduler` owns consent AND worker scheduling as one
+      operation (L-005); Settings → Proactive lists per-capability switches
+      (opt-in, defaults off except scheduled tasks), shows quiet hours and the
+      daily cap, and lets a "Less of this"-muted source be restored.
+- [ ] Remaining for milestone v0.12.0: the notification-listener digest behind
+      its injection boundary (needs the listener permission consent flow and a
+      device gate).
 - [ ] UNVERIFIED on device (L-001): a real cron ping suppressed during quiet
       hours and the "Less of this" action round-trip; phone remains off ADB.
 

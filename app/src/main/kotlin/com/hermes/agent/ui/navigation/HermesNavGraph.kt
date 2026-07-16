@@ -40,6 +40,7 @@ import com.hermes.agent.ui.settings.AlarmSettingsScreen
 import com.hermes.agent.ui.settings.AppearanceSettingsScreen
 import com.hermes.agent.ui.settings.AssistantSettingsScreen
 import com.hermes.agent.ui.settings.ConnectionsSettingsScreen
+import com.hermes.agent.ui.settings.ProactiveSettingsScreen
 import com.hermes.agent.ui.settings.SettingsScreen
 import com.hermes.agent.ui.skills.SkillsScreen
 
@@ -154,6 +155,7 @@ fun HermesNavGraph(startAtSettings: Boolean = false) {
             composable("settings_alarms") { AlarmSettingsScreen(onBack = { navController.popBackStack() }) }
             composable("settings_connections") { ConnectionsSettingsScreen(onBack = { navController.popBackStack() }) }
             composable("settings_advanced") { AdvancedSettingsScreen(onBack = { navController.popBackStack() }) }
+            composable("settings_proactive") { ProactiveSettingsScreen(onBack = { navController.popBackStack() }) }
             composable("settings_about") { AboutSettingsScreen(onBack = { navController.popBackStack() }) }
             
             composable("logs") { LogScreen(onBack = { navController.popBackStack() }) }

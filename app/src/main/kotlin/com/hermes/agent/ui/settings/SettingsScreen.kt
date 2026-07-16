@@ -16,6 +16,7 @@ import androidx.compose.material.icons.outlined.Article
 import androidx.compose.material.icons.outlined.AutoAwesome
 import androidx.compose.material.icons.outlined.Build
 import androidx.compose.material.icons.outlined.History
+import androidx.compose.material.icons.outlined.Notifications
 import androidx.compose.material.icons.outlined.ColorLens
 import androidx.compose.material.icons.outlined.Description
 import androidx.compose.material.icons.outlined.Info
@@ -91,6 +92,13 @@ fun SettingsScreen(
                         title = "Advanced",
                         subtitle = "Backup, updates, and session export",
                         onClick = { onNavigate("settings_advanced") },
+                    )
+                    HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp))
+                    NavRow(
+                        icon = Icons.Outlined.Notifications,
+                        title = "Proactive",
+                        subtitle = "Digest, nudges, quiet hours, and the ping budget",
+                        onClick = { onNavigate("settings_proactive") },
                     )
                     HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp))
                     NavRow(
