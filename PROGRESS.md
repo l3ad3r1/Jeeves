@@ -18,6 +18,14 @@ repo. All three apps are merged and shipping (`:app` + `:feature:jotter` + `:fea
 
 ## Status log (newest first)
 
+### v0.14.0 publication - 2026-07-17
+- [x] Published GitHub release `v0.14.0` from commit `1425814` after CI run
+      `29563038128` passed. Clean release APK size is 117,573,188 bytes, signer
+      SHA-256 begins `99255c31`, and APK SHA-256 is
+      `3eb93079fa8d77008b2cd764fdca5323ea2e9333f84e59863ec4f547aa0a1594`.
+      Tag-triggered Release workflow also passed. The debug test seam
+      (`ProactiveTestReceiver`) was confirmed absent from the release APK.
+
 ### v0.14.0 — proactive engine release - 2026-07-17
 - [x] FIXED model-switch crash + chat-slowness (both traced to main-thread work):
       `LocalLlmManager.isModelDownloaded()` did SAF `openFileDescriptor` (a binder
