@@ -19,6 +19,28 @@ repo. All three apps are merged and shipping (`:app` + `:feature:jotter` + `:fea
 ## Status log (newest first)
 
 ### v0.14.0 — proactive engine release - 2026-07-17
+- [x] FIXED model-switch crash + chat-slowness (both traced to main-thread work):
+      `LocalLlmManager.isModelDownloaded()` did SAF `openFileDescriptor` (a binder
+      call to the storage provider) and `File.length()` with no dispatcher, and
+      every caller reaches it from `viewModelScope` (Main). A slow provider blocked
+      the main thread on model switch → ANR → the system kills the app (presents as
+      a crash), and the same blocking stalled the UI. Wrapped its body and
+      `updateModelSelection`'s native unload+persist in `withContext(Dispatchers.IO)`,
+      and guarded the SAF picker's `takePersistableUriPermission` (an uncaught
+      `SecurityException` there crashed the app on model pick).
+- [x] SPED UP the cloud chat hot path: the orchestrator ran four independent
+      pre-first-token lookups (memory search, RAG context, user-model, skill match)
+      sequentially; they now run concurrently via `async`. The user-model lookup
+      also embedded an empty query and vector-searched 200 memories every message —
+      replaced with a direct indexed `newestWithPrefix` DAO query. Measured
+      context-lookup phase at 5 ms on device (instrumented `Orchestrator` log).
+- [x] VERIFIED on SM-S928B (0.13.0-debug): opened the on-device Model dropdown and
+      switched selection (Llama 1B → Qwen 1.5B → … → Llama 3B) four times rapidly —
+      app stayed alive and responsive, no ANR/FATAL/dropped-frames in logcat.
+      Reproduced the local-model load+generate path via the debug seam
+      (streamed tokens, no native crash). NOTE: the original crash's exact stack
+      was not captured (no root for tombstones); the fix addresses the reproducible
+      main-thread-block that matches the symptom, verified stable under stress.
 - [x] Delegated tasks now notify on failure, not only success (see the device-gate
       entry below). Release identity bumped to `versionCode=83` /
       `versionName=0.14.0` in the same change-set (L-012).

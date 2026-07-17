@@ -128,7 +128,15 @@ private fun OnDeviceAiCard(
 
     val customPicker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
         if (uri != null) {
-            context.contentResolver.takePersistableUriPermission(uri, Intent.FLAG_GRANT_READ_URI_PERMISSION)
+            // takePersistableUriPermission throws SecurityException for some
+            // providers/URIs; an uncaught throw here (activity-result callback,
+            // main thread) crashes the app on model pick. Persisting is
+            // best-effort — the URI still works for this session either way.
+            runCatching {
+                context.contentResolver.takePersistableUriPermission(
+                    uri, Intent.FLAG_GRANT_READ_URI_PERMISSION,
+                )
+            }
             viewModel.setLocalModelUri(uri.toString())
         }
     }

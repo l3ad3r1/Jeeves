@@ -57,6 +57,7 @@ class ProactiveTestReceiver : BroadcastReceiver() {
     @Inject lateinit var agentTaskRepository: AgentTaskRepository
     @Inject lateinit var agentLoopRunner: AgentLoopRunner
     @Inject lateinit var toolRegistry: ToolRegistry
+    @Inject lateinit var localLlmManager: com.hermes.agent.data.llm.LocalLlmManager
 
     // Timber.tag() is one-shot and other code logs in between — re-tag per call.
     private fun gate(msg: String, vararg args: Any?) = Timber.tag("GATE").i(msg, *args)
@@ -161,6 +162,36 @@ class ProactiveTestReceiver : BroadcastReceiver() {
                 val reason = (outcome as? AgentLoopOutcome.Failed)?.reason
                 val msg = (outcome as? AgentLoopOutcome.Failed)?.userMessage
                 gate("GATE:REPETITION reason=%s msg=%s", reason, msg)
+            }
+            "com.jeeves.debug.TEST_SWITCH" -> {
+                // Reproduces the UI switch: re-select the current custom model,
+                // which unloads (cleanUp) then persists — the reported crash path.
+                gate("GATE:SWITCH_START")
+                val uri = intent.getStringExtra("uri")
+                runCatching {
+                    if (uri != null) localLlmManager.setLocalModelUri(uri)
+                    else localLlmManager.setSelectedModelId(
+                        intent.getStringExtra("id") ?: "llama-3.2-1b-instruct-q4",
+                    )
+                    localLlmManager.isModelDownloaded()
+                }.onFailure { gate("GATE:SWITCH_ERR %s", it.toString()) }
+                gate("GATE:SWITCH_DONE")
+            }
+            "com.jeeves.debug.TEST_LOCAL_GEN" -> {
+                // Reproduces the local-model load+inference path (the SAF fd
+                // lifetime bug): loads the configured custom model and pulls a
+                // few tokens. A native SIGBUS/SIGSEGV surfaces in logcat.
+                gate("GATE:LOCAL_GEN_START")
+                val n = intent.getIntExtra("tokens", 8)
+                runCatching {
+                    var got = 0
+                    localLlmManager.generateResponse("You are a test.", "Say hi.")
+                        .collect { tok ->
+                            if (++got <= n) gate("GATE:LOCAL_TOKEN #%d %s", got, tok.take(20))
+                            if (got >= n) throw kotlinx.coroutines.CancellationException("enough")
+                        }
+                }.onFailure { gate("GATE:LOCAL_GEN_END err=%s", it.message) }
+                gate("GATE:LOCAL_GEN_DONE")
             }
             "com.jeeves.debug.DUMP_LEDGER" -> {
                 ledger.observeRecent(10).first().forEach { e ->

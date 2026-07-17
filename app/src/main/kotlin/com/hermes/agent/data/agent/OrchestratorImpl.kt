@@ -28,6 +28,8 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.async
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOn
@@ -98,15 +100,32 @@ class OrchestratorImpl @Inject constructor(
         emit(OrchestratorEvent.PlanReady(plan))
 
         // 3. Load memories + user model and inject into system prompt.
-        // Use vector similarity search with the user message to find relevant memories
-        val memories = runCatching { memoryRepository.searchMemories(userMessage, limit = 15) }
-            .getOrDefault(emptyList())
-
-        // Also retrieve from RAG pipeline if available
-        val ragContext = runCatching { ragPipeline.buildContext(userMessage, maxChars = 3000) }
-            .getOrDefault("")
-
-        val userModel = runCatching { userModelService.currentModel() }.getOrNull()
+        // The four context lookups are independent — run them concurrently so
+        // the pre-first-token wait is the slowest one, not the sum of all four.
+        val contextStart = System.currentTimeMillis()
+        val (memories, ragContext, userModel, skillBlockDeferred) = coroutineScope {
+            val memoriesJob = async {
+                runCatching { memoryRepository.searchMemories(userMessage, limit = 15) }
+                    .getOrDefault(emptyList())
+            }
+            val ragJob = async {
+                runCatching { ragPipeline.buildContext(userMessage, maxChars = 3000) }
+                    .getOrDefault("")
+            }
+            val userModelJob = async {
+                runCatching { userModelService.currentModel() }.getOrNull()
+            }
+            val skillJob = async {
+                runCatching { skillMatcher.findRelevantSkill(userMessage) }
+                    .getOrNull()
+                    ?.let { skillMatcher.renderSkillBlock(it) }
+                    ?: ""
+            }
+            ContextLookups(memoriesJob.await(), ragJob.await(), userModelJob.await(), skillJob.await())
+        }
+        Timber.tag("Orchestrator").d(
+            "context lookups took %d ms", System.currentTimeMillis() - contextStart,
+        )
 
         val memoryBlock = buildString {
             if (userModel != null) {
@@ -128,13 +147,9 @@ class OrchestratorImpl @Inject constructor(
             }
         }
 
-        // 3.5. Skill orchestrator: check whether an existing skill makes
-        // this request more efficient; if so, inject it for this turn.
-        // Deterministic lexical match — zero LLM cost (see SkillMatcher).
-        val skillBlock = runCatching { skillMatcher.findRelevantSkill(userMessage) }
-            .getOrNull()
-            ?.let { skillMatcher.renderSkillBlock(it) }
-            ?: ""
+        // 3.5. Skill block was fetched concurrently above (deterministic
+        // lexical match — zero LLM cost; see SkillMatcher).
+        val skillBlock = skillBlockDeferred
 
         // 4. Execute each step; collect all tool names used for learning.
         val aggregator = StringBuilder()
@@ -328,3 +343,11 @@ class OrchestratorImpl @Inject constructor(
     }
 
 }
+
+/** Results of the concurrent pre-turn context lookups. */
+private data class ContextLookups(
+    val memories: List<com.hermes.agent.domain.model.Memory>,
+    val ragContext: String,
+    val userModel: String?,
+    val skillBlock: String,
+)

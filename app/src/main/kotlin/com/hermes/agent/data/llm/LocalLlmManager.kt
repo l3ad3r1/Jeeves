@@ -23,6 +23,7 @@ import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
+import kotlinx.coroutines.withContext
 import timber.log.Timber
 
 @Singleton
@@ -45,17 +46,24 @@ class LocalLlmManager @Inject constructor(
 
     private suspend fun currentModelFile(): File = File(destinationDir(), activeModel().fileName)
 
-    suspend fun isModelDownloaded(): Boolean {
+    /**
+     * Whether the selected model is present. This does storage-provider (SAF
+     * binder) and filesystem IO, so it MUST run off the main thread — every
+     * caller reaches it from `viewModelScope` (Main), and a slow provider here
+     * was blocking the main thread on model switch, ANR-ing the app (looked
+     * like a crash) and stalling the UI.
+     */
+    suspend fun isModelDownloaded(): Boolean = withContext(Dispatchers.IO) {
         val settings = settingsRepository.current()
         if (settings.localModelUri.isNotBlank()) {
-            return runCatching {
+            return@withContext runCatching {
                 context.contentResolver.openFileDescriptor(Uri.parse(settings.localModelUri), "r")
                     ?.use { it.statSize != 0L } == true
             }.getOrDefault(false)
         }
         val model = activeModel()
         val file = currentModelFile()
-        return file.isFile && file.length() == model.sizeBytes
+        file.isFile && file.length() == model.sizeBytes
     }
 
     val isDownloading: StateFlow<Boolean> = downloadCoordinator.isDownloading
@@ -127,8 +135,12 @@ class LocalLlmManager @Inject constructor(
         persist: suspend () -> Unit,
     ) = modelMutex.withLock {
         try {
-            engine.cleanUp()
-            persist()
+            // Native unload + persistence — keep it off the caller's thread
+            // (SettingsViewModel starts these on viewModelScope = Main).
+            withContext(Dispatchers.IO) {
+                engine.cleanUp()
+                persist()
+            }
         } catch (error: Exception) {
             Timber.e(error, "Could not %s", action)
             downloadCoordinator.reportError(
