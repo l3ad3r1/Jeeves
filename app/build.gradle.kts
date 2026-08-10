@@ -203,6 +203,12 @@ dependencies {
     implementation(project(":core:settings"))
     implementation(project(":core:theme"))
 
+    // On-device sentence embeddings (all-MiniLM-L6-v2) for the RAG/memory
+    // subsystem. The native lib is already packaged (via :feature:butler's TTS,
+    // see packaging.pickFirsts below); this puts the classes on :app's compile
+    // classpath so MiniLmEmbeddingService can use them.
+    implementation(libs.onnxruntime.android)
+
     // --- Feature modules ---
     implementation(project(":feature:jotter"))
     implementation(project(":feature:butler"))

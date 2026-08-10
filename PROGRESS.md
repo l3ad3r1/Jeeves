@@ -18,6 +18,34 @@ repo. All three apps are merged and shipping (`:app` + `:feature:jotter` + `:fea
 
 ## Status log (newest first)
 
+### RAG embedder → real ONNX MiniLM (Phase 3 swap) - 2026-08-10
+- [x] Replaced the `HashingEmbeddingService` mock with `MiniLmEmbeddingService`:
+      real on-device all-MiniLM-L6-v2 (int8) via ONNX Runtime — 384-dim,
+      attention-masked mean-pooled, L2-normalized (identical `EmbeddingService`
+      contract). The whole memory/RAG subsystem now embeds with real semantics
+      instead of hash noise. Ported `WordPieceTokenizer` from the standalone
+      Octo Jotter; `MemoryModule` now binds `EmbeddingService → MiniLm`. This is
+      the "Phase 3" swap the base's own EmbeddingService/MemoryModule docstrings
+      anticipated.
+- [x] Model + vocab read from the shared `AI Models/embeddings/all-MiniLM-L6-v2`
+      folder — the same files Hermes / Octo Jotter's model manager download, so
+      an already-present model is reused with no extra download. Until both files
+      exist (or if ONNX load throws) it transparently falls back to the
+      deterministic hashing embedder, so RAG/memory keep working and the suite
+      stays green.
+- [x] ONNX Runtime was already a dependency (Butler TTS) and its `.so` already
+      packaged (`packaging.pickFirsts`); added it to `:app`'s compile classpath
+      only. No new native library (L-015): debug APK 193,300,610 B; the embedder
+      adds ~KB of Kotlin, not native.
+- [x] VERIFIED (local gate): `tools/preflight.sh` exit 0 — ledger greps, 3-module
+      compile, native `:app:assembleDebug`, and the full unit suite (355 tests, 0
+      failures; the hashing fallback keeps memory/RAG tests behaviour-identical).
+- [ ] UNVERIFIED on device (L-001): the real ONNX path itself — loading
+      `model.onnx` and running MiniLM inference inside Jeeves, and confirming
+      memory/RAG retrieval uses real embeddings (not the fallback). The model is
+      already on the SM-S928B from the Octo Jotter test; the outstanding check is
+      observing MiniLm active on device.
+
 ### v0.14.0 publication - 2026-07-17
 - [x] Published GitHub release `v0.14.0` from commit `1425814` after CI run
       `29563038128` passed. Clean release APK size is 117,573,188 bytes, signer
