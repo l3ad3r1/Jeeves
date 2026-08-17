@@ -83,7 +83,7 @@ class OtaDownloadService : Service() {
     private fun download(url: String, onProgress: (Int) -> Unit): File {
         val request = Request.Builder()
             .url(url)
-            .header("User-Agent", "Hermes-Agent-Android/${BuildConfig.VERSION_NAME}")
+            .header("User-Agent", "Jeeves-Agent-Android/${BuildConfig.VERSION_NAME}")
             .build()
 
         okHttpClient.newCall(request).execute().use { response ->

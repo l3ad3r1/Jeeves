@@ -18,6 +18,22 @@ repo. All three apps are merged and shipping (`:app` + `:feature:jotter` + `:fea
 
 ## Status log (newest first)
 
+### Hermes 0.9.x port to Jeeves (`port/hermes-0.9.x`) - 2026-08-17
+- [x] Ported all major Hermes 0.9.x (v0.9.0 - v0.9.3) features and enhancements into Jeeves:
+      - **AppAgent subsystem**: 5 app automation tools (`app_launch`, `app_analyze_screen`, `app_tap`, `app_swipe`, `app_type`), `AppAgentAccessibilityService`, `AppAgentFixtureActivity`, `AppAgentSmokeTest`.
+      - **Phone action tools**: 6 phone control tools (`device_control`, `media_control`, `navigation`, `communication`, `contact_lookup`, `alarm`) with `DeterministicPhoneCommandRouter` fast-path routing bypass.
+      - **Multi-provider LLM routing**: `CloudProviderRegistry` (Groq, Cerebras, OpenRouter, Mistral, SambaNova, DeepSeek, etc.), `CloudProviderProfile` with Keystore encryption, `QualityAwareLlmRoutingPolicy`, `RoutedProviderChain` with local fallback.
+      - **Database upgrades**: `HermesDatabase` bumped to version 12 (`MIGRATION_10_11` FTS4 index creation, `MIGRATION_11_12` role label scrubbing and index rebuild).
+      - **Security & Authorization**: `ToolAuthorizationSettings`, `SettingsToolAuthorizationSettings`, `DeviceAuthenticationService` (biometric prompt for shell/termux and background phone action opt-in), `LocalBackupManager` (ZIP export/import to Documents/Downloads).
+      - **UI & Settings**: `ProvidersSettingsScreen` route wired in `HermesNavGraph`, `AssistantSettingsScreen` updated with Models nav row & Actions & approvals, `AdvancedSettingsScreen` updated with on-device backup.
+      - **16KB page-size fix**: Removed `sqlite.android` native library per Hermes commit `7239b9c`.
+      - **Jeeves integrations preserved**: RAG/MiniLM pipeline, daily digest + commitment nudges, background delegation + activity ledger, proactive annoyance budget, note/alarm cross-feature tools, `:feature:jotter`, `:feature:butler`.
+- [x] VERIFIED (local gate):
+      - 3-module Kotlin compilation: `:app:compileDebugKotlin`, `:feature:jotter:compileDebugKotlin`, `:feature:butler:compileDebugKotlin` all PASS.
+      - Full unit test suite: `:app:testDebugUnitTest` (414 tests across all ported + existing components, 0 failures) PASS.
+      - Debug APK packaging: `:app:assembleDebug` PASS.
+- [ ] UNVERIFIED on device: Live accessibility service interaction for UI automation, on-device biometric authentication prompt for sensitive tools, and on-device multi-provider API calls. Ready for Claude Code on-device manual validation.
+
 ### RAG embedder → real ONNX MiniLM (Phase 3 swap) - 2026-08-10
 - [x] Replaced the `HashingEmbeddingService` mock with `MiniLmEmbeddingService`:
       real on-device all-MiniLM-L6-v2 (int8) via ONNX Runtime — 384-dim,

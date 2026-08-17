@@ -3,6 +3,7 @@ package com.hermes.agent.data.agent
 import com.hermes.agent.data.llm.LlmMessage
 import com.hermes.agent.data.llm.LlmRouter
 import com.hermes.agent.data.llm.RoutingDecision
+import com.hermes.agent.data.llm.RoutingContext
 import com.hermes.agent.data.memory.ConversationLearner
 import com.hermes.agent.data.memory.UserModelService
 import com.hermes.agent.data.tool.ToolCallExecutor
@@ -21,9 +22,13 @@ import com.hermes.agent.domain.model.StepStatus
 import com.hermes.agent.domain.repository.ExecutionPlanRepository
 import com.hermes.agent.domain.repository.MemoryRepository
 import com.hermes.agent.domain.tool.ToolRegistry
+import com.hermes.agent.domain.tool.ToolExecutionDecision
+import com.hermes.agent.domain.tool.ToolExecutionPolicy
+import com.hermes.agent.domain.tool.ToolResult
 import com.hermes.agent.util.DispatcherProvider
 import com.hermes.agent.util.IdGenerator
 import com.hermes.agent.domain.agent.AgentActivity
+import com.hermes.agent.domain.agent.AgentPhase
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.NonCancellable
@@ -63,6 +68,9 @@ class OrchestratorImpl @Inject constructor(
     private val toolRegistry: ToolRegistry,
     private val llmRouter: LlmRouter,
     private val agentLoopRunner: AgentLoopRunner,
+    private val deterministicPhoneCommandRouter: DeterministicPhoneCommandRouter,
+    private val toolCallExecutor: ToolCallExecutor,
+    private val toolExecutionPolicy: ToolExecutionPolicy,
     private val dispatchers: DispatcherProvider,
     private val memoryRepository: MemoryRepository,
     private val conversationLearner: ConversationLearner,
@@ -85,7 +93,79 @@ class OrchestratorImpl @Inject constructor(
         origin: ExecutionOrigin,
     ): Flow<OrchestratorEvent> = flow {
 
+        // High-confidence phone commands bypass model inference entirely.
+        // The same execution policy, confirmation UI, ledger, and tool registry
+        // used by the LLM path remain authoritative.
+        val deterministic = if (origin == ExecutionOrigin.INTERACTIVE) {
+            deterministicPhoneCommandRouter.match(userMessage)
+        } else null
+        if (deterministic != null) {
+            AgentActivity.setPhase(AgentPhase.SOLVING)
+            val routing = RoutingResult.Solo(deterministic.role, confidence = 1f)
+            val plan = buildPlan(conversationId, userMessage, routing)
+            executionPlanRepository.save(plan)
+            emit(OrchestratorEvent.PlanReady(plan))
+            val step = plan.steps.single()
+            executionPlanRepository.markStepRunning(step.id)
+            emit(OrchestratorEvent.StepStarted(step.id, step.agentRole))
+
+            val tool = toolRegistry.byName(deterministic.call.name)
+            val result = if (tool == null) {
+                ToolResult.error("Phone action is unavailable: ${deterministic.call.name}")
+            } else {
+                val decision = toolExecutionPolicy.evaluate(
+                    origin,
+                    deterministic.call.name,
+                    tool.descriptor.requiresConfirmation,
+                )
+                val mustConfirm = decision is ToolExecutionDecision.Confirm
+                Timber.tag("DeterministicPhone").i(
+                    "Matched tool=%s decision=%s requiresConfirmation=%s",
+                    deterministic.call.name,
+                    decision::class.simpleName,
+                    tool.descriptor.requiresConfirmation,
+                )
+                emit(OrchestratorEvent.ToolCallRequested(deterministic.call, mustConfirm))
+                when {
+                    decision is ToolExecutionDecision.Deny -> ToolResult.error(decision.reason)
+                    mustConfirm && !toolConfirmationService.awaitConfirmation(deterministic.call) ->
+                        ToolResult.error("Action cancelled")
+                    else -> toolCallExecutor.execute(deterministic.call, confirmationGate = null)
+                }
+            }
+
+            activityLedger.record(
+                ActivityEntry(
+                    timestamp = System.currentTimeMillis(),
+                    kind = ActivityKind.TOOL_CALL,
+                    origin = origin.name.lowercase(),
+                    conversationId = conversationId,
+                    title = deterministic.call.name,
+                    detail = result.output.ifEmpty { result.errorMessage.orEmpty() }.take(500),
+                    success = result.success,
+                ),
+            )
+            emit(
+                OrchestratorEvent.ToolCallResult(
+                    deterministic.call,
+                    result.output.ifEmpty { result.errorMessage.orEmpty() },
+                    result.success,
+                ),
+            )
+            executionPlanRepository.markStepFinished(
+                step.id,
+                if (result.success) StepStatus.SUCCEEDED else StepStatus.FAILED,
+                result.errorMessage,
+            )
+            emit(OrchestratorEvent.StepFinished(step.id, result.success))
+            val reply = if (result.success) result.output else result.errorMessage.orEmpty()
+            emit(OrchestratorEvent.ReplyToken(reply))
+            emit(OrchestratorEvent.ReplyComplete(reply, deterministic.role, isOnDevice = true))
+            return@flow
+        }
+
         // 1. Route.
+        AgentActivity.setPhase(AgentPhase.SOLVING)
         val routing = agentRouter.route(userMessage)
         val primaryRole = when (routing) {
             is RoutingResult.Solo -> routing.agent
@@ -102,6 +182,7 @@ class OrchestratorImpl @Inject constructor(
         // 3. Load memories + user model and inject into system prompt.
         // The four context lookups are independent — run them concurrently so
         // the pre-first-token wait is the slowest one, not the sum of all four.
+        AgentActivity.setPhase(AgentPhase.SEARCHING)
         val contextStart = System.currentTimeMillis()
         val (memories, ragContext, userModel, skillBlockDeferred) = coroutineScope {
             val memoriesJob = async {
@@ -179,7 +260,13 @@ class OrchestratorImpl @Inject constructor(
                 }
             }
 
-            val decision = llmRouter.route(llmMessages)
+            val decision = llmRouter.route(
+                llmMessages,
+                RoutingContext(
+                    requiresReliableToolCalls = tools.isNotEmpty() &&
+                        step.agentRole != AgentRole.CONVERSATIONAL,
+                ),
+            )
             val provider = when (decision) {
                 is RoutingDecision.Ready -> decision.provider
                 is RoutingDecision.Unavailable -> {
@@ -193,6 +280,7 @@ class OrchestratorImpl @Inject constructor(
                     return@flow
                 }
             }
+            AgentActivity.setPhase(AgentPhase.THINKING)
             val loopOutcome = try {
                 agentLoopRunner.run(
                     provider = provider,
@@ -200,6 +288,7 @@ class OrchestratorImpl @Inject constructor(
                     tools = tools,
                     origin = origin,
                     onToolRequested = { call, requiresConfirmation ->
+                        AgentActivity.setPhase(AgentPhase.WORKING)
                         emit(OrchestratorEvent.ToolCallRequested(call, requiresConfirmation))
                     },
                     confirmationGate = ToolCallExecutor.ConfirmationGate { call, requiresConfirmation ->
@@ -224,6 +313,10 @@ class OrchestratorImpl @Inject constructor(
                                 success = result.success,
                             ),
                         )
+                        // The loop feeds the result back to the model, so we
+                        // are waiting on inference again until it either calls
+                        // another tool or starts replying.
+                        AgentActivity.setPhase(AgentPhase.THINKING)
                     },
                 )
             } catch (cancelled: CancellationException) {
@@ -261,6 +354,7 @@ class OrchestratorImpl @Inject constructor(
             lastProviderWasOnDevice = provider.isOnDevice
             allToolsUsed += completed.toolsInvoked
             aggregator.append(completed.reply)
+            AgentActivity.setPhase(AgentPhase.COMPOSING)
             emit(OrchestratorEvent.ReplyToken(completed.reply))
             executionPlanRepository.markStepFinished(step.id, StepStatus.SUCCEEDED)
             emit(OrchestratorEvent.StepFinished(step.id, success = true))

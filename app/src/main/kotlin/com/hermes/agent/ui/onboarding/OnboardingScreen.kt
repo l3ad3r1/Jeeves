@@ -47,6 +47,8 @@ import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
 import com.hermes.agent.data.device.DeviceProfile
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.Restore
 import com.hermes.agent.ui.components.HermesDiamond
 import com.jeeves.core.theme.Geist
 import com.jeeves.core.theme.GeistMono
@@ -88,6 +90,7 @@ fun OnboardingScreen(
             Box(modifier = Modifier.weight(1f).fillMaxWidth()) {
                 when (step) {
                     OnboardingViewModel.WELCOME -> WelcomeStep()
+                    OnboardingViewModel.RESTORE -> RestoreStep(viewModel)
                     OnboardingViewModel.PROFILE -> ProfileStep(viewModel)
                     OnboardingViewModel.PERMISSIONS -> PermissionsStep()
                     else -> DeviceStep(viewModel)
@@ -143,6 +146,55 @@ private fun WelcomeStep() {
             textAlign = TextAlign.Center,
             modifier = Modifier.widthIn(max = 300.dp),
         )
+    }
+}
+
+@Composable
+private fun RestoreStep(viewModel: OnboardingViewModel) {
+    val scheme = MaterialTheme.colorScheme
+    val launcher = rememberLauncherForActivityResult(
+        ActivityResultContracts.OpenDocument()
+    ) { uri ->
+        if (uri != null) {
+            viewModel.restoreLocalBackup(uri)
+        }
+    }
+
+    Column(
+        modifier = Modifier.fillMaxSize(),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center,
+    ) {
+        androidx.compose.material3.Icon(
+            imageVector = Icons.Outlined.Restore,
+            contentDescription = null,
+            tint = scheme.primary,
+            modifier = Modifier.size(52.dp)
+        )
+        Spacer(Modifier.height(22.dp))
+        Text(
+            "Restore Backup?",
+            fontFamily = Geist,
+            fontWeight = FontWeight.Bold,
+            fontSize = 28.sp,
+            color = scheme.onBackground,
+            textAlign = TextAlign.Center,
+        )
+        Spacer(Modifier.height(14.dp))
+        Text(
+            "If you have a local backup zip file on this device, you can restore it now. This will skip the rest of the setup.",
+            style = MaterialTheme.typography.bodyLarge,
+            color = scheme.onSurfaceVariant,
+            textAlign = TextAlign.Center,
+            modifier = Modifier.widthIn(max = 300.dp),
+        )
+        Spacer(Modifier.height(32.dp))
+        Button(
+            onClick = { launcher.launch(arrayOf("application/zip")) },
+            shape = MaterialTheme.shapes.medium,
+        ) {
+            Text("Select Backup File")
+        }
     }
 }
 
@@ -387,7 +439,11 @@ private fun NavBar(step: Int, viewModel: OnboardingViewModel) {
                 TextButton(onClick = { viewModel.skip() }, enabled = !saving) { Text("Skip setup") }
             }
             Spacer(Modifier.weight(1f))
-            if (step < OnboardingViewModel.DEVICE) {
+            if (step == OnboardingViewModel.RESTORE) {
+                Button(onClick = { viewModel.next() }, shape = MaterialTheme.shapes.medium, enabled = !saving) {
+                    Text("Skip Restore")
+                }
+            } else if (step < OnboardingViewModel.DEVICE) {
                 Button(onClick = { viewModel.next() }, shape = MaterialTheme.shapes.medium, enabled = !saving) {
                     Text(if (step == OnboardingViewModel.WELCOME) "Get started" else "Continue")
                 }

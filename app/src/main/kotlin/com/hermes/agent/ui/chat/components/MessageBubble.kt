@@ -132,7 +132,8 @@ fun StreamingBubble(
                 .padding(horizontal = 14.dp, vertical = 10.dp),
         ) {
             if (item.text.isBlank()) {
-                TypingIndicator()
+                // Jeeves is thinking — the reply bubble is the orb.
+                ThinkingOrb(diameter = 36.dp)
             } else {
                 Column {
                     SelectionContainer {
@@ -142,7 +143,8 @@ fun StreamingBubble(
                             style = MaterialTheme.typography.bodyMedium,
                         )
                     }
-                    TypingIndicator(modifier = Modifier.padding(top = 4.dp))
+                    // Small orb below the text while more tokens stream in.
+                    ThinkingOrb(diameter = 22.dp, modifier = Modifier.padding(top = 4.dp))
                 }
             }
         }

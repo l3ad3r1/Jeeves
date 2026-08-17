@@ -30,6 +30,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.ImeAction
@@ -142,7 +143,7 @@ fun ChatInputBar(
             }
 
             val actionColor = if (isSending) {
-                MaterialTheme.colorScheme.error
+                Color(0xFFE5484D) // red stop while Jeeves is replying
             } else MaterialTheme.colorScheme.primary
             Surface(
                 onClick = when {
@@ -154,7 +155,7 @@ fun ChatInputBar(
                 shape = RoundedCornerShape(24.dp),
                 color = actionColor,
                 contentColor = if (isSending) {
-                    MaterialTheme.colorScheme.onError
+                    Color.White
                 } else MaterialTheme.colorScheme.onPrimary,
             ) {
                 Box(contentAlignment = Alignment.Center) {

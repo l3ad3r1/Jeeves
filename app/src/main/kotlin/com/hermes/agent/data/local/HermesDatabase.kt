@@ -4,6 +4,7 @@ import androidx.room.Database
 import androidx.room.RoomDatabase
 import androidx.room.migration.Migration
 import androidx.sqlite.db.SupportSQLiteDatabase
+import com.hermes.agent.data.llm.stripLeadingRoleLabel
 import com.hermes.agent.data.local.dao.ActivityLedgerDao
 import com.hermes.agent.data.local.dao.AgentTaskDao
 import com.hermes.agent.data.local.dao.ConnectorDao
@@ -46,7 +47,7 @@ import com.hermes.agent.data.local.entity.SkillEntity
         ExecutionStepEntity::class,
         ActivityLedgerEntity::class,
     ],
-    version = 10,
+    version = 12,
     exportSchema = false,
 )
 abstract class HermesDatabase : RoomDatabase() {
@@ -65,6 +66,80 @@ abstract class HermesDatabase : RoomDatabase() {
 
     companion object {
         const val DATABASE_NAME = "hermes.db"
+
+        /**
+         * Build the conversation search index from scratch.
+         *
+         * FTS4, not FTS5. No Android release enables `SQLITE_ENABLE_FTS5` — the
+         * flag is absent from AOSP's SQLite build on every branch from android10
+         * through android16 — so `USING fts5` raises "no such module: fts5"
+         * everywhere, not just on old devices.
+         *
+         * Called from three places, because none of them covers the others:
+         *  - [MIGRATION_7_8], the original upgrade path;
+         *  - [MIGRATION_10_11], for installs already past that point;
+         *  - the `onCreate` callback in `DatabaseModule`, because this table is
+         *    not a Room entity, so a fresh install builds its schema without
+         *    running a single migration and would otherwise never get it.
+         *
+         * Idempotent by construction: it drops and rebuilds, so running it more
+         * than once on the same database is safe and leaves no duplicate rows.
+         */
+        fun createSearchIndex(db: SupportSQLiteDatabase) {
+            db.execSQL("DROP TRIGGER IF EXISTS conversation_fts_ai")
+            db.execSQL("DROP TRIGGER IF EXISTS conversation_fts_ad")
+            db.execSQL("DROP TRIGGER IF EXISTS conversation_fts_au")
+            db.execSQL("DROP TABLE IF EXISTS conversation_fts")
+
+            // Only title and messages are searchable; the rest are carried for
+            // the join and ordering. Indexing the timestamps would let a query
+            // like "2026" match every conversation through its epoch digits.
+            db.execSQL(
+                """
+                CREATE VIRTUAL TABLE conversation_fts USING fts4(
+                    id,
+                    title,
+                    messages,
+                    created_at,
+                    updated_at,
+                    notindexed=id,
+                    notindexed=created_at,
+                    notindexed=updated_at
+                )
+                """.trimIndent()
+            )
+
+            db.execSQL(
+                """
+                INSERT INTO conversation_fts (id, title, messages, created_at, updated_at)
+                SELECT c.id, c.title, GROUP_CONCAT(m.content, ' '), c.created_at, c.updated_at
+                FROM conversations c
+                LEFT JOIN messages m ON c.id = m.conversation_id
+                GROUP BY c.id
+                """.trimIndent()
+            )
+
+            // Each trigger deletes the conversation's row before reinserting it.
+            // "INSERT OR REPLACE" cannot work here: an FTS table has no unique
+            // constraint on `id`, so the conflict never fires and every edit
+            // would append another copy of the same conversation.
+            fun syncTrigger(name: String, event: String, table: String, idExpr: String) = """
+                CREATE TRIGGER IF NOT EXISTS $name AFTER $event ON $table
+                BEGIN
+                    DELETE FROM conversation_fts WHERE id = $idExpr;
+                    INSERT INTO conversation_fts (id, title, messages, created_at, updated_at)
+                    SELECT c.id, c.title, GROUP_CONCAT(m.content, ' '), c.created_at, c.updated_at
+                    FROM conversations c
+                    LEFT JOIN messages m ON c.id = m.conversation_id
+                    WHERE c.id = $idExpr
+                    GROUP BY c.id;
+                END
+            """.trimIndent()
+
+            db.execSQL(syncTrigger("conversation_fts_ai", "INSERT", "messages", "NEW.conversation_id"))
+            db.execSQL(syncTrigger("conversation_fts_ad", "DELETE", "messages", "OLD.conversation_id"))
+            db.execSQL(syncTrigger("conversation_fts_au", "UPDATE", "conversations", "NEW.id"))
+        }
 
         val MIGRATION_1_2 = object : Migration(1, 2) {
             override fun migrate(db: SupportSQLiteDatabase) {
@@ -178,85 +253,13 @@ abstract class HermesDatabase : RoomDatabase() {
                     }
                 }
 
-                val MIGRATION_7_8 = object : Migration(7, 8) {
-                            override fun migrate(db: SupportSQLiteDatabase) {
-                                // Phase 5.1: FTS5-powered session search (Hermes Agent parity).
-                                // Creates standalone FTS5 virtual table (no contentEntity to avoid KSP issues).
-                                db.execSQL("""
-                                    CREATE VIRTUAL TABLE IF NOT EXISTS conversation_fts USING fts5(
-                                        id,
-                                        title,
-                                        messages,
-                                        created_at,
-                                        updated_at
-                                    )
-                                """)
-                                // Populate FTS index with existing data.
-                                db.execSQL("""
-                                    INSERT INTO conversation_fts (id, title, messages, created_at, updated_at)
-                                    SELECT 
-                                        c.id,
-                                        c.title,
-                                        GROUP_CONCAT(m.content, ' ') as messages,
-                                        c.created_at,
-                                        c.updated_at
-                                    FROM conversations c
-                                    LEFT JOIN messages m ON c.id = m.conversation_id
-                                    GROUP BY c.id
-                                """)
-                                // Trigger: keep FTS index in sync on message insert.
-                                db.execSQL("""
-                                    CREATE TRIGGER IF NOT EXISTS conversation_fts_ai AFTER INSERT ON messages
-                                    BEGIN
-                                        INSERT OR REPLACE INTO conversation_fts (id, title, messages, created_at, updated_at)
-                                        SELECT 
-                                            c.id,
-                                            c.title,
-                                            GROUP_CONCAT(m.content, ' '),
-                                            c.created_at,
-                                            c.updated_at
-                                        FROM conversations c
-                                        JOIN messages m ON c.id = m.conversation_id
-                                        WHERE c.id = NEW.conversation_id
-                                        GROUP BY c.id
-                                    END
-                                """)
-                                // Trigger: keep FTS index in sync on message delete.
-                                db.execSQL("""
-                                    CREATE TRIGGER IF NOT EXISTS conversation_fts_ad AFTER DELETE ON messages
-                                    BEGIN
-                                        INSERT OR REPLACE INTO conversation_fts (id, title, messages, created_at, updated_at)
-                                        SELECT 
-                                            c.id,
-                                            c.title,
-                                            GROUP_CONCAT(m.content, ' '),
-                                            c.created_at,
-                                            c.updated_at
-                                        FROM conversations c
-                                        JOIN messages m ON c.id = m.conversation_id
-                                        WHERE c.id = OLD.conversation_id
-                                        GROUP BY c.id
-                                    END
-                                """)
-                                // Trigger: keep FTS index in sync on conversation update.
-                                db.execSQL("""
-                                    CREATE TRIGGER IF NOT EXISTS conversation_fts_au AFTER UPDATE ON conversations
-                                    BEGIN
-                                        INSERT OR REPLACE INTO conversation_fts (id, title, messages, created_at, updated_at)
-                                        SELECT 
-                                            c.id,
-                                            c.title,
-                                            GROUP_CONCAT(m.content, ' '),
-                                            c.created_at,
-                                            c.updated_at
-                                        FROM conversations c
-                                        JOIN messages m ON c.id = m.conversation_id
-                                        WHERE c.id = NEW.id
-                                        GROUP BY c.id
-                                    END
-                                """)
-                            }
-                        }
+        val MIGRATION_7_8 = object : Migration(7, 8) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                // Phase 5.1: conversation search index.
+                // Rebuilt through the shared FTS4 helper.
+                createSearchIndex(db)
+            }
+        }
 
         val MIGRATION_8_9 = object : Migration(8, 9) {
             override fun migrate(db: SupportSQLiteDatabase) {
@@ -327,7 +330,69 @@ abstract class HermesDatabase : RoomDatabase() {
             }
         }
 
-                val MIGRATION_3_4 = object : Migration(3, 4) {
+        val MIGRATION_10_11 = object : Migration(10, 11) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                // Installs sitting at v10 never got a valid search index: MIGRATION_7_8
+                // in early versions asked for FTS5 which was unsupported by platform SQLite,
+                // and a fresh install builds its schema from the entity list. Build it here.
+                createSearchIndex(db)
+            }
+        }
+
+        /**
+         * Scrubs "Assistant:" prefixes the on-device model left in stored replies.
+         *
+         * Until the local prompt was fixed, the model was shown a role-labelled
+         * transcript and continued it, writing its own "Assistant:" line. Those
+         * replies were persisted with the prefix, so fixing the prompt only
+         * cleans new turns — existing conversations keep the text and go on
+         * showing it, including in the list preview.
+         *
+         * Uses the same [stripLeadingRoleLabel] the provider applies to fresh
+         * replies, so the cleanup and the prevention cannot drift apart. It
+         * rewrites only rows that actually change, and rebuilds the search index
+         * afterwards because the indexed text has moved.
+         */
+        val MIGRATION_11_12 = object : Migration(11, 12) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                // Collected first, then written: updating while the cursor over
+                // the same table is still open is asking for trouble.
+                val messageEdits = mutableListOf<Pair<String, String>>()
+                db.query("SELECT id, content FROM messages WHERE role = 'assistant'").use { c ->
+                    while (c.moveToNext()) {
+                        val id = c.getString(0)
+                        val content = c.getString(1)
+                        val cleaned = stripLeadingRoleLabel(content)
+                        if (cleaned != content) messageEdits += id to cleaned
+                    }
+                }
+                messageEdits.forEach { (id, cleaned) ->
+                    db.execSQL("UPDATE messages SET content = ? WHERE id = ?", arrayOf(cleaned, id))
+                }
+
+                val previewEdits = mutableListOf<Pair<String, String>>()
+                db.query("SELECT id, last_message_preview FROM conversations").use { c ->
+                    while (c.moveToNext()) {
+                        val id = c.getString(0)
+                        val preview = c.getString(1)
+                        val cleaned = stripLeadingRoleLabel(preview)
+                        if (cleaned != preview) previewEdits += id to cleaned
+                    }
+                }
+                previewEdits.forEach { (id, cleaned) ->
+                    db.execSQL(
+                        "UPDATE conversations SET last_message_preview = ? WHERE id = ?",
+                        arrayOf(cleaned, id),
+                    )
+                }
+
+                if (messageEdits.isNotEmpty() || previewEdits.isNotEmpty()) {
+                    createSearchIndex(db)
+                }
+            }
+        }
+
+        val MIGRATION_3_4 = object : Migration(3, 4) {
             override fun migrate(db: SupportSQLiteDatabase) {
                 db.execSQL(
                     """

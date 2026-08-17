@@ -4,6 +4,7 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.CircularProgressIndicator
@@ -38,6 +39,13 @@ class MainActivity : ComponentActivity() {
     lateinit var settings: SettingsRepository
 
     override fun onCreate(savedInstanceState: Bundle?) {
+        // Hold the splash long enough for Jeeves to don his jacket + tie his
+        // bow tie (~1.35s) before the app content takes over.
+        val splashScreen = installSplashScreen()
+        val splashStart = System.currentTimeMillis()
+        splashScreen.setKeepOnScreenCondition {
+            System.currentTimeMillis() - splashStart < 1520L
+        }
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
 

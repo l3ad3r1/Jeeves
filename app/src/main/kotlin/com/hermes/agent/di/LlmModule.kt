@@ -51,6 +51,14 @@ abstract class LlmModule {
 
     @Binds
     @Singleton
+    abstract fun bindLlmRoutingPolicy(impl: com.hermes.agent.data.llm.QualityAwareLlmRoutingPolicy): com.hermes.agent.data.llm.LlmRoutingPolicy
+
+    @Binds
+    @Singleton
+    abstract fun bindProfileCloudProviderFactory(impl: com.hermes.agent.data.llm.CloudProviderFactory): com.hermes.agent.data.llm.ProfileCloudProviderFactory
+
+    @Binds
+    @Singleton
     abstract fun bindCloudModelCatalog(impl: OpenAiCloudModelCatalog): CloudModelCatalog
 
     @Binds

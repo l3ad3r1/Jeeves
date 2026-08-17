@@ -84,4 +84,9 @@
     <string name="onboarding_perm_notifications_rationale">For the notification agent (Phase 3.x). Optional.</string>
     <string name="onboarding_perm_granted">Granted</string>
     <string name="onboarding_perm_allow">Allow</string>
+
+    <!-- Voice Chat & AppAgent -->
+    <string name="a11y_start_voice_chat">Start voice chat</string>
+    <string name="a11y_end_voice_chat">End voice chat</string>
+    <string name="accessibility_service_description">Jeeves requires Accessibility access to interact with apps on your behalf.</string>
 </resources>

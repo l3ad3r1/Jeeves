@@ -1,0 +1,167 @@
+<!-- Jeeves assembles his own app icon (~1.48s, once on cold start):
+       0.00s  white tile pops in (with a gentle overshoot)
+       0.26s  three buttons fasten, top to bottom
+       0.56s  RIGHT jacket lapel swings on from the shoulder
+       0.86s  LEFT jacket lapel swings on
+       1.16s  bow tie ties — knot, then both wings snap out
+     Resolves into the exact launcher icon. Mirrored by
+     windowSplashScreenAnimationDuration + the MainActivity keep-on hold. -->
+<animated-vector xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:aapt="http://schemas.android.com/aapt"
+    android:drawable="@drawable/splash_jeeves">
+
+    <!-- White tile pops in -->
+    <target android:name="tile_group">
+        <aapt:attr name="android:animation">
+            <set android:ordering="together">
+                <objectAnimator
+                    android:propertyName="scaleX"
+                    android:valueFrom="0.7" android:valueTo="1"
+                    android:duration="300" android:startOffset="0"
+                    android:interpolator="@android:interpolator/overshoot" />
+                <objectAnimator
+                    android:propertyName="scaleY"
+                    android:valueFrom="0.7" android:valueTo="1"
+                    android:duration="300" android:startOffset="0"
+                    android:interpolator="@android:interpolator/overshoot" />
+            </set>
+        </aapt:attr>
+    </target>
+    <target android:name="tile">
+        <aapt:attr name="android:animation">
+            <objectAnimator
+                android:propertyName="fillAlpha"
+                android:valueFrom="0" android:valueTo="1"
+                android:duration="240" android:startOffset="0"
+                android:interpolator="@android:interpolator/decelerate_cubic" />
+        </aapt:attr>
+    </target>
+
+    <!-- Buttons fasten top-to-bottom (Moved to 1st) -->
+    <target android:name="btn1">
+        <aapt:attr name="android:animation">
+            <objectAnimator android:propertyName="fillAlpha"
+                android:valueFrom="0" android:valueTo="1"
+                android:duration="120" android:startOffset="260"
+                android:interpolator="@android:interpolator/decelerate_cubic" />
+        </aapt:attr>
+    </target>
+    <target android:name="btn2">
+        <aapt:attr name="android:animation">
+            <objectAnimator android:propertyName="fillAlpha"
+                android:valueFrom="0" android:valueTo="1"
+                android:duration="120" android:startOffset="320"
+                android:interpolator="@android:interpolator/decelerate_cubic" />
+        </aapt:attr>
+    </target>
+    <target android:name="btn3">
+        <aapt:attr name="android:animation">
+            <objectAnimator android:propertyName="fillAlpha"
+                android:valueFrom="0" android:valueTo="1"
+                android:duration="120" android:startOffset="380"
+                android:interpolator="@android:interpolator/decelerate_cubic" />
+        </aapt:attr>
+    </target>
+
+    <!-- Right lapel swings on (Moved to 2nd) -->
+    <target android:name="jacket_right">
+        <aapt:attr name="android:animation">
+            <set android:ordering="together">
+                <objectAnimator
+                    android:propertyName="rotation"
+                    android:valueFrom="48" android:valueTo="0"
+                    android:duration="480" android:startOffset="560"
+                    android:interpolator="@android:interpolator/overshoot" />
+                <objectAnimator
+                    android:propertyName="translateX"
+                    android:valueFrom="30" android:valueTo="0"
+                    android:duration="480" android:startOffset="560"
+                    android:interpolator="@android:interpolator/decelerate_cubic" />
+            </set>
+        </aapt:attr>
+    </target>
+    <target android:name="jacket_right_path">
+        <aapt:attr name="android:animation">
+            <objectAnimator
+                android:propertyName="fillAlpha"
+                android:valueFrom="0" android:valueTo="1"
+                android:duration="220" android:startOffset="560"
+                android:interpolator="@android:interpolator/decelerate_cubic" />
+        </aapt:attr>
+    </target>
+
+    <!-- Left lapel swings on (Moved to 3rd) -->
+    <target android:name="jacket_left">
+        <aapt:attr name="android:animation">
+            <set android:ordering="together">
+                <objectAnimator
+                    android:propertyName="rotation"
+                    android:valueFrom="-48" android:valueTo="0"
+                    android:duration="480" android:startOffset="860"
+                    android:interpolator="@android:interpolator/overshoot" />
+                <objectAnimator
+                    android:propertyName="translateX"
+                    android:valueFrom="-30" android:valueTo="0"
+                    android:duration="480" android:startOffset="860"
+                    android:interpolator="@android:interpolator/decelerate_cubic" />
+            </set>
+        </aapt:attr>
+    </target>
+    <target android:name="jacket_left_path">
+        <aapt:attr name="android:animation">
+            <objectAnimator
+                android:propertyName="fillAlpha"
+                android:valueFrom="0" android:valueTo="1"
+                android:duration="220" android:startOffset="860"
+                android:interpolator="@android:interpolator/decelerate_cubic" />
+        </aapt:attr>
+    </target>
+
+    <!-- Bow tie: knot then wings snap out (Moved to 4th) -->
+    <target android:name="bowtie_knot">
+        <aapt:attr name="android:animation">
+            <objectAnimator
+                android:propertyName="fillAlpha"
+                android:valueFrom="0" android:valueTo="1"
+                android:duration="140" android:startOffset="1160"
+                android:interpolator="@android:interpolator/decelerate_cubic" />
+        </aapt:attr>
+    </target>
+    <target android:name="bowtie_left">
+        <aapt:attr name="android:animation">
+            <objectAnimator
+                android:propertyName="scaleX"
+                android:valueFrom="0" android:valueTo="1"
+                android:duration="300" android:startOffset="1180"
+                android:interpolator="@android:interpolator/overshoot" />
+        </aapt:attr>
+    </target>
+    <target android:name="bowtie_left_path">
+        <aapt:attr name="android:animation">
+            <objectAnimator
+                android:propertyName="fillAlpha"
+                android:valueFrom="0" android:valueTo="1"
+                android:duration="120" android:startOffset="1180"
+                android:interpolator="@android:interpolator/decelerate_cubic" />
+        </aapt:attr>
+    </target>
+    <target android:name="bowtie_right">
+        <aapt:attr name="android:animation">
+            <objectAnimator
+                android:propertyName="scaleX"
+                android:valueFrom="0" android:valueTo="1"
+                android:duration="300" android:startOffset="1180"
+                android:interpolator="@android:interpolator/overshoot" />
+        </aapt:attr>
+    </target>
+    <target android:name="bowtie_right_path">
+        <aapt:attr name="android:animation">
+            <objectAnimator
+                android:propertyName="fillAlpha"
+                android:valueFrom="0" android:valueTo="1"
+                android:duration="120" android:startOffset="1180"
+                android:interpolator="@android:interpolator/decelerate_cubic" />
+        </aapt:attr>
+    </target>
+
+</animated-vector>

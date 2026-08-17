@@ -159,7 +159,10 @@ class DelegateTool @Inject constructor(
             ),
             LlmMessage(role = "user", content = goal),
         )
-        val decision = router.route(messages)
+        val decision = router.route(
+            messages,
+            com.hermes.agent.data.llm.RoutingContext(requiresReliableToolCalls = true),
+        )
         if (decision is RoutingDecision.Unavailable) {
             return "[subagent unavailable: ${decision.reason}]"
         }

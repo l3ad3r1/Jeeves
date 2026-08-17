@@ -166,7 +166,7 @@ class AgentLoopRunnerTest {
                 return LlmToolResponse("late", emptyList(), 1, "fake", "stop")
             }
         }
-        val runner = AgentLoopRunner(registry, executor, RepeatedExecutionGuard(), ToolExecutionPolicy())
+        val runner = AgentLoopRunner(registry, executor, RepeatedExecutionGuard(), ToolExecutionPolicy(mockk(relaxed = true)))
 
         val result = runner.run(
             provider,
@@ -188,7 +188,7 @@ class AgentLoopRunnerTest {
             registry,
             executor,
             FakeProvider(response),
-            AgentLoopRunner(registry, executor, RepeatedExecutionGuard(), ToolExecutionPolicy()),
+            AgentLoopRunner(registry, executor, RepeatedExecutionGuard(), ToolExecutionPolicy(mockk(relaxed = true))),
         )
     }
 

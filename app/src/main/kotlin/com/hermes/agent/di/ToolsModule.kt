@@ -3,6 +3,12 @@ package com.hermes.agent.di
 import com.hermes.agent.data.tools.CalculatorTool
 import com.hermes.agent.data.tools.ShellTool
 import com.hermes.agent.data.tools.CalendarTool
+import com.hermes.agent.data.tools.AlarmTool
+import com.hermes.agent.data.tools.CommunicationTool
+import com.hermes.agent.data.tools.ContactLookupTool
+import com.hermes.agent.data.tools.DeviceControlTool
+import com.hermes.agent.data.tools.MediaControlTool
+import com.hermes.agent.data.tools.NavigationTool
 import com.hermes.agent.data.tools.ClarifyTool
 import com.hermes.agent.data.tools.ConversationSearchTool
 import com.hermes.agent.data.tools.CreateNoteTool
@@ -21,6 +27,11 @@ import com.hermes.agent.data.tools.TtsTool
 import com.hermes.agent.data.tools.WebFetchTool
 import com.hermes.agent.data.tools.WebSearchTool
 import com.hermes.agent.data.tools.WebhookTool
+import com.hermes.agent.data.tools.AppAnalyzeScreenTool
+import com.hermes.agent.data.tools.AppLaunchTool
+import com.hermes.agent.data.tools.AppTapTool
+import com.hermes.agent.data.tools.AppSwipeTool
+import com.hermes.agent.data.tools.AppTypeTool
 import com.hermes.agent.domain.tool.Tool
 import com.hermes.agent.domain.tool.ToolRegistry
 import dagger.Module
@@ -55,6 +66,12 @@ object ToolsModule {
         notesTool: NotesTool,
         conversationSearchTool: ConversationSearchTool,
         calendarTool: CalendarTool,
+        alarmTool: AlarmTool,
+        navigationTool: NavigationTool,
+        communicationTool: CommunicationTool,
+        contactLookupTool: ContactLookupTool,
+        mediaControlTool: MediaControlTool,
+        deviceControlTool: DeviceControlTool,
         skillManagerTool: SkillManagerTool,
         memoryTool: MemoryTool,
         schedulerTool: SchedulerTool,
@@ -65,6 +82,11 @@ object ToolsModule {
         clarifyTool: ClarifyTool,
         delegateTool: DelegateTool,
         imageGenerationTool: ImageGenerationTool,
+        appLaunchTool: AppLaunchTool,
+        appAnalyzeScreenTool: AppAnalyzeScreenTool,
+        appTapTool: AppTapTool,
+        appSwipeTool: AppSwipeTool,
+        appTypeTool: AppTypeTool,
         // Cross-feature tools: reach into :feature:jotter and :feature:butler
         // through the unified Hilt graph (JotterModule / ButlerModule).
         createNoteTool: CreateNoteTool,
@@ -82,6 +104,12 @@ object ToolsModule {
             notesTool,
             conversationSearchTool,
             calendarTool,
+            alarmTool,
+            navigationTool,
+            communicationTool,
+            contactLookupTool,
+            mediaControlTool,
+            deviceControlTool,
             skillManagerTool,
             memoryTool,
             schedulerTool,
@@ -92,6 +120,11 @@ object ToolsModule {
             clarifyTool,
             delegateTool,
             imageGenerationTool,
+            appLaunchTool,
+            appAnalyzeScreenTool,
+            appTapTool,
+            appSwipeTool,
+            appTypeTool,
             createNoteTool,
             searchNotesTool,
             setAlarmTool,

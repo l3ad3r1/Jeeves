@@ -43,3 +43,11 @@ graphify-out/
 #   cp "<Butler Alarm>/app/src/main/assets/tts/"*.{onnx,bin} feature/butler/src/main/assets/tts/
 feature/butler/src/main/assets/tts/*.onnx
 feature/butler/src/main/assets/tts/*.bin
+
+# Build/CI/test debris — untracked, never commit (Antigravity leaves these)
+*.log
+full_log*.txt
+ci_*.txt
+logcat*.txt
+devicegate/
+temp_release_notes.md
