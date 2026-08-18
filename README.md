@@ -29,7 +29,9 @@ Jeeves dynamically extracts facts, preferences, and workflows from your conversa
 ## Advanced Usage
 
 - **CRON Scheduling**: Instruct Jeeves to perform background tasks (e.g., summarizing news, checking a server) using standard 5-field CRON expressions.
-- **Self-Evolution Export**: Export your session logs to train and refine local agentic models.
+- **Self-Improvement**: Jeeves reflects on how its skills and agents actually performed on your
+  device and proposes improvements. Every change is gated, needs your approval, and is version
+  history you can roll back. (The older offline session-export path is retired.)
 - **Local Backups**: Securely back up your memory, skills, and configuration to a private GitHub Gist.
 
 ## Building from Source

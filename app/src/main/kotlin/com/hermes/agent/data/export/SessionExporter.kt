@@ -1,6 +1,7 @@
 package com.hermes.agent.data.export
 
 import android.content.Context
+import com.hermes.agent.data.evolution.TraceHeuristics
 import com.hermes.agent.data.local.dao.ConversationDao
 import com.hermes.agent.data.local.dao.MessageDao
 import com.hermes.agent.util.DispatcherProvider
@@ -33,10 +34,23 @@ import javax.inject.Singleton
  * archive into `~/.hermes/sessions/` on the dev machine, then run e.g.
  * `python -m evolution.skills.evolve_skill --skill X --eval-source sessiondb`.
  *
- * Note: message content is exported verbatim. The Python importer strips
- * secrets when mining; the archive itself is not redacted, so treat it as
- * sensitive.
+ * Credentials are stripped through [TraceHeuristics.redact] before anything is
+ * written. The Python importer also strips secrets when mining, but that is far
+ * too late: the archive is handed to Android's share sheet first, so it has to
+ * leave this class already clean. The remaining chat text is still personal —
+ * treat the archive as sensitive.
+ *
+ * LEGACY. Refinement now runs on-device (`data/evolution/`), where edits are
+ * gated, versioned and reversible, and the offline loop was never closed — no
+ * import path ever brought evolved skills back. The Settings entry has been
+ * removed; this class is kept, working and redacted, so the export can be
+ * re-enabled by restoring that one UI section if the offline loop is ever
+ * wired up properly.
  */
+@Deprecated(
+    "Offline self-evolution export is retired; on-device refinement replaces it. " +
+        "Kept for re-enabling if the offline round-trip is ever completed.",
+)
 @Singleton
 class SessionExporter @Inject constructor(
     @ApplicationContext private val context: Context,
@@ -71,14 +85,14 @@ class SessionExporter @Inject constructor(
                 arr.put(
                     JSONObject()
                         .put("role", m.role)        // already OpenAI wire name
-                        .put("content", m.content),
+                        .put("content", TraceHeuristics.redact(m.content)),
                 )
                 messageCount++
             }
 
             val obj = JSONObject()
                 .put("session_id", conv.id)
-                .put("title", conv.title)
+                .put("title", TraceHeuristics.redact(conv.title))
                 .put("messages", arr)
 
             File(staging, "${conv.id}.json").writeText(obj.toString())
