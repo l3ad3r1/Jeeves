@@ -46,4 +46,5 @@ interface SettingsRepository {
     suspend fun setSshPort(port: Int)
     suspend fun setSshUser(user: String)
     suspend fun setSshPassword(password: String)
+    suspend fun setBackupPassphrase(passphrase: String)
 }

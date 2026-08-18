@@ -55,6 +55,7 @@ class SettingsRepositoryImpl @Inject constructor(
         val SSH_PORT = intPreferencesKey("ssh_port")
         val SSH_USER = stringPreferencesKey("ssh_user")
         val SSH_PASSWORD = stringPreferencesKey("ssh_password")
+        val BACKUP_PASSPHRASE = stringPreferencesKey("backup_passphrase")
     }
 
     override fun observe(): Flow<UserSettings> = context.hermesDataStore.data.map { prefs ->
@@ -185,6 +186,10 @@ class SettingsRepositoryImpl @Inject constructor(
         context.hermesDataStore.edit { it[Keys.SSH_PASSWORD] = password }
     }
 
+    override suspend fun setBackupPassphrase(passphrase: String) {
+        context.hermesDataStore.edit { it[Keys.BACKUP_PASSPHRASE] = passphrase }
+    }
+
     private fun Preferences.toUserSettings(): UserSettings {
         return UserSettings(
             cloudEnabled = this[Keys.CLOUD_ENABLED] ?: false,
@@ -215,6 +220,7 @@ class SettingsRepositoryImpl @Inject constructor(
             sshPort = this[Keys.SSH_PORT] ?: 22,
             sshUser = this[Keys.SSH_USER] ?: "",
             sshPassword = this[Keys.SSH_PASSWORD] ?: "",
+            backupPassphrase = this[Keys.BACKUP_PASSPHRASE] ?: "",
         )
     }
 
