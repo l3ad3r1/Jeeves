@@ -57,6 +57,14 @@ class HermesApp : Application(), Configuration.Provider {
     @Inject
     lateinit var executionPlanRepositoryProvider: Provider<ExecutionPlanRepository>
 
+    @Inject
+    lateinit var encryptedSettingsProvider:
+        Provider<com.hermes.agent.data.security.EncryptedSettingsRepository>
+
+    @Inject
+    lateinit var restoredSecretsProvider:
+        Provider<com.hermes.agent.data.backup.RestoredSecretsApplier>
+
     private val applicationScope = CoroutineScope(Dispatchers.Default)
 
     override fun onCreate() {
@@ -75,6 +83,21 @@ class HermesApp : Application(), Configuration.Provider {
         applicationScope.launch {
             runCatching { noteIndexerProvider.get().start(applicationScope) }
                 .onFailure { Timber.tag("NoteIndexer").w(it, "note indexing unavailable") }
+        }
+        // A settings file restored from another install carries secrets encrypted
+        // under that install's keystore key. They can never be decrypted here, so
+        // they are cleared rather than left to masquerade as configured keys.
+        // Idempotent and cheap, so it runs every start instead of needing a flag
+        // handshake with the restore path.
+        applicationScope.launch {
+            // Order matters: credentials staged by a restore are applied first,
+            // then the sweep clears anything still unreadable. Reversed, the
+            // sweep would run before the restore had a chance to supply the
+            // working values.
+            runCatching { restoredSecretsProvider.get().applyPending() }
+                .onFailure { Timber.tag("RestoreSecrets").w(it, "restore apply unavailable") }
+            runCatching { encryptedSettingsProvider.get().clearUnreadableSecrets() }
+                .onFailure { Timber.tag("Settings").w(it, "secret sweep unavailable") }
         }
         applicationScope.launch {
             runCatching { executionPlanRepositoryProvider.get().reconcileInterruptedSteps() }

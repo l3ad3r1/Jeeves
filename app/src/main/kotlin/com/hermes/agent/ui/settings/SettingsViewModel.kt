@@ -107,6 +107,7 @@ class SettingsViewModel @Inject constructor(
     private val cloudModelCatalog: CloudModelCatalog,
     private val localLlmManager: com.hermes.agent.data.llm.LocalLlmManager,
     private val localBackupManager: LocalBackupManager,
+    private val restoredSecretsApplier: com.hermes.agent.data.backup.RestoredSecretsApplier,
     private val deviceAuthenticationService: DeviceAuthenticationService = DeviceAuthenticationService(),
 ) : ViewModel() {
 
@@ -266,6 +267,40 @@ class SettingsViewModel @Inject constructor(
 
     private val _backupState = MutableStateFlow<BackupUiState>(BackupUiState.Idle)
     val backupState: StateFlow<BackupUiState> = _backupState.asStateFlow()
+
+    /**
+     * True when a restored archive is holding credentials this device's own
+     * passphrase could not open — i.e. the backup came from another install.
+     * Re-read after each attempt rather than observed, since it only changes in
+     * response to actions on this screen.
+     */
+    private val _pendingRestoreSecrets = MutableStateFlow(restoredSecretsApplier.hasPending())
+    val pendingRestoreSecrets: StateFlow<Boolean> = _pendingRestoreSecrets.asStateFlow()
+
+    private val _restoreSecretsState = MutableStateFlow<BackupUiState>(BackupUiState.Idle)
+    val restoreSecretsState: StateFlow<BackupUiState> = _restoreSecretsState.asStateFlow()
+
+    /** Unlock credentials staged by a restore, using the source device's passphrase. */
+    fun applyRestorePassphrase(passphrase: String) = viewModelScope.launch {
+        _restoreSecretsState.value = BackupUiState.InProgress
+        runCatching { restoredSecretsApplier.applyWith(passphrase.trim()) }
+            .onSuccess { outcome ->
+                _restoreSecretsState.value = when (outcome) {
+                    is com.hermes.agent.data.backup.RestoredSecretsApplier.Outcome.Applied ->
+                        BackupUiState.Success("Restored ${outcome.count} credential(s).")
+                    com.hermes.agent.data.backup.RestoredSecretsApplier.Outcome.NeedsPassphrase ->
+                        BackupUiState.Error("That password did not unlock the backup.")
+                    com.hermes.agent.data.backup.RestoredSecretsApplier.Outcome.Nothing ->
+                        BackupUiState.Error("No restored credentials are waiting.")
+                }
+                _pendingRestoreSecrets.value = restoredSecretsApplier.hasPending()
+            }
+            .onFailure { _restoreSecretsState.value = BackupUiState.Error(it.message ?: "Failed") }
+    }
+
+    fun dismissRestoreSecretsState() {
+        _restoreSecretsState.value = BackupUiState.Idle
+    }
 
     private val _localBackupState = MutableStateFlow<BackupUiState>(BackupUiState.Idle)
     val localBackupState: StateFlow<BackupUiState> = _localBackupState.asStateFlow()
@@ -676,7 +711,7 @@ class SettingsViewModel @Inject constructor(
         viewModelScope.launch {
             val result = localBackupManager.exportToZip()
             if (result.isSuccess) {
-                _localBackupState.value = BackupUiState.Success("Local backup saved to Hermes Agent/Backup")
+                _localBackupState.value = BackupUiState.Success("Local backup saved to Jeeves/Backup")
             } else {
                 _localBackupState.value = BackupUiState.Error(result.exceptionOrNull()?.message ?: "Failed to save backup")
             }
@@ -701,7 +736,14 @@ class SettingsViewModel @Inject constructor(
     }
 
     // --- Session export (for offline self-evolution) ---
+    //
+    // LEGACY, and no longer reachable: the Settings section that drove this was
+    // removed when the offline export was retired in favour of on-device
+    // refinement. Kept wired so restoring that one UI section re-enables the
+    // feature; see [SessionExporter] for why it was retired.
 
+    @Suppress("DEPRECATION")
+    @Deprecated("Offline self-evolution export is retired; see SessionExporter.")
     fun exportSessions() {
         if (_exportState.value is ExportUiState.InProgress) return
         _exportState.value = ExportUiState.InProgress
@@ -720,6 +762,7 @@ class SettingsViewModel @Inject constructor(
         }
     }
 
+    @Deprecated("Offline self-evolution export is retired; see SessionExporter.")
     fun dismissExportState() {
         _exportState.value = ExportUiState.Idle
     }

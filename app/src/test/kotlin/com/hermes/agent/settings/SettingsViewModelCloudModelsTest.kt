@@ -82,6 +82,7 @@ class SettingsViewModelCloudModelsTest {
             githubBackupService = mockk<GithubBackupService>(relaxed = true),
             sessionExporter = mockk<SessionExporter>(relaxed = true),
             localBackupManager = mockk<com.hermes.agent.data.backup.LocalBackupManager>(relaxed = true),
+            restoredSecretsApplier = mockk<com.hermes.agent.data.backup.RestoredSecretsApplier>(relaxed = true),
             cloudModelCatalog = catalog,
             localLlmManager = localManager,
         )
