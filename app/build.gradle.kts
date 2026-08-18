@@ -116,6 +116,11 @@ android {
                 arguments += "-DGGML_BACKEND_DL=ON"
                 arguments += "-DGGML_CPU_ALL_VARIANTS=ON"
                 arguments += "-DGGML_LLAMAFILE=OFF"
+                // 16 KB page support (Android 15+). NDK r27+ already links this
+                // way by default, but the flag is explicit so a toolchain
+                // downgrade cannot silently reintroduce 4 KB-aligned segments.
+                arguments += "-DCMAKE_SHARED_LINKER_FLAGS=-Wl,-z,max-page-size=16384"
+                arguments += "-DCMAKE_EXE_LINKER_FLAGS=-Wl,-z,max-page-size=16384"
                 
                 // The NDK sysroot has vulkan.h but NOT the C++ vulkan.hpp that
                 // ggml-vulkan includes; both glslc and the Vulkan-Hpp headers
@@ -166,7 +171,7 @@ android {
         // 15+ devices. (The legacy-packaging override existed only to extract
         // the now-removed BusyBox executable.)
         jniLibs {
-            useLegacyPackaging = true
+            useLegacyPackaging = false
             // ONNX Runtime ships libonnxruntime.so in more than one AAR entry.
             // Carried over from Sassy Butler's app module (:feature:butler consumes it).
             pickFirsts += "**/libonnxruntime.so"
