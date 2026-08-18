@@ -137,6 +137,7 @@ class SkillImprovementWorker @AssistedInject constructor(
                             version = SkillDoc.bumpPatch(skill.version),
                             requiresTools = skill.requiresTools,
                             fallbackForTools = skill.fallbackForTools,
+                            revisionNote = "Weekly improvement pass",
                         )
                         improvedNames += skill.name
                         Timber.tag("SkillImprove").i("improved skill: ${skill.name}")

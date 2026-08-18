@@ -225,6 +225,7 @@ class GithubBackupService @Inject constructor(
                         category = s.category,
                         tags = s.tags,
                         version = s.version,
+                        revisionNote = "Restored from GitHub backup",
                     )
                 }
                     .onSuccess { skillsImported++ }
