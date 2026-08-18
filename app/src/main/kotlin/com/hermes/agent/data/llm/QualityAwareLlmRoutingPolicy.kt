@@ -7,6 +7,17 @@ import javax.inject.Singleton
 data class RoutingContext(
     val requiresReliableToolCalls: Boolean = false,
     val requiredAlias: String? = null,
+    /**
+     * Drop the on-device model from the routed chain, so a request either runs
+     * on a cloud provider or fails.
+     *
+     * Self-modification uses this. Chat degrading to the local 1B model is a
+     * reasonable last resort — a weaker answer still beats no answer — but a 1B
+     * model rewriting a skill body or an agent's operating notes writes that
+     * damage to durable state, where it outlives the request. Failing cleanly
+     * is the better outcome there.
+     */
+    val cloudOnly: Boolean = false,
 )
 
 /** The role and normalized operating characteristics of one runnable model. */
