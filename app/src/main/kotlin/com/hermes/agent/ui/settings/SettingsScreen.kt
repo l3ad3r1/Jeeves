@@ -90,7 +90,7 @@ fun SettingsScreen(
                     NavRow(
                         icon = Icons.Outlined.Build,
                         title = "Advanced",
-                        subtitle = "Backup, updates, and session export",
+                        subtitle = "Backup and updates",
                         onClick = { onNavigate("settings_advanced") },
                     )
                     HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp))
@@ -153,6 +153,13 @@ fun SettingsScreen(
                         title = "Refine skills",
                         subtitle = "Improve a skill from how it was actually used",
                         onClick = { onNavigate("refine_skills") },
+                    )
+                    HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp))
+                    NavRow(
+                        icon = Icons.Outlined.Science,
+                        title = "Agent operating notes",
+                        subtitle = "Learned guidance layered on each agent's built-in prompt",
+                        onClick = { onNavigate("refine_prompts") },
                     )
                     HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp))
                     NavRow(

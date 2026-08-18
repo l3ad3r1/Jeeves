@@ -24,6 +24,7 @@ import com.hermes.agent.ui.conversations.ConversationsScreen
 import com.hermes.agent.ui.cron.CronScreen
 import com.hermes.agent.ui.delegate.DelegateScreen
 import com.hermes.agent.ui.documents.DocumentsScreen
+import com.hermes.agent.ui.evolution.RefinePromptScreen
 import com.hermes.agent.ui.evolution.RefineSkillScreen
 import com.hermes.agent.ui.experiment.ExperimentScreen
 import com.hermes.agent.ui.home.HomeScreen
@@ -169,6 +170,7 @@ fun HermesNavGraph(startAtSettings: Boolean = false) {
             composable("activity_ledger") { LedgerScreen(onBack = { navController.popBackStack() }) }
             composable("learning") { LearningScreen(onBack = { navController.popBackStack() }) }
             composable("refine_skills") { RefineSkillScreen(onBack = { navController.popBackStack() }) }
+            composable("refine_prompts") { RefinePromptScreen(onBack = { navController.popBackStack() }) }
         }
     }
 }

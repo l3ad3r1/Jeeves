@@ -162,6 +162,7 @@ class OrchestratorPlanPersistenceTest {
                 override val unconfined = Dispatchers.Unconfined
             },
             memoryRepository = memoryRepository,
+            supplementalPromptRepository = mockk(relaxed = true),
             conversationLearner = mockk<ConversationLearner>(relaxed = true),
             toolConfirmationService = mockk<ToolConfirmationService>(relaxed = true),
             autonomousSkillCreator = mockk<AutonomousSkillCreator>(relaxed = true),

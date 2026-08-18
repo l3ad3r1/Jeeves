@@ -21,6 +21,7 @@ import com.hermes.agent.domain.model.ActivityKind
 import com.hermes.agent.domain.model.StepStatus
 import com.hermes.agent.domain.repository.ExecutionPlanRepository
 import com.hermes.agent.domain.repository.MemoryRepository
+import com.hermes.agent.domain.repository.SupplementalPromptRepository
 import com.hermes.agent.domain.tool.ToolRegistry
 import com.hermes.agent.domain.tool.ToolExecutionDecision
 import com.hermes.agent.domain.tool.ToolExecutionPolicy
@@ -73,6 +74,7 @@ class OrchestratorImpl @Inject constructor(
     private val toolExecutionPolicy: ToolExecutionPolicy,
     private val dispatchers: DispatcherProvider,
     private val memoryRepository: MemoryRepository,
+    private val supplementalPromptRepository: SupplementalPromptRepository,
     private val conversationLearner: ConversationLearner,
     private val toolConfirmationService: com.hermes.agent.domain.tool.ToolConfirmationService,
     private val autonomousSkillCreator: AutonomousSkillCreator,
@@ -232,6 +234,12 @@ class OrchestratorImpl @Inject constructor(
         // lexical match — zero LLM cost; see SkillMatcher).
         val skillBlock = skillBlockDeferred
 
+        // 3.6. Continual-harness state: learned, user-approved guidance layered
+        // on top of each agent's immutable base prompt. Fetched once here rather
+        // than per step — it is five rows at most and the plan may revisit a role.
+        val supplementalPrompts = runCatching { supplementalPromptRepository.getAll() }
+            .getOrDefault(emptyMap())
+
         // 4. Execute each step; collect all tool names used for learning.
         val aggregator = StringBuilder()
         val allToolsUsed = mutableListOf<String>()
@@ -252,8 +260,23 @@ class OrchestratorImpl @Inject constructor(
             } else ""
 
             val toolInstruction = if (tools.isNotEmpty()) ToolCallPrompt.INSTRUCTION else ""
+
+            // Appended to the base prompt, never substituted for it: the base
+            // declares the agent's tools and wiring and stays immutable, while
+            // this block is the part refinement is allowed to change.
+            val supplementalBlock = supplementalPrompts[step.agentRole]
+                ?.takeIf { !it.isEmpty }
+                ?.let { "\n\n## Learned operating notes\n${it.content.trim()}" }
+                ?: ""
+
             val llmMessages = buildList {
-                add(LlmMessage(role = "system", content = agent.systemPrompt + memoryBlock + skillBlock + previousContext + toolInstruction))
+                add(
+                    LlmMessage(
+                        role = "system",
+                        content = agent.systemPrompt + supplementalBlock + memoryBlock +
+                            skillBlock + previousContext + toolInstruction,
+                    ),
+                )
                 addAll(recentMessages)
                 if (recentMessages.none { it.role == "user" && it.content == userMessage }) {
                     add(LlmMessage(role = "user", content = userMessage))
