@@ -8,12 +8,12 @@ import androidx.work.WorkManager
 import com.hermes.agent.data.agent.AgentLoopFailureReason
 import com.hermes.agent.data.agent.AgentLoopOutcome
 import com.hermes.agent.data.agent.AgentLoopRunner
-import com.hermes.agent.data.llm.LlmMessage
+import com.hermes.agent.domain.model.LlmMessage
 import com.hermes.agent.data.llm.LlmProvider
-import com.hermes.agent.data.llm.LlmResponse
-import com.hermes.agent.data.llm.LlmStreamChunk
-import com.hermes.agent.data.llm.LlmToolResponse
-import com.hermes.agent.data.llm.ToolCall
+import com.hermes.agent.domain.model.LlmResponse
+import com.hermes.agent.domain.model.LlmStreamChunk
+import com.hermes.agent.domain.model.LlmToolResponse
+import com.hermes.agent.domain.model.ToolCall
 import com.hermes.agent.data.proactive.BudgetStateStore
 import com.hermes.agent.data.proactive.NotificationCaptureStore
 import com.hermes.agent.data.proactive.ProactiveNotifier

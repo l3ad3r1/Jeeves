@@ -36,7 +36,7 @@ class MemoryConsolidationWorker @AssistedInject constructor(
     private val conversationDao: ConversationDao,
     private val messageDao: MessageDao,
     private val consolidator: MemoryConsolidator,
-    private val habitExtractor: com.hermes.agent.domain.agent.HabitExtractor,
+    private val habitExtractor: com.hermes.agent.data.agent.HabitExtractor,
 ) : CoroutineWorker(appContext, params) {
 
     override suspend fun doWork(): Result {

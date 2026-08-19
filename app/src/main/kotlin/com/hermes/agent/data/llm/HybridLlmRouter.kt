@@ -1,5 +1,7 @@
 package com.hermes.agent.data.llm
 
+import com.hermes.agent.domain.model.LlmMessage
+
 import com.hermes.agent.data.settings.SettingsRepository
 import timber.log.Timber
 import javax.inject.Inject

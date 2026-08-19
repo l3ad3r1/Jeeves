@@ -1,5 +1,7 @@
 package com.hermes.agent.data.llm
 
+import com.hermes.agent.domain.model.ToolCall
+
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonElement

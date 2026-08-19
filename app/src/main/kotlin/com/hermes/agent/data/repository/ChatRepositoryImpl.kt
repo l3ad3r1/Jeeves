@@ -1,8 +1,8 @@
 package com.hermes.agent.data.repository
 
-import com.hermes.agent.data.llm.LlmMessage
+import com.hermes.agent.domain.model.LlmMessage
 import com.hermes.agent.data.llm.LlmRouter
-import com.hermes.agent.data.llm.LlmStreamChunk
+import com.hermes.agent.domain.model.LlmStreamChunk
 import com.hermes.agent.data.llm.RoutingDecision
 import com.hermes.agent.domain.agent.ExecutionOrigin
 import com.hermes.agent.domain.agent.Orchestrator

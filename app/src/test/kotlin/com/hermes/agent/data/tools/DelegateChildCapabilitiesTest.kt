@@ -1,13 +1,13 @@
 package com.hermes.agent.data.tools
 
-import com.hermes.agent.data.llm.LlmMessage
+import com.hermes.agent.domain.model.LlmMessage
 import com.hermes.agent.data.llm.LlmProvider
-import com.hermes.agent.data.llm.LlmResponse
+import com.hermes.agent.domain.model.LlmResponse
 import com.hermes.agent.data.llm.LlmRouter
-import com.hermes.agent.data.llm.LlmStreamChunk
-import com.hermes.agent.data.llm.LlmToolResponse
+import com.hermes.agent.domain.model.LlmStreamChunk
+import com.hermes.agent.domain.model.LlmToolResponse
 import com.hermes.agent.data.llm.RoutingDecision
-import com.hermes.agent.data.llm.ToolCall
+import com.hermes.agent.domain.model.ToolCall
 import com.hermes.agent.data.tool.ToolCallExecutor
 import com.hermes.agent.domain.model.AgentTask
 import com.hermes.agent.domain.repository.AgentTaskRepository

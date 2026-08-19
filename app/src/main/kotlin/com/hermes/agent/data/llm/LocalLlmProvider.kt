@@ -1,5 +1,10 @@
 package com.hermes.agent.data.llm
 
+import com.hermes.agent.domain.model.LlmMessage
+import com.hermes.agent.domain.model.LlmStreamChunk
+import com.hermes.agent.domain.model.LlmResponse
+import com.hermes.agent.domain.model.LlmToolResponse
+
 import com.hermes.agent.domain.tool.ToolDescriptor
 import javax.inject.Inject
 import kotlinx.coroutines.flow.Flow

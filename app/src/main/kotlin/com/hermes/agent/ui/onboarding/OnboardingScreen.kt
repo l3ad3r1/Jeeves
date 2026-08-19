@@ -46,7 +46,7 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
-import com.hermes.agent.data.device.DeviceProfile
+import com.hermes.agent.domain.model.DeviceProfile
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Restore
 import com.hermes.agent.ui.components.HermesDiamond

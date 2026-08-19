@@ -1,5 +1,8 @@
 package com.hermes.agent.data.llm
 
+import com.hermes.agent.domain.model.LlmMessage
+import com.hermes.agent.domain.model.LlmResponse
+
 import com.hermes.agent.data.settings.SettingsRepository
 import com.hermes.agent.data.settings.UserSettings
 import com.hermes.agent.data.settings.CloudProviderProfile

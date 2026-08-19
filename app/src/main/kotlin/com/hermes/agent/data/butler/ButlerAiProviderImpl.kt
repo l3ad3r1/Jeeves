@@ -1,5 +1,7 @@
 package com.hermes.agent.data.butler
 
+import com.hermes.agent.domain.model.LlmMessage
+
 import com.hermes.agent.data.llm.CloudLlmProvider
 import com.sassybutler.alarm.di.ButlerAiProvider
 import javax.inject.Inject
@@ -38,7 +40,7 @@ class ButlerAiProviderImpl @Inject constructor(
         """.trimIndent()
 
         val messages = listOf(
-            com.hermes.agent.data.llm.LlmMessage(role = "system", content = prompt)
+            com.hermes.agent.domain.model.LlmMessage(role = "system", content = prompt)
         )
         val response = cloudLlmProvider.complete(messages)
         return response.content.replace(Regex("[^a-zA-Z0-9 '.,?!-]"), "").trim()
@@ -75,7 +77,7 @@ class ButlerAiProviderImpl @Inject constructor(
         """.trimIndent()
 
         val messages = listOf(
-            com.hermes.agent.data.llm.LlmMessage(role = "system", content = prompt)
+            com.hermes.agent.domain.model.LlmMessage(role = "system", content = prompt)
         )
         val response = cloudLlmProvider.complete(messages)
         // Strip out most special characters to ensure TTS doesn't stumble

@@ -5,7 +5,7 @@ package com.hermes.agent.domain.model
  *
  * This is the domain-layer representation. The persistence layer maps it to
  * [com.hermes.agent.data.local.entity.MessageEntity]; the LLM layer maps it
- * to [com.hermes.agent.data.llm.LlmMessage].
+ * to [com.hermes.agent.domain.model.LlmMessage].
  *
  * @property id Stable unique identifier (UUID).
  * @property conversationId Owning conversation.

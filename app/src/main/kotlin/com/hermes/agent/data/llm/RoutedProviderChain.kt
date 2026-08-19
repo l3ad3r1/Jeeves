@@ -1,5 +1,10 @@
 package com.hermes.agent.data.llm
 
+import com.hermes.agent.domain.model.LlmMessage
+import com.hermes.agent.domain.model.LlmStreamChunk
+import com.hermes.agent.domain.model.LlmResponse
+import com.hermes.agent.domain.model.LlmToolResponse
+
 import com.hermes.agent.domain.tool.ToolDescriptor
 import java.io.IOException
 import java.util.concurrent.atomic.AtomicInteger

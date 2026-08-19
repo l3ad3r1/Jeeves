@@ -1,14 +1,13 @@
-package com.hermes.agent.domain.agent
+package com.hermes.agent.data.agent
 
+import android.content.Context
 import com.hermes.agent.domain.repository.MemoryRepository
 import com.l3ad3r1.octojotter.data.repository.NoteRepository
+import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.first
 import timber.log.Timber
 import javax.inject.Inject
 import javax.inject.Singleton
-
-import android.content.Context
-import dagger.hilt.android.qualifiers.ApplicationContext
 
 /**
  * Extracts habits and routines from the user's connected apps (Daybook alarms, Jotter notes)

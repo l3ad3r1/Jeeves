@@ -1,8 +1,7 @@
-package com.hermes.agent.data.llm
+package com.hermes.agent.domain.model
 
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
-import kotlinx.serialization.json.JsonPrimitive
 
 /**
  * A tool call emitted by the LLM as part of its reply.
@@ -12,10 +11,6 @@ import kotlinx.serialization.json.JsonPrimitive
  *     it back via a `role=tool` message.
  *   - [name] is the tool descriptor name (matches [com.hermes.agent.domain.tool.ToolDescriptor.name]).
  *   - [arguments] is a JSON object keyed by parameter name.
- *
- * Phase 2 parses these from the LLM response payload; Phase 1's mock
- * provider fabricates them when it wants to demonstrate a function-calling
- * round-trip in the UI.
  */
 data class ToolCall(
     val id: String,
