@@ -1,5 +1,11 @@
 package com.hermes.agent.data.tools
 
+import dagger.Binds
+import dagger.Module
+import dagger.hilt.InstallIn
+import dagger.hilt.components.SingletonComponent
+import dagger.multibindings.IntoSet
+
 import android.content.Context
 import android.content.Intent
 import android.net.Uri
@@ -50,4 +56,12 @@ class CommunicationTool @Inject constructor(
             ToolResult.ok("Opened $action")
         }.getOrElse { ToolResult.error("No compatible app is available: ${it.message}") }
     }
+}
+
+@Module
+@InstallIn(SingletonComponent::class)
+abstract class CommunicationToolModule {
+    @Binds
+    @IntoSet
+    abstract fun bindTool(tool: CommunicationTool): Tool
 }

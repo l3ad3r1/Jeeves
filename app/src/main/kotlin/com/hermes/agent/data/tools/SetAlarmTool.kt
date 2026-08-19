@@ -1,5 +1,11 @@
 package com.hermes.agent.data.tools
 
+import dagger.Binds
+import dagger.Module
+import dagger.hilt.InstallIn
+import dagger.hilt.components.SingletonComponent
+import dagger.multibindings.IntoSet
+
 import android.app.AlarmManager
 import android.content.Context
 import android.os.Build
@@ -125,4 +131,12 @@ class SetAlarmTool @Inject constructor(
         /** Agent alarm ids live at 10000 + hour*100 + minute (10000..12359), disjoint from the UI's sequential ids. */
         const val AGENT_ALARM_ID_BASE = 10_000
     }
+}
+
+@Module
+@InstallIn(SingletonComponent::class)
+abstract class SetAlarmToolModule {
+    @Binds
+    @IntoSet
+    abstract fun bindTool(tool: SetAlarmTool): Tool
 }

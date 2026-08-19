@@ -1,5 +1,11 @@
 package com.hermes.agent.data.tools
 
+import dagger.Binds
+import dagger.Module
+import dagger.hilt.InstallIn
+import dagger.hilt.components.SingletonComponent
+import dagger.multibindings.IntoSet
+
 import com.hermes.agent.data.terminal.TermuxCommandRunner
 import com.hermes.agent.domain.tool.Tool
 import com.hermes.agent.domain.tool.ToolDescriptor
@@ -65,4 +71,12 @@ class TermuxTool @Inject constructor(
             )
         }
     }
+}
+
+@Module
+@InstallIn(SingletonComponent::class)
+abstract class TermuxToolModule {
+    @Binds
+    @IntoSet
+    abstract fun bindTool(tool: TermuxTool): Tool
 }

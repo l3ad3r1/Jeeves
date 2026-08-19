@@ -1,5 +1,11 @@
 package com.hermes.agent.data.tools
 
+import dagger.Binds
+import dagger.Module
+import dagger.hilt.InstallIn
+import dagger.hilt.components.SingletonComponent
+import dagger.multibindings.IntoSet
+
 import android.Manifest
 import android.content.Context
 import android.content.pm.PackageManager
@@ -47,4 +53,12 @@ class ContactLookupTool @Inject constructor(
             else ToolResult.ok(rows.joinToString("\n"))
         }.getOrElse { ToolResult.error("Contact lookup failed: ${it.message}") }
     }
+}
+
+@Module
+@InstallIn(SingletonComponent::class)
+abstract class ContactLookupToolModule {
+    @Binds
+    @IntoSet
+    abstract fun bindTool(tool: ContactLookupTool): Tool
 }

@@ -1,5 +1,11 @@
 package com.hermes.agent.data.tools
 
+import dagger.Binds
+import dagger.Module
+import dagger.hilt.InstallIn
+import dagger.hilt.components.SingletonComponent
+import dagger.multibindings.IntoSet
+
 import com.hermes.agent.domain.repository.MemoryRepository
 import com.hermes.agent.domain.tool.Tool
 import com.hermes.agent.domain.tool.ToolDescriptor
@@ -84,4 +90,12 @@ class NotesTool @Inject constructor(
 
     private fun JsonElement.extractString(): String? =
         (this as? JsonPrimitive)?.contentOrNull
+}
+
+@Module
+@InstallIn(SingletonComponent::class)
+abstract class NotesToolModule {
+    @Binds
+    @IntoSet
+    abstract fun bindTool(tool: NotesTool): Tool
 }

@@ -1,5 +1,11 @@
 package com.hermes.agent.data.tools
 
+import dagger.Binds
+import dagger.Module
+import dagger.hilt.InstallIn
+import dagger.hilt.components.SingletonComponent
+import dagger.multibindings.IntoSet
+
 import android.content.Context
 import android.media.AudioManager
 import android.provider.Settings
@@ -128,4 +134,12 @@ class DeviceSettingsTool @Inject constructor(
 
     private fun JsonElement.extractString(): String? =
         (this as? JsonPrimitive)?.contentOrNull
+}
+
+@Module
+@InstallIn(SingletonComponent::class)
+abstract class DeviceSettingsToolModule {
+    @Binds
+    @IntoSet
+    abstract fun bindTool(tool: DeviceSettingsTool): Tool
 }

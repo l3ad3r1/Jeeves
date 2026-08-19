@@ -1,5 +1,11 @@
 package com.hermes.agent.data.tools
 
+import dagger.Binds
+import dagger.Module
+import dagger.hilt.InstallIn
+import dagger.hilt.components.SingletonComponent
+import dagger.multibindings.IntoSet
+
 import com.hermes.agent.data.evolution.SkillRefineScheduler
 import com.hermes.agent.domain.model.SkillLifecycle
 import com.hermes.agent.domain.repository.SkillRepository
@@ -245,4 +251,12 @@ class SkillManagerTool @Inject constructor(
             "research", "productivity", "automation", "devops", "general", "software-development",
         )
     }
+}
+
+@Module
+@InstallIn(SingletonComponent::class)
+abstract class SkillManagerToolModule {
+    @Binds
+    @IntoSet
+    abstract fun bindTool(tool: SkillManagerTool): Tool
 }

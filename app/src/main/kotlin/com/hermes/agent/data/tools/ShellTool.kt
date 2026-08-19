@@ -1,5 +1,11 @@
 package com.hermes.agent.data.tools
 
+import dagger.Binds
+import dagger.Module
+import dagger.hilt.InstallIn
+import dagger.hilt.components.SingletonComponent
+import dagger.multibindings.IntoSet
+
 import com.hermes.agent.data.settings.SettingsRepository
 import com.hermes.agent.domain.terminal.RemoteTerminalBackend
 import com.hermes.agent.domain.tool.Tool
@@ -184,4 +190,12 @@ class ShellTool @Inject constructor(
             },
         )
     }
+}
+
+@Module
+@InstallIn(SingletonComponent::class)
+abstract class ShellToolModule {
+    @Binds
+    @IntoSet
+    abstract fun bindTool(tool: ShellTool): Tool
 }

@@ -1,5 +1,11 @@
 package com.hermes.agent.data.tools
 
+import dagger.Binds
+import dagger.Module
+import dagger.hilt.InstallIn
+import dagger.hilt.components.SingletonComponent
+import dagger.multibindings.IntoSet
+
 import com.hermes.agent.domain.model.CronPresets
 import com.hermes.agent.domain.model.ScheduledTask
 import com.hermes.agent.domain.repository.CronRepository
@@ -178,4 +184,12 @@ class SchedulerTool @Inject constructor(
             }
         }
     }
+}
+
+@Module
+@InstallIn(SingletonComponent::class)
+abstract class SchedulerToolModule {
+    @Binds
+    @IntoSet
+    abstract fun bindTool(tool: SchedulerTool): Tool
 }

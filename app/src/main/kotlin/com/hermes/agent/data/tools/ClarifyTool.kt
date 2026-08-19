@@ -1,5 +1,11 @@
 package com.hermes.agent.data.tools
 
+import dagger.Binds
+import dagger.Module
+import dagger.hilt.InstallIn
+import dagger.hilt.components.SingletonComponent
+import dagger.multibindings.IntoSet
+
 import com.hermes.agent.data.agent.ClarificationBus
 import com.hermes.agent.domain.tool.Tool
 import com.hermes.agent.domain.tool.ToolDescriptor
@@ -79,4 +85,12 @@ class ClarifyTool @Inject constructor(
         // Upstream caps predefined choices at 4 (a 5th "type your own" is implicit).
         const val MAX_CHOICES = 4
     }
+}
+
+@Module
+@InstallIn(SingletonComponent::class)
+abstract class ClarifyToolModule {
+    @Binds
+    @IntoSet
+    abstract fun bindTool(tool: ClarifyTool): Tool
 }

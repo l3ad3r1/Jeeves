@@ -1,5 +1,11 @@
 package com.hermes.agent.data.tools
 
+import dagger.Binds
+import dagger.Module
+import dagger.hilt.InstallIn
+import dagger.hilt.components.SingletonComponent
+import dagger.multibindings.IntoSet
+
 import com.hermes.agent.domain.tool.Tool
 import com.hermes.agent.domain.tool.ToolDescriptor
 import com.hermes.agent.domain.tool.ToolParameter
@@ -104,4 +110,12 @@ class WebFetchTool @Inject constructor(
         return if (stripped.length <= maxChars) stripped
         else stripped.take(maxChars) + "\n…[truncated at $maxChars chars]"
     }
+}
+
+@Module
+@InstallIn(SingletonComponent::class)
+abstract class WebFetchToolModule {
+    @Binds
+    @IntoSet
+    abstract fun bindTool(tool: WebFetchTool): Tool
 }

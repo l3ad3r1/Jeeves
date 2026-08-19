@@ -1,5 +1,11 @@
 package com.hermes.agent.data.tools
 
+import dagger.Binds
+import dagger.Module
+import dagger.hilt.InstallIn
+import dagger.hilt.components.SingletonComponent
+import dagger.multibindings.IntoSet
+
 import android.app.SearchManager
 import android.content.Context
 import android.content.Intent
@@ -53,4 +59,12 @@ class MediaControlTool @Inject constructor(
         audio.dispatchMediaKeyEvent(KeyEvent(KeyEvent.ACTION_UP, keyCode))
         return ToolResult.ok("Media action completed: $action")
     }
+}
+
+@Module
+@InstallIn(SingletonComponent::class)
+abstract class MediaControlToolModule {
+    @Binds
+    @IntoSet
+    abstract fun bindTool(tool: MediaControlTool): Tool
 }

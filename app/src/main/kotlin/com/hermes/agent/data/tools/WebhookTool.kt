@@ -1,5 +1,11 @@
 package com.hermes.agent.data.tools
 
+import dagger.Binds
+import dagger.Module
+import dagger.hilt.InstallIn
+import dagger.hilt.components.SingletonComponent
+import dagger.multibindings.IntoSet
+
 import android.Manifest
 import android.content.Context
 import android.content.pm.PackageManager
@@ -215,4 +221,12 @@ class WebhookTool @Inject constructor(
                 .build()
         ).execute().close()
     }
+}
+
+@Module
+@InstallIn(SingletonComponent::class)
+abstract class WebhookToolModule {
+    @Binds
+    @IntoSet
+    abstract fun bindTool(tool: WebhookTool): Tool
 }

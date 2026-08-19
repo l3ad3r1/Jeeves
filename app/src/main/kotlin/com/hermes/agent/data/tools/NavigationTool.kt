@@ -1,5 +1,11 @@
 package com.hermes.agent.data.tools
 
+import dagger.Binds
+import dagger.Module
+import dagger.hilt.InstallIn
+import dagger.hilt.components.SingletonComponent
+import dagger.multibindings.IntoSet
+
 import android.content.Context
 import android.content.Intent
 import android.net.Uri
@@ -44,4 +50,12 @@ class NavigationTool @Inject constructor(
             ToolResult.ok("Opened navigation for ${query.orEmpty()}")
         }.getOrElse { ToolResult.error("No compatible maps app is available: ${it.message}") }
     }
+}
+
+@Module
+@InstallIn(SingletonComponent::class)
+abstract class NavigationToolModule {
+    @Binds
+    @IntoSet
+    abstract fun bindTool(tool: NavigationTool): Tool
 }

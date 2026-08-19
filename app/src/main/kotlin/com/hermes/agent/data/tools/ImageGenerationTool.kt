@@ -1,5 +1,11 @@
 package com.hermes.agent.data.tools
 
+import dagger.Binds
+import dagger.Module
+import dagger.hilt.InstallIn
+import dagger.hilt.components.SingletonComponent
+import dagger.multibindings.IntoSet
+
 import com.hermes.agent.data.settings.SettingsRepository
 import com.hermes.agent.domain.tool.Tool
 import com.hermes.agent.domain.tool.ToolDescriptor
@@ -150,4 +156,12 @@ class ImageGenerationTool @Inject constructor(
     private companion object {
         val JSON_MEDIA_TYPE = "application/json; charset=utf-8".toMediaType()
     }
+}
+
+@Module
+@InstallIn(SingletonComponent::class)
+abstract class ImageGenerationToolModule {
+    @Binds
+    @IntoSet
+    abstract fun bindTool(tool: ImageGenerationTool): Tool
 }

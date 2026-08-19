@@ -1,5 +1,11 @@
 package com.hermes.agent.data.tools
 
+import dagger.Binds
+import dagger.Module
+import dagger.hilt.InstallIn
+import dagger.hilt.components.SingletonComponent
+import dagger.multibindings.IntoSet
+
 import com.hermes.agent.data.llm.LlmMessage
 import com.hermes.agent.data.llm.LlmRouter
 import com.hermes.agent.data.llm.RoutingDecision
@@ -227,4 +233,12 @@ class DelegateTool @Inject constructor(
                 "materially help. Return only the result — concise, directly usable by the parent, " +
                 "with no preamble or meta-commentary."
     }
+}
+
+@Module
+@InstallIn(SingletonComponent::class)
+abstract class DelegateToolModule {
+    @Binds
+    @IntoSet
+    abstract fun bindTool(tool: DelegateTool): Tool
 }

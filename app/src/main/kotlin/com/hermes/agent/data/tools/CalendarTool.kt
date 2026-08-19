@@ -1,5 +1,11 @@
 package com.hermes.agent.data.tools
 
+import dagger.Binds
+import dagger.Module
+import dagger.hilt.InstallIn
+import dagger.hilt.components.SingletonComponent
+import dagger.multibindings.IntoSet
+
 import com.hermes.agent.domain.calendar.CalendarEventGateway
 import com.hermes.agent.domain.calendar.CalendarEventRequest
 import com.hermes.agent.domain.tool.Tool
@@ -103,4 +109,12 @@ class CalendarTool @Inject constructor(
 
     private fun JsonElement.extractString(): String? =
         (this as? JsonPrimitive)?.contentOrNull
+}
+
+@Module
+@InstallIn(SingletonComponent::class)
+abstract class CalendarToolModule {
+    @Binds
+    @IntoSet
+    abstract fun bindTool(tool: CalendarTool): Tool
 }

@@ -1,5 +1,11 @@
 package com.hermes.agent.data.tools
 
+import dagger.Binds
+import dagger.Module
+import dagger.hilt.InstallIn
+import dagger.hilt.components.SingletonComponent
+import dagger.multibindings.IntoSet
+
 import com.hermes.agent.data.agent.TodoStore
 import com.hermes.agent.domain.tool.Tool
 import com.hermes.agent.domain.tool.ToolDescriptor
@@ -111,4 +117,12 @@ class TodoTool @Inject constructor(
         val VALID_STATUSES = setOf("pending", "in_progress", "completed", "cancelled")
         const val MAX_CONTENT_CHARS = 4000
     }
+}
+
+@Module
+@InstallIn(SingletonComponent::class)
+abstract class TodoToolModule {
+    @Binds
+    @IntoSet
+    abstract fun bindTool(tool: TodoTool): Tool
 }

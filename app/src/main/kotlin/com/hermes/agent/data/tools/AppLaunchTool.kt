@@ -1,5 +1,11 @@
 package com.hermes.agent.data.tools
 
+import dagger.Binds
+import dagger.Module
+import dagger.hilt.InstallIn
+import dagger.hilt.components.SingletonComponent
+import dagger.multibindings.IntoSet
+
 import android.content.Context
 import android.content.Intent
 import com.hermes.agent.data.appagent.ScreenSnapshotStore
@@ -66,4 +72,12 @@ class AppLaunchTool @Inject constructor(
             )
         }
     }
+}
+
+@Module
+@InstallIn(SingletonComponent::class)
+abstract class AppLaunchToolModule {
+    @Binds
+    @IntoSet
+    abstract fun bindTool(tool: AppLaunchTool): Tool
 }

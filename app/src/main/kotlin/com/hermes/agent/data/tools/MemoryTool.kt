@@ -1,5 +1,11 @@
 package com.hermes.agent.data.tools
 
+import dagger.Binds
+import dagger.Module
+import dagger.hilt.InstallIn
+import dagger.hilt.components.SingletonComponent
+import dagger.multibindings.IntoSet
+
 import com.hermes.agent.domain.repository.MemoryRepository
 import com.hermes.agent.domain.tool.Tool
 import com.hermes.agent.domain.tool.ToolDescriptor
@@ -126,4 +132,12 @@ class MemoryTool @Inject constructor(
             else -> ToolResult.error("Unknown action '$action'. Use 'add', 'search', 'list', or 'delete'.")
         }
     }
+}
+
+@Module
+@InstallIn(SingletonComponent::class)
+abstract class MemoryToolModule {
+    @Binds
+    @IntoSet
+    abstract fun bindTool(tool: MemoryTool): Tool
 }

@@ -1,5 +1,11 @@
 package com.hermes.agent.data.tools
 
+import dagger.Binds
+import dagger.Module
+import dagger.hilt.InstallIn
+import dagger.hilt.components.SingletonComponent
+import dagger.multibindings.IntoSet
+
 import com.hermes.agent.domain.tool.Tool
 import com.hermes.agent.domain.tool.ToolDescriptor
 import com.hermes.agent.domain.tool.ToolParameter
@@ -168,4 +174,12 @@ class WebSearchTool @Inject constructor(
         }
         return raw
     }
+}
+
+@Module
+@InstallIn(SingletonComponent::class)
+abstract class WebSearchToolModule {
+    @Binds
+    @IntoSet
+    abstract fun bindTool(tool: WebSearchTool): Tool
 }

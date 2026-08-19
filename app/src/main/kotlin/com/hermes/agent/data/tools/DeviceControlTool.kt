@@ -1,5 +1,11 @@
 package com.hermes.agent.data.tools
 
+import dagger.Binds
+import dagger.Module
+import dagger.hilt.InstallIn
+import dagger.hilt.components.SingletonComponent
+import dagger.multibindings.IntoSet
+
 import android.app.NotificationManager
 import android.content.Context
 import android.hardware.camera2.CameraCharacteristics
@@ -94,4 +100,12 @@ class DeviceControlTool @Inject constructor(
         if (!auto) Settings.System.putInt(context.contentResolver, Settings.System.SCREEN_BRIGHTNESS, (level ?: return ToolResult.error("level is required")).coerceIn(0, 255))
         return ToolResult.ok(if (auto) "Automatic brightness enabled" else "Brightness set to ${level!!.coerceIn(0, 255)}")
     }
+}
+
+@Module
+@InstallIn(SingletonComponent::class)
+abstract class DeviceControlToolModule {
+    @Binds
+    @IntoSet
+    abstract fun bindTool(tool: DeviceControlTool): Tool
 }

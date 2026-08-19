@@ -1,5 +1,11 @@
 package com.hermes.agent.data.tools
 
+import dagger.Binds
+import dagger.Module
+import dagger.hilt.InstallIn
+import dagger.hilt.components.SingletonComponent
+import dagger.multibindings.IntoSet
+
 import com.hermes.agent.data.llm.CloudLlmProvider
 import com.hermes.agent.data.llm.LlmMessage
 import com.hermes.agent.data.local.dao.MessageDao
@@ -111,4 +117,12 @@ class ConversationSearchTool @Inject constructor(
             Do not list every message; synthesise into a readable paragraph.
         """.trimIndent()
     }
+}
+
+@Module
+@InstallIn(SingletonComponent::class)
+abstract class ConversationSearchToolModule {
+    @Binds
+    @IntoSet
+    abstract fun bindTool(tool: ConversationSearchTool): Tool
 }

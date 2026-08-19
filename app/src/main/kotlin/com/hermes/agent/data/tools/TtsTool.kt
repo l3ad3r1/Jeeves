@@ -1,5 +1,11 @@
 package com.hermes.agent.data.tools
 
+import dagger.Binds
+import dagger.Module
+import dagger.hilt.InstallIn
+import dagger.hilt.components.SingletonComponent
+import dagger.multibindings.IntoSet
+
 import com.hermes.agent.data.voice.VoiceOutputEvent
 import com.hermes.agent.data.voice.VoiceOutputManager
 import com.hermes.agent.domain.tool.Tool
@@ -133,4 +139,12 @@ class TtsTool @Inject constructor(
     private companion object {
         const val INIT_TIMEOUT_MS = 5_000L
     }
+}
+
+@Module
+@InstallIn(SingletonComponent::class)
+abstract class TtsToolModule {
+    @Binds
+    @IntoSet
+    abstract fun bindTool(tool: TtsTool): Tool
 }
