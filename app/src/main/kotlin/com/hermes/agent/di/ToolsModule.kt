@@ -1,6 +1,7 @@
 package com.hermes.agent.di
 
 import com.hermes.agent.data.tool.ToolRegistryImpl
+import com.hermes.agent.domain.agent.AgentFeature
 import com.hermes.agent.domain.tool.Tool
 import com.hermes.agent.domain.tool.ToolRegistry
 import dagger.Module
@@ -15,13 +16,17 @@ import javax.inject.Singleton
 abstract class ToolsMultibindsModule {
     @Multibinds
     abstract fun bindTools(): Set<Tool>
+
+    @Multibinds
+    abstract fun bindFeatures(): Set<AgentFeature>
 }
 
 /**
  * Phase 2 tool wiring.
  *
  * Tools are discovered via Hilt multibinding ([Set<Tool>]) where each tool
- * binds itself with `@Binds @IntoSet` in its own file. Tools are sorted
+ * binds itself with `@Binds @IntoSet` in its own file, as well as via
+ * modular [AgentFeature] contributions ([Set<AgentFeature>]). Tools are sorted
  * deterministically (category then name) before registration.
  */
 @Module
@@ -32,11 +37,13 @@ object ToolsModule {
     @Singleton
     fun provideToolRegistry(
         tools: Set<@JvmSuppressWildcards Tool>,
+        features: Set<@JvmSuppressWildcards AgentFeature> = emptySet(),
     ): ToolRegistry {
         val registry = ToolRegistryImpl()
-        tools.sortedWith(
-            compareBy({ it.descriptor.category }, { it.descriptor.name })
-        ).forEach(registry::register)
+        val allTools = (tools + features.flatMap { it.tools() })
+            .distinctBy { it.descriptor.name }
+            .sortedWith(compareBy({ it.descriptor.category }, { it.descriptor.name }))
+        allTools.forEach(registry::register)
         return registry
     }
 }

@@ -58,7 +58,30 @@ class ToolsModuleTest {
 
     @Test
     fun provideToolRegistry_emptySetReturnsEmptyRegistry() {
-        val registry = ToolsModule.provideToolRegistry(emptySet())
+        val registry = ToolsModule.provideToolRegistry(emptySet(), emptySet())
         assertEquals(0, registry.all().size)
+    }
+
+    @Test
+    fun provideToolRegistry_registersToolsContributedByAgentFeatures() {
+        val directTools = setOf<Tool>(
+            stub("direct_tool", "productivity"),
+        )
+        val feature = object : com.hermes.agent.domain.agent.AgentFeature {
+            override val id: String = "test_feature"
+            override fun tools(): List<Tool> = listOf(
+                stub("feature_tool_b", "information"),
+                stub("feature_tool_a", "information"),
+            )
+            override fun promptFragment(): String? = null
+            override fun backupContributions(): List<com.hermes.agent.domain.agent.BackupContribution> = emptyList()
+            override fun entries(): List<com.hermes.agent.domain.agent.NavEntry> = emptyList()
+        }
+
+        val registry = ToolsModule.provideToolRegistry(directTools, setOf(feature))
+
+        assertEquals(3, registry.all().size)
+        val sortedNames = registry.all().map { it.descriptor.name }
+        assertEquals(listOf("feature_tool_a", "feature_tool_b", "direct_tool"), sortedNames)
     }
 }
