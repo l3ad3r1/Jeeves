@@ -15,8 +15,8 @@ import com.hermes.agent.data.log.FileLogTree
 import com.hermes.agent.data.log.LogManager
 import com.hermes.agent.data.performance.MemoryPressureMonitor
 import com.hermes.agent.debug.DebugScreenAwake
+import com.hermes.agent.domain.agent.AgentFeature
 import com.jeeves.core.settings.JeevesSettings
-import com.l3ad3r1.octojotter.data.local.ThemePreferences
 import com.hermes.agent.domain.repository.ExecutionPlanRepository
 import dagger.hilt.android.HiltAndroidApp
 import kotlinx.coroutines.CoroutineScope
@@ -65,6 +65,9 @@ class HermesApp : Application(), Configuration.Provider {
     lateinit var restoredSecretsProvider:
         Provider<com.hermes.agent.data.backup.RestoredSecretsApplier>
 
+    @Inject
+    lateinit var features: Set<@JvmSuppressWildcards AgentFeature>
+
     private val applicationScope = CoroutineScope(Dispatchers.Default)
 
     override fun onCreate() {
@@ -111,27 +114,20 @@ class HermesApp : Application(), Configuration.Provider {
         // initializer already started it via Hilt EntryPoint, this is a
         // no-op; otherwise we start it now that Hilt is initialized.
         memoryPressureMonitor.start()
-        migrateLegacyThemeSetting()
+        warmUpSettingsAndNotifyFeatures()
         scheduleMemoryConsolidation()
         scheduleSkillImprovement()
         scheduleOtaUpdateCheck()
     }
 
-    /**
-     * Jotter's theme used to live in its own `theme_settings` DataStore. It now lives in
-     * JeevesSettings with everything else, but DataStore has no synchronous read, so — unlike
-     * Butler's SharedPreferences — it cannot migrate on first touch. Do it here, off the main
-     * thread, before any Activity can observe the theme. It is a no-op once migrated.
-     */
-    private fun migrateLegacyThemeSetting() {
+    private fun warmUpSettingsAndNotifyFeatures() {
         CoroutineScope(Dispatchers.IO).launch {
-            // Touch the store here first so its one-time SharedPreferences migration (which
-            // commit()s) runs off the main thread rather than on whichever caller gets there
-            // first — MainActivity reads the theme during composition.
             runCatching { JeevesSettings.prefs(this@HermesApp) }
                 .onFailure { Timber.tag("Migration").w(it, "settings store warm-up failed") }
-            runCatching { ThemePreferences(this@HermesApp).migrateLegacyTheme() }
-                .onFailure { Timber.tag("Migration").w(it, "legacy theme migration failed") }
+            features.forEach { feature ->
+                runCatching { feature.onAppCreate(this@HermesApp, this) }
+                    .onFailure { Timber.tag("Feature").w(it, "feature ${feature.id} onAppCreate failed") }
+            }
         }
     }
 

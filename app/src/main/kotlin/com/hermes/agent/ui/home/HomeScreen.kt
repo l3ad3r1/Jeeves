@@ -171,11 +171,13 @@ fun HomeScreen(
                 subtitle = "Capture & summarize",
                 modifier = Modifier.weight(1f),
                 onClick = {
-                    val intent = Intent(context, com.l3ad3r1.octojotter.MainActivity::class.java).apply {
+                    val intent = Intent().setClassName(context.packageName, "com.l3ad3r1.octojotter.MainActivity").apply {
                         putExtra("EXTRA_EMBEDDED", true)
                         addFlags(Intent.FLAG_ACTIVITY_NO_ANIMATION)
                     }
-                    context.startActivity(intent)
+                    if (context.packageManager.resolveActivity(intent, 0) != null) {
+                        context.startActivity(intent)
+                    }
                 },
             )
             QuickAction(
@@ -183,11 +185,13 @@ fun HomeScreen(
                 subtitle = "Alarms, weather & calendar",
                 modifier = Modifier.weight(1f),
                 onClick = {
-                    val intent = Intent(context, com.sassybutler.alarm.MainAlarmSetupActivity::class.java).apply {
+                    val intent = Intent().setClassName(context.packageName, "com.sassybutler.alarm.MainAlarmSetupActivity").apply {
                         putExtra("EXTRA_EMBEDDED", true)
                         addFlags(Intent.FLAG_ACTIVITY_NO_ANIMATION)
                     }
-                    context.startActivity(intent)
+                    if (context.packageManager.resolveActivity(intent, 0) != null) {
+                        context.startActivity(intent)
+                    }
                 },
             )
         }

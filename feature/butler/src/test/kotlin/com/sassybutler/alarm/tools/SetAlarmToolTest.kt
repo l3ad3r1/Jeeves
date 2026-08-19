@@ -1,4 +1,4 @@
-package com.hermes.agent.data.tools
+package com.sassybutler.alarm.tools
 
 import android.content.Context
 import androidx.test.core.app.ApplicationProvider
@@ -19,12 +19,6 @@ import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 
-/**
- * Covers the `set_alarm` agent tool -> Sassy Butler's [AlarmScheduler] / [AlarmStore].
- *
- * Uses the real [AlarmStore] (SharedPreferences under Robolectric) so the persistence
- * contract is exercised, and mocks only the scheduler (which talks to AlarmManager).
- */
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [34])
 class SetAlarmToolTest {
@@ -46,7 +40,7 @@ class SetAlarmToolTest {
             )
         )
 
-        assertTrue(result.errorMessage, result.success)
+        assertTrue(result.errorMessage ?: "", result.success)
         assertTrue(result.output, result.output.contains("07:30"))
         assertTrue(result.output, result.output.contains("Standup"))
 
@@ -61,10 +55,6 @@ class SetAlarmToolTest {
         verify { scheduler.schedule(any<Alarm>()) }
     }
 
-    /**
-     * The alarm must be in AlarmStore *before* it is scheduled: AlarmReceiver re-registers
-     * stored alarms after a reboot, so scheduling an unstored alarm would silently lose it.
-     */
     @Test
     fun `persists to AlarmStore before scheduling`() = runTest {
         var storedWhenScheduled = -1
@@ -78,13 +68,6 @@ class SetAlarmToolTest {
         assertEquals("alarm was scheduled before it was persisted", 1, storedWhenScheduled)
     }
 
-    /**
-     * Butler's own UI assigns sequential ids via AlarmStore.nextId() (1, 2, 3, ...).
-     * The agent's time-derived id must live in a disjoint range: an id collision makes
-     * AlarmStore.upsert silently REPLACE the user's alarm, and — because the PendingIntent
-     * request code is the alarm id — clobbers its scheduled intent too. The midnight hour
-     * is where hour*100+minute lands right in the UI's id space ("12:05am" -> 5).
-     */
     @Test
     fun `midnight-hour agent alarm does not replace a UI-created alarm`() = runTest {
         (1..5).forEach { i ->
@@ -110,7 +93,7 @@ class SetAlarmToolTest {
         val result = tool.execute(
             args("hour" to JsonPrimitive("9"), "minute" to JsonPrimitive("05"))
         )
-        assertTrue(result.errorMessage, result.success)
+        assertTrue(result.errorMessage ?: "", result.success)
         assertEquals(9, AlarmStore.all(context)[0].hour)
         assertEquals(5, AlarmStore.all(context)[0].minute)
     }

@@ -5,7 +5,7 @@ import com.hermes.agent.domain.model.LlmMessage
 import com.hermes.agent.domain.model.LlmStreamChunk
 import com.hermes.agent.data.llm.LocalLlmManager
 import com.hermes.agent.data.voice.VoiceOutputManager
-import com.l3ad3r1.octojotter.domain.JotterAiProvider
+import com.jeeves.core.settings.ai.JotterAiProvider
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.mapNotNull

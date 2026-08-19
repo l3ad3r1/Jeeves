@@ -20,6 +20,7 @@
 plugins {
     alias(libs.plugins.android.library)
     alias(libs.plugins.kotlin.compose)
+    alias(libs.plugins.kotlin.serialization)
     alias(libs.plugins.ksp)
     alias(libs.plugins.hilt)
 }
@@ -114,6 +115,14 @@ dependencies {
     // --- Coroutines ---
     implementation(libs.kotlinx.coroutines.android)
 
+    // --- Kotlin Serialization ---
+    implementation(libs.kotlinx.serialization.json)
+
     // --- Community-plugin scripting runtime (interpreted, sandboxed, no native code) ---
     implementation(libs.rhino)
+
+    // --- Testing ---
+    testImplementation(libs.junit)
+    testImplementation(libs.mockk)
+    testImplementation(libs.kotlinx.coroutines.test)
 }

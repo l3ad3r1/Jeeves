@@ -1,11 +1,9 @@
-package com.hermes.agent.settings
+package com.sassybutler.alarm
 
 import android.app.Application
 import android.content.Context
 import androidx.test.core.app.ApplicationProvider
 import com.jeeves.core.settings.JeevesSettings
-import com.sassybutler.alarm.ButlerPrefs
-import com.sassybutler.alarm.VoiceCatalog
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
@@ -17,17 +15,6 @@ import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 
-/**
- * The unified settings store must adopt a user's existing Butler preferences rather than
- * silently resetting them to defaults on upgrade — the failure mode is "my alarm voice and
- * snooze time reverted", which no build or type check would catch.
- *
- * Runs against a plain [Application], not `HermesApp`: the real application's `onCreate`
- * warms the settings store from a `Dispatchers.IO` coroutine, which would race this test's
- * legacy-store seeding and mark the migration done before it could run. That warm-up is
- * correct in production — there the legacy files already exist when it runs — but it has no
- * business inside a unit test of `JeevesSettings`.
- */
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [34], application = Application::class)
 class JeevesSettingsMigrationTest {
@@ -80,11 +67,6 @@ class JeevesSettingsMigrationTest {
         assertTrue(ButlerPrefs.snoozeCommentary(context))
     }
 
-    /**
-     * Only keys the user actually set may be copied. Copying via getters-with-defaults would
-     * freeze a legacy default in as an explicit choice, so a later change to that default
-     * would not reach existing users.
-     */
     @Test
     fun `unset legacy keys are not written into the unified store`() {
         legacyButler().edit().putString("honorific", "Boss").commit()
@@ -136,11 +118,6 @@ class JeevesSettingsMigrationTest {
         assertEquals(JeevesSettings.THEME_SYSTEM, JeevesSettings.themeMode(context))
     }
 
-    /**
-     * "Same settings": Butler's own preferences sheet writes through ButlerPrefs, while the
-     * unified Hermes settings screen reads/writes JeevesSettings. If those ever addressed
-     * different storage the two surfaces would silently disagree.
-     */
     @Test
     fun `Butler's sheet and the unified settings screen read and write the same values`() {
         // Butler's sheet writes...
@@ -183,4 +160,5 @@ class JeevesSettingsMigrationTest {
 
         JeevesSettings.setFontScalePercent(context, -20)
         assertEquals(JeevesSettings.MIN_FONT_SCALE_PERCENT, JeevesSettings.fontScalePercent(context))
-    }}
+    }
+}

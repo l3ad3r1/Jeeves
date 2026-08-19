@@ -39,7 +39,7 @@ import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.sassybutler.alarm.VoiceCatalog
+import com.jeeves.core.settings.VoiceCatalog
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable

@@ -15,6 +15,7 @@
 
 plugins {
     alias(libs.plugins.android.library)
+    alias(libs.plugins.kotlin.serialization)
 }
 
 android {
@@ -35,4 +36,5 @@ dependencies {
     implementation(libs.androidx.core.ktx)
     // Flows for the Compose settings UI; the sync getters need nothing.
     implementation(libs.kotlinx.coroutines.android)
+    implementation(libs.kotlinx.serialization.json)
 }

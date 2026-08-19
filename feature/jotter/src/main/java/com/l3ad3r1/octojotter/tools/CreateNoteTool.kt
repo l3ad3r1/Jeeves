@@ -1,15 +1,9 @@
-package com.hermes.agent.data.tools
+package com.l3ad3r1.octojotter.tools
 
-import dagger.Binds
-import dagger.Module
-import dagger.hilt.InstallIn
-import dagger.hilt.components.SingletonComponent
-import dagger.multibindings.IntoSet
-
+import com.hermes.agent.domain.tool.ParameterType
 import com.hermes.agent.domain.tool.Tool
 import com.hermes.agent.domain.tool.ToolDescriptor
 import com.hermes.agent.domain.tool.ToolParameter
-import com.hermes.agent.domain.tool.ToolParameterType
 import com.hermes.agent.domain.tool.ToolResult
 import com.l3ad3r1.octojotter.data.local.NoteEntity
 import com.l3ad3r1.octojotter.data.repository.NoteRepository
@@ -21,17 +15,6 @@ import javax.inject.Singleton
 
 /**
  * Write a Markdown note into Octo Jotter (`:feature:jotter`).
- *
- * This is the first agent tool that reaches across a feature-module boundary: it injects
- * Jotter's [NoteRepository] out of the unified Hilt graph (bound by
- * `com.l3ad3r1.octojotter.di.JotterModule`).
- *
- * Not to be confused with [NotesTool], whose tool name is `notes` and which stores
- * *long-term memories* (facts the agent should remember). This one creates a real,
- * user-visible Markdown document in the notes app.
- *
- * The note is saved locally with `needsSync = false`. Pushing it to a GitHub Gist requires
- * a configured token and is left to Jotter's own sync flow; see PROGRESS.md.
  */
 @Singleton
 class CreateNoteTool @Inject constructor(
@@ -47,12 +30,12 @@ class CreateNoteTool @Inject constructor(
         parameters = listOf(
             ToolParameter(
                 name = "title",
-                type = ToolParameterType.STRING,
+                type = ParameterType.STRING,
                 description = "Short title for the note.",
             ),
             ToolParameter(
                 name = "content",
-                type = ToolParameterType.STRING,
+                type = ParameterType.STRING,
                 description = "Body of the note, in Markdown.",
             ),
         ),
@@ -62,8 +45,6 @@ class CreateNoteTool @Inject constructor(
     )
 
     override suspend fun execute(arguments: Map<String, JsonElement>): ToolResult {
-        val start = System.currentTimeMillis()
-
         val title = arguments["title"]?.extractString()?.takeIf { it.isNotBlank() }
             ?: return ToolResult.error("missing required parameter: title")
         val content = arguments["content"]?.extractString()
@@ -74,17 +55,9 @@ class CreateNoteTool @Inject constructor(
             ToolResult.ok("note created in Octo Jotter (id=$id, title=\"$title\")")
         } catch (e: Exception) {
             ToolResult.error("could not create note: ${e.message}")
-        }.copy(executionMs = System.currentTimeMillis() - start)
+        }
     }
 
     private fun JsonElement.extractString(): String? =
         (this as? JsonPrimitive)?.contentOrNull
-}
-
-@Module
-@InstallIn(SingletonComponent::class)
-abstract class CreateNoteToolModule {
-    @Binds
-    @IntoSet
-    abstract fun bindTool(tool: CreateNoteTool): Tool
 }

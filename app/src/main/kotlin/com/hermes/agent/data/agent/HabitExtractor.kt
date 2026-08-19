@@ -1,8 +1,8 @@
 package com.hermes.agent.data.agent
 
 import android.content.Context
+import com.hermes.agent.domain.agent.AgentFeature
 import com.hermes.agent.domain.repository.MemoryRepository
-import com.l3ad3r1.octojotter.data.repository.NoteRepository
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.first
 import timber.log.Timber
@@ -10,14 +10,14 @@ import javax.inject.Inject
 import javax.inject.Singleton
 
 /**
- * Extracts habits and routines from the user's connected apps (Daybook alarms, Jotter notes)
+ * Extracts habits and routines from modular [AgentFeature] contributors (e.g. Daybook alarms, Jotter notes)
  * and feeds them into the RAG memory pipeline.
  */
 @Singleton
 class HabitExtractor @Inject constructor(
     @ApplicationContext private val context: Context,
-    private val noteRepository: NoteRepository,
     private val memoryRepository: MemoryRepository,
+    private val features: Set<@JvmSuppressWildcards AgentFeature> = emptySet(),
 ) {
     suspend fun extractAndStoreHabits() {
         try {
@@ -29,37 +29,11 @@ class HabitExtractor @Inject constructor(
                 .filter { it.content.startsWith(HABIT_PREFIX) }
                 .forEach { memoryRepository.deleteMemory(it.id) }
 
-            val alarms = com.sassybutler.alarm.AlarmStore.all(context)
-            if (alarms.isNotEmpty()) {
-                // Group active alarms to find regular wake times
-                val activeAlarms = alarms.filter { it.enabled }
-                if (activeAlarms.isNotEmpty()) {
-                    val formattedAlarms = activeAlarms.joinToString(", ") { 
-                        "${String.format("%02d:%02d", it.hour, it.minute)} (days: ${it.days.joinToString("")})"
-                    }
-                    val alarmHabit = "$HABIT_PREFIX User usually has alarms set for $formattedAlarms."
-                    memoryRepository.addMemory(alarmHabit)
-                    Timber.tag("HabitExtractor").i("Extracted alarm habit: %s", alarmHabit)
-                }
-            }
-
-            val recentNotes = noteRepository.getPromptSafeRecentNotes(
-                System.currentTimeMillis() - 7L * 24 * 60 * 60 * 1000,
-            )
-            if (recentNotes.isNotEmpty()) {
-                val tagCounts = recentNotes.flatMap { it.tags }
-                    .groupingBy { it }
-                    .eachCount()
-                    .entries
-                    .sortedByDescending { it.value }
-                    .take(3)
-                
-                if (tagCounts.isNotEmpty()) {
-                    val formattedTags = tagCounts.joinToString(", ") { "${it.key} (${it.value} notes)" }
-                    val noteHabit = "$HABIT_PREFIX Over the past week, the user has been writing notes about $formattedTags."
-                    memoryRepository.addMemory(noteHabit)
-                    Timber.tag("HabitExtractor").i("Extracted note habit: %s", noteHabit)
-                }
+            for (feature in features) {
+                val insight = feature.habitInsight(context) ?: continue
+                val habit = "$HABIT_PREFIX $insight"
+                memoryRepository.addMemory(habit)
+                Timber.tag("HabitExtractor").i("Extracted feature habit from %s: %s", feature.id, habit)
             }
         } catch (e: Exception) {
             Timber.tag("HabitExtractor").w(e, "Failed to extract habits")

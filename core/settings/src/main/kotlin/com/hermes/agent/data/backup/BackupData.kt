@@ -1,6 +1,5 @@
 package com.hermes.agent.data.backup
 
-import com.l3ad3r1.octojotter.data.local.NoteEntity
 import kotlinx.serialization.Serializable
 
 @Serializable
@@ -35,22 +34,16 @@ data class SkillBackup(
 
 /**
  * Cloud LLM + related app settings.
- *
- * Deliberately excludes the GitHub PAT and Gist ID (those are the restore
- * credentials themselves — restoring them would be circular) and device-local
- * secrets that don't transfer between installs (API-server key, SSH config).
  */
 @Serializable
 data class SettingsBackup(
     val cloudEnabled: Boolean = false,
-    /** Legacy v2-v4 field. New backups leave credentials blank. */
     val cloudApiKey: String = "",
     val cloudBaseUrl: String = "",
     val cloudModel: String = "",
     val reasoningEffort: String = "",
     val auxModel: String = "",
     val auxBaseUrl: String = "",
-    /** Legacy v2-v4 field. New backups leave credentials blank. */
     val auxApiKey: String = "",
     val appTheme: String = "",
 )
@@ -99,58 +92,4 @@ data class AlarmBackup(
     val label: String,
     val enabled: Boolean,
     val days: Set<Int>,
-)
-
-/** Convert only notes that are safe to place in an access-controlled cloud Gist. */
-internal fun NoteEntity.toBackupOrNull(): NoteBackup? {
-    if (locked || encrypted) return null
-    return NoteBackup(
-        title = title,
-        content = content,
-        gistId = gistId,
-        pinned = pinned,
-        tags = tags,
-        folder = folder,
-        locked = locked,
-        repository = repository,
-        path = path,
-        sha = sha,
-        deletedAt = deletedAt,
-        pendingRemoteDelete = pendingRemoteDelete,
-        encrypted = encrypted,
-        encryptionVersion = encryptionVersion,
-        remoteUpdatedAt = remoteUpdatedAt,
-        lastSyncedContentHash = lastSyncedContentHash,
-        conflictState = conflictState,
-        conflictedRemoteContent = conflictedRemoteContent,
-        conflictedRemoteModifiedAt = conflictedRemoteModifiedAt,
-        needsSync = needsSync,
-        createdAt = lastModifiedLocally,
-        modifiedAt = lastModifiedLocally,
-    )
-}
-
-/** Rebuild a note without silently dropping trash, repository, or privacy metadata. */
-internal fun NoteBackup.toRestoredEntity(): NoteEntity = NoteEntity(
-    title = title,
-    content = content,
-    gistId = gistId,
-    pinned = pinned,
-    tags = tags,
-    folder = folder,
-    repository = repository,
-    path = path,
-    sha = sha,
-    deletedAt = deletedAt,
-    pendingRemoteDelete = pendingRemoteDelete,
-    locked = locked,
-    encrypted = encrypted,
-    encryptionVersion = encryptionVersion,
-    remoteUpdatedAt = remoteUpdatedAt,
-    lastSyncedContentHash = lastSyncedContentHash,
-    conflictState = conflictState,
-    conflictedRemoteContent = conflictedRemoteContent,
-    conflictedRemoteModifiedAt = conflictedRemoteModifiedAt,
-    needsSync = needsSync,
-    lastModifiedLocally = modifiedAt,
 )

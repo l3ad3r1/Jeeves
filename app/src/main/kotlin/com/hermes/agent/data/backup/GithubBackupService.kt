@@ -8,9 +8,7 @@ import com.hermes.agent.domain.repository.CronRepository
 import com.hermes.agent.domain.repository.MemoryRepository
 import com.hermes.agent.domain.repository.SkillRepository
 import com.hermes.agent.work.CronScheduler
-import com.l3ad3r1.octojotter.data.repository.NoteRepository
-import com.sassybutler.alarm.Alarm
-import com.sassybutler.alarm.AlarmStore
+import com.hermes.agent.domain.agent.AgentFeature
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.first
@@ -46,9 +44,9 @@ class GithubBackupService @Inject constructor(
     private val settingsRepository: SettingsRepository,
     private val cronRepository: CronRepository,
     private val cronScheduler: CronScheduler,
-    private val noteRepository: NoteRepository,
     @ApplicationContext private val context: Context,
     private val json: Json,
+    private val features: Set<@JvmSuppressWildcards AgentFeature> = emptySet(),
 ) {
 
     sealed class BackupResult {
@@ -112,22 +110,8 @@ class GithubBackupService @Inject constructor(
                     )
                 }
 
-            val notes = runCatching { noteRepository.getAllNotes() }
-                .getOrDefault(emptyList())
-                .mapNotNull { it.toBackupOrNull() }
-
-            val alarms = runCatching { AlarmStore.all(context) }
-                .getOrDefault(emptyList())
-                .map {
-                    AlarmBackup(
-                        id = it.id,
-                        hour = it.hour,
-                        minute = it.minute,
-                        label = it.label,
-                        enabled = it.enabled,
-                        days = it.days,
-                    )
-                }
+            val notes = features.flatMap { it.exportNotes() }
+            val alarms = features.flatMap { it.exportAlarms(context) }
 
             val backupData = BackupData(
                 exportedAt = System.currentTimeMillis(),
@@ -273,58 +257,9 @@ class GithubBackupService @Inject constructor(
                     .onFailure { Timber.tag("GithubBackup").w(it, "import cron ${c.label}") }
             }
 
-            // NoteEntity ids auto-generate, so a blind insert duplicates every note
-            // each time Restore is tapped. Skip notes that already exist (matched by
-            // gistId when present, else exact title+content).
-            val existingNotes = runCatching { noteRepository.getAllNotes() }
-                .getOrDefault(emptyList())
-                .toMutableList()
-            for (n in backupData.notes) {
-                val alreadyPresent = existingNotes.any {
-                    (n.gistId != null && it.gistId == n.gistId) ||
-                        (n.repository != null && n.path != null &&
-                            it.repository == n.repository && it.path == n.path) ||
-                        (n.gistId == null && n.repository == null &&
-                            it.gistId == null && it.repository == null &&
-                            it.title == n.title && it.content == n.content &&
-                            it.deletedAt == n.deletedAt)
-                }
-                if (alreadyPresent) continue
-                val entity = n.toRestoredEntity()
-                runCatching {
-                    noteRepository.insertNote(entity)
-                }
-                    .onSuccess {
-                        notesImported++
-                        existingNotes += entity
-                    }
-                    .onFailure { Timber.tag("GithubBackup").w(it, "import note ${n.title}") }
-            }
-
-            // Persist AND schedule, mirroring the cron loop above and Butler's own
-            // AddAlarmSheet. AlarmStore.upsert alone leaves restored alarms silent
-            // until the next reboot (AlarmReceiver re-registers stored alarms then).
-            val alarmScheduler = com.sassybutler.alarm.AlarmScheduler(context)
-            for (a in backupData.alarms) {
-                runCatching {
-                    val alarm = Alarm(
-                        id = a.id,
-                        hour = a.hour,
-                        minute = a.minute,
-                        label = a.label,
-                        enabled = a.enabled,
-                        days = a.days,
-                    )
-                    AlarmStore.upsert(context, alarm)
-                    if (alarm.enabled) alarmScheduler.schedule(alarm)
-                    
-                    // L5: Mirror restored alarms to calendar if permission is granted
-                    if (androidx.core.content.ContextCompat.checkSelfPermission(context, android.Manifest.permission.WRITE_CALENDAR) == android.content.pm.PackageManager.PERMISSION_GRANTED) {
-                        com.sassybutler.alarm.CalendarSyncManager.syncAlarmToCalendar(context, alarm)
-                    }
-                }
-                    .onSuccess { alarmsImported++ }
-                    .onFailure { Timber.tag("GithubBackup").w(it, "import alarm ${a.label}") }
+            for (feature in features) {
+                notesImported += feature.importNotes(backupData.notes)
+                alarmsImported += feature.importAlarms(context, backupData.alarms)
             }
 
             Timber.tag("GithubBackup").i(

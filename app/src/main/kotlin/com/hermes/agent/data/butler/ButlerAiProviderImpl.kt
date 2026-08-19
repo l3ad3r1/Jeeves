@@ -1,9 +1,15 @@
 package com.hermes.agent.data.butler
 
-import com.hermes.agent.domain.model.LlmMessage
-
+import android.content.Context
 import com.hermes.agent.data.llm.CloudLlmProvider
-import com.sassybutler.alarm.di.ButlerAiProvider
+import com.hermes.agent.domain.agent.AgentFeature
+import com.hermes.agent.domain.model.LlmMessage
+import com.jeeves.core.settings.JeevesSettings
+import com.jeeves.core.settings.ai.ButlerAiProvider
+import dagger.hilt.EntryPoint
+import dagger.hilt.EntryPoints
+import dagger.hilt.InstallIn
+import dagger.hilt.components.SingletonComponent
 import javax.inject.Inject
 
 class ButlerAiProviderImpl @Inject constructor(
@@ -40,7 +46,7 @@ class ButlerAiProviderImpl @Inject constructor(
         """.trimIndent()
 
         val messages = listOf(
-            com.hermes.agent.domain.model.LlmMessage(role = "system", content = prompt)
+            LlmMessage(role = "system", content = prompt)
         )
         val response = cloudLlmProvider.complete(messages)
         return response.content.replace(Regex("[^a-zA-Z0-9 '.,?!-]"), "").trim()
@@ -77,33 +83,35 @@ class ButlerAiProviderImpl @Inject constructor(
         """.trimIndent()
 
         val messages = listOf(
-            com.hermes.agent.domain.model.LlmMessage(role = "system", content = prompt)
+            LlmMessage(role = "system", content = prompt)
         )
         val response = cloudLlmProvider.complete(messages)
         // Strip out most special characters to ensure TTS doesn't stumble
         return response.content.replace(Regex("[^a-zA-Z0-9 '.,?!-]"), "").trim()
     }
 
-    override suspend fun preGenerateBriefing(context: android.content.Context) {
-        val composer = dagger.hilt.android.EntryPointAccessors.fromApplication(
-            context,
-            BriefingComposerEntryPoint::class.java
-        ).getBriefingComposer()
+    override suspend fun preGenerateBriefing(context: Context) {
+        val host = EntryPoints.get(
+            context.applicationContext,
+            ButlerAiHostEntryPoint::class.java,
+        )
+        val contextData = host.features()
+            .mapNotNull { it.composeBriefingContext(context) }
+            .firstOrNull() ?: ""
 
-        val contextData = composer.composeContext(context)
-        val honorific = com.sassybutler.alarm.ButlerPrefs.honorific(context)
-        val sassLevel = com.sassybutler.alarm.ButlerPrefs.sassLevel(context)
+        val honorific = JeevesSettings.honorific(context)
+        val sassLevel = JeevesSettings.sassLevel(context)
 
         val briefing = generateBriefing(contextData, honorific, sassLevel)
         if (!briefing.isNullOrBlank()) {
-            com.sassybutler.alarm.ButlerPrefs.setPreGeneratedBriefing(context, briefing)
-            com.sassybutler.alarm.ButlerPrefs.setPreGeneratedBriefingTimestamp(context, System.currentTimeMillis())
+            JeevesSettings.setPreGeneratedBriefing(context, briefing)
+            JeevesSettings.setPreGeneratedBriefingTimestamp(context, System.currentTimeMillis())
         }
     }
 }
 
-@dagger.hilt.EntryPoint
-@dagger.hilt.InstallIn(dagger.hilt.components.SingletonComponent::class)
-interface BriefingComposerEntryPoint {
-    fun getBriefingComposer(): BriefingComposer
+@EntryPoint
+@InstallIn(SingletonComponent::class)
+interface ButlerAiHostEntryPoint {
+    fun features(): Set<AgentFeature>
 }

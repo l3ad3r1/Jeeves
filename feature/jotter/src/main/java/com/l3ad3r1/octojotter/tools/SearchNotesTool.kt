@@ -1,15 +1,9 @@
-package com.hermes.agent.data.tools
+package com.l3ad3r1.octojotter.tools
 
-import dagger.Binds
-import dagger.Module
-import dagger.hilt.InstallIn
-import dagger.hilt.components.SingletonComponent
-import dagger.multibindings.IntoSet
-
+import com.hermes.agent.domain.tool.ParameterType
 import com.hermes.agent.domain.tool.Tool
 import com.hermes.agent.domain.tool.ToolDescriptor
 import com.hermes.agent.domain.tool.ToolParameter
-import com.hermes.agent.domain.tool.ToolParameterType
 import com.hermes.agent.domain.tool.ToolResult
 import com.l3ad3r1.octojotter.data.repository.NoteRepository
 import kotlinx.coroutines.flow.first
@@ -34,7 +28,7 @@ class SearchNotesTool @Inject constructor(
         parameters = listOf(
             ToolParameter(
                 name = "query",
-                type = ToolParameterType.STRING,
+                type = ParameterType.STRING,
                 description = "The keyword query to search for.",
             ),
         ),
@@ -44,35 +38,25 @@ class SearchNotesTool @Inject constructor(
     )
 
     override suspend fun execute(arguments: Map<String, JsonElement>): ToolResult {
-        val start = System.currentTimeMillis()
-
         val query = arguments["query"]?.extractString()?.takeIf { it.isNotBlank() }
             ?: return ToolResult.error("missing required parameter: query")
 
         return try {
             val results = noteRepository.searchPromptSafeNotes(query).first()
             if (results.isEmpty()) {
-                ToolResult.ok("No notes found matching: '$query'", System.currentTimeMillis() - start)
+                ToolResult.ok("No notes found matching: '$query'")
             } else {
                 // Return top 5 results to avoid overflowing the LLM context window with tool output
                 val formatted = results.take(5).joinToString("\n---\n") { note ->
                     "Title: ${note.title}\nID: ${note.id}\n${note.content.take(500)}"
                 }
-                ToolResult.ok(formatted, System.currentTimeMillis() - start)
+                ToolResult.ok(formatted)
             }
         } catch (e: Exception) {
-            ToolResult.error("could not search notes: ${e.message}", System.currentTimeMillis() - start)
+            ToolResult.error("could not search notes: ${e.message}")
         }
     }
 
     private fun JsonElement.extractString(): String? =
         (this as? JsonPrimitive)?.contentOrNull
-}
-
-@Module
-@InstallIn(SingletonComponent::class)
-abstract class SearchNotesToolModule {
-    @Binds
-    @IntoSet
-    abstract fun bindTool(tool: SearchNotesTool): Tool
 }

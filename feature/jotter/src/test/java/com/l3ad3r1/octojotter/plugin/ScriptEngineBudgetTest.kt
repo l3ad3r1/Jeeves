@@ -1,6 +1,5 @@
-package com.hermes.agent.data.plugin
+package com.l3ad3r1.octojotter.plugin
 
-import com.l3ad3r1.octojotter.plugin.ScriptEngine
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withTimeout
 import org.junit.Assert.assertTrue

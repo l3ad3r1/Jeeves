@@ -105,20 +105,24 @@ class MainActivity : ComponentActivity() {
         if (intent == null) return
         when (intent.action) {
             "com.hermes.agent.action.NEW_NOTE" -> {
-                val i = android.content.Intent(this, com.l3ad3r1.octojotter.MainActivity::class.java).apply {
+                val i = android.content.Intent().setClassName(packageName, "com.l3ad3r1.octojotter.MainActivity").apply {
                     putExtra("EXTRA_EMBEDDED", true)
                     addFlags(android.content.Intent.FLAG_ACTIVITY_NO_ANIMATION)
                 }
-                startActivity(i)
-                finish()
+                if (packageManager.resolveActivity(i, 0) != null) {
+                    startActivity(i)
+                    finish()
+                }
             }
             "com.hermes.agent.action.SET_ALARM" -> {
-                val i = android.content.Intent(this, com.sassybutler.alarm.MainAlarmSetupActivity::class.java).apply {
+                val i = android.content.Intent().setClassName(packageName, "com.sassybutler.alarm.MainAlarmSetupActivity").apply {
                     putExtra("EXTRA_EMBEDDED", true)
                     addFlags(android.content.Intent.FLAG_ACTIVITY_NO_ANIMATION)
                 }
-                startActivity(i)
-                finish()
+                if (packageManager.resolveActivity(i, 0) != null) {
+                    startActivity(i)
+                    finish()
+                }
             }
             "com.hermes.agent.action.ASK_JEEVES" -> {
                 // To open chat directly, we should start the ChatScreen, but it's handled via nav graph.

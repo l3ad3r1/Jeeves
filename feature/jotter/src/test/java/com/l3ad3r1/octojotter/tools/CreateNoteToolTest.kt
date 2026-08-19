@@ -1,4 +1,4 @@
-package com.hermes.agent.data.tools
+package com.l3ad3r1.octojotter.tools
 
 import com.l3ad3r1.octojotter.data.local.NoteEntity
 import com.l3ad3r1.octojotter.data.repository.NoteRepository
@@ -13,10 +13,6 @@ import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
-/**
- * Covers the first agent tool that crosses a feature-module boundary:
- * `create_note` -> Octo Jotter's [NoteRepository].
- */
 class CreateNoteToolTest {
 
     private val repo = mockk<NoteRepository>()
@@ -32,7 +28,7 @@ class CreateNoteToolTest {
 
         val result = tool.execute(args("title" to "Groceries", "content" to "- milk\n- eggs"))
 
-        assertTrue(result.errorMessage, result.success)
+        assertTrue(result.errorMessage ?: "", result.success)
         assertTrue(result.output.contains("42"))
         assertEquals("Groceries", captured.captured.title)
         assertEquals("- milk\n- eggs", captured.captured.content)

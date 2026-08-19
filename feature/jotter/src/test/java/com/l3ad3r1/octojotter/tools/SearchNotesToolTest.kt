@@ -1,4 +1,4 @@
-package com.hermes.agent.data.tools
+package com.l3ad3r1.octojotter.tools
 
 import com.l3ad3r1.octojotter.data.local.NoteEntity
 import com.l3ad3r1.octojotter.data.repository.NoteRepository
@@ -25,7 +25,7 @@ class SearchNotesToolTest {
 
         val result = tool.execute(mapOf("query" to JsonPrimitive("roadmap")))
 
-        assertTrue(result.errorMessage, result.success)
+        assertTrue(result.errorMessage ?: "", result.success)
         assertTrue(result.output.contains("Public plan"))
         verify(exactly = 1) { repository.searchPromptSafeNotes("roadmap") }
         verify(exactly = 0) { repository.searchNotes(any()) }

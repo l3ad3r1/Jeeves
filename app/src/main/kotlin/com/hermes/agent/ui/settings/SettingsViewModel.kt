@@ -17,8 +17,7 @@ import com.hermes.agent.data.update.OtaInstaller
 import com.hermes.agent.data.update.OtaUpdateChecker
 import com.hermes.agent.domain.security.DeviceAuthenticationService
 import com.jeeves.core.settings.JeevesSettings
-import com.sassybutler.alarm.TtsEngine
-import com.sassybutler.alarm.VoiceCatalog
+import com.jeeves.core.settings.VoiceCatalog
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import java.io.File
@@ -46,7 +45,7 @@ data class AlarmSettings(
     val birdsIntro: Boolean = true,
     val snoozeCommentary: Boolean = true,
     val haptics: Boolean = false,
-    val voiceName: String = TtsEngine.DEFAULT_VOICE,
+    val voiceName: String = VoiceCatalog.DEFAULT_VOICE,
     val briefingCalendar: Boolean = true,
     val briefingWeather: Boolean = true,
     val briefingTodos: Boolean = true,
@@ -147,7 +146,7 @@ class SettingsViewModel @Inject constructor(
         birdsIntro = JeevesSettings.birdsIntro(appContext),
         snoozeCommentary = JeevesSettings.snoozeCommentary(appContext),
         haptics = JeevesSettings.haptics(appContext),
-        voiceName = JeevesSettings.voiceName(appContext, TtsEngine.DEFAULT_VOICE),
+        voiceName = JeevesSettings.voiceName(appContext, VoiceCatalog.DEFAULT_VOICE),
         briefingCalendar = JeevesSettings.briefingCalendar(appContext),
         briefingWeather = JeevesSettings.briefingWeather(appContext),
         briefingTodos = JeevesSettings.briefingTodos(appContext),
