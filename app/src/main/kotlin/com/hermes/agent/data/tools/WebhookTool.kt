@@ -52,6 +52,7 @@ class WebhookTool @Inject constructor(
                 required = false),
         ),
         category = "communication",
+        capabilities = setOf("notification"),
     )
 
     private val json = "application/json; charset=utf-8".toMediaType()

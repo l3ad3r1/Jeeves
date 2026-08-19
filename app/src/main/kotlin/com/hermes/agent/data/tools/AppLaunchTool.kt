@@ -42,6 +42,7 @@ class AppLaunchTool @Inject constructor(
             ),
         ),
         category = "device",
+        capabilities = setOf("app_automation"),
         requiresConfirmation = true,
     )
 

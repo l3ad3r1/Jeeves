@@ -48,6 +48,7 @@ class WebFetchTool @Inject constructor(
             ),
         ),
         category = "information",
+        capabilities = setOf("web"),
     )
 
     override suspend fun execute(arguments: Map<String, JsonElement>): ToolResult {

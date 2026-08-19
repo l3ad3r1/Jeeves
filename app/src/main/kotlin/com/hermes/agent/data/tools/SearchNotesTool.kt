@@ -39,6 +39,7 @@ class SearchNotesTool @Inject constructor(
             ),
         ),
         category = "productivity",
+        capabilities = setOf("documents"),
         requiresConfirmation = false,
     )
 

@@ -75,6 +75,7 @@ class MemoryTool @Inject constructor(
             ),
         ),
         category = "productivity",
+        capabilities = setOf("user_memory"),
         maxResultSizeChars = 4096,
     )
 

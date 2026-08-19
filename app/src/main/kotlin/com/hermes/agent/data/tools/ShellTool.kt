@@ -65,6 +65,7 @@ class ShellTool @Inject constructor(
             ),
         ),
         category = "device",
+        capabilities = setOf("shell"),
         requiresConfirmation = true,
         maxResultSizeChars = MAX_OUTPUT_CHARS,
     )

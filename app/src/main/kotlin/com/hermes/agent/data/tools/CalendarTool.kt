@@ -60,6 +60,7 @@ class CalendarTool @Inject constructor(
             ),
         ),
         category = "productivity",
+        capabilities = setOf("calendar"),
         requiresConfirmation = true,
     )
 

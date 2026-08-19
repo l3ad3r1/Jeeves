@@ -69,6 +69,7 @@ class SetAlarmTool @Inject constructor(
             ),
         ),
         category = "productivity",
+        capabilities = setOf("notes_and_reminders"),
         requiresConfirmation = false,
     )
 

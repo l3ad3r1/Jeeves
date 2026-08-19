@@ -73,6 +73,7 @@ class TtsTool @Inject constructor(
             ),
         ),
         category = "communication",
+        capabilities = setOf("voice"),
     )
 
     override suspend fun execute(arguments: Map<String, JsonElement>): ToolResult {

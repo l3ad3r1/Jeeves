@@ -47,6 +47,7 @@ class AppSwipeTool @Inject constructor(
             )
         ),
         category = "device",
+        capabilities = setOf("app_automation"),
         // Preserve the launched app as the active accessibility window.
         requiresConfirmation = false,
     )

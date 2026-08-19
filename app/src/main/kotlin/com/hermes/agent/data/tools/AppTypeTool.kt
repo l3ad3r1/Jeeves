@@ -53,6 +53,7 @@ class AppTypeTool @Inject constructor(
             )
         ),
         category = "device",
+        capabilities = setOf("app_automation"),
         // app_launch is the confirmation boundary; a modal here would replace
         // the target window and invalidate the analyzed tag.
         requiresConfirmation = false,

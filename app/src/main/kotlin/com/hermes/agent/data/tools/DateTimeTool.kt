@@ -50,6 +50,7 @@ class DateTimeTool @Inject constructor() : Tool {
             ),
         ),
         category = "information",
+        capabilities = setOf("time"),
     )
 
     override suspend fun execute(arguments: Map<String, JsonElement>): ToolResult {

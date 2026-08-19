@@ -75,6 +75,7 @@ class ImageGenerationTool @Inject constructor(
             ),
         ),
         category = "information",
+        capabilities = setOf("media_generation"),
         requiresEnv = listOf("cloudApiKey"),
     )
 
