@@ -18,6 +18,19 @@ repo. All three apps are merged and shipping (`:app` + `:feature:jotter` + `:fea
 
 ## Status log (newest first)
 
+### Modularization of Tools and Sub-App Seams (`port/hermes-0.9.x`) - 2026-08-20
+- [x] Executed full modularization steps 1 through 4 + Task A/B decoupling:
+      - **Step 1:** Registered all 33 Hermes agent tools via Hilt `@Binds @IntoSet Tool` multibinding into `Set<Tool>`, refactoring `ToolsModule` with `@Multibinds`.
+      - **Step 2:** Refactored `AgentToolAccess` from static string name matching to capability and category grants (`capabilities: Set<String>`), preserving pinned per-role counts (31/20/10/19/10).
+      - **Step 3:** Eliminated domain layer leakage (`domain -> android` is 0; `domain -> data` is 0; `HabitExtractor` moved to `data/agent/`, LLM protocol types and `DeviceProfile` moved to `domain/model/`).
+      - **Step 4 & Task A:** Extracted shared contracts (`Tool`, `AgentFeature`, `BackupData`, `VoiceCatalog`, `JotterAiProvider`, `ButlerAiProvider`) to `:core:settings`. Moved note and alarm tools, `NoteBackupExtensions`, `BriefingComposer`, and `VoiceOutputManager` fallback to `:feature:jotter` and `:feature:butler`. Restored two-engine TTS in `TtsTool` with platform fallback.
+      - **Task B:** Routed all sub-app navigation entries and shortcut intent handling dynamically through `AgentFeature.entries()`, eliminating all hardcoded string activity names in `:app`.
+- [x] VERIFIED (local gate):
+      - Acceptance test: `:app` compiles and passes all 441 unit tests with `:feature:jotter` and `:feature:butler` removed from `settings.gradle.kts` and `app/build.gradle.kts`.
+      - Full unit test suite with all modules restored: 479 tests across 79 test classes (0 failures, 0 skipped, 0 errors).
+      - Zero imports of `com.l3ad3r1.octojotter.*` or `com.sassybutler.alarm.*` in `app/src/`.
+- [ ] UNVERIFIED on device (L-001): Physical/virtual connected device checks (`adb devices` returned no attached devices during execution).
+
 ### Hermes 0.9.x port to Jeeves (`port/hermes-0.9.x`) - 2026-08-17
 - [x] Ported all major Hermes 0.9.x (v0.9.0 - v0.9.3) features and enhancements into Jeeves:
       - **AppAgent subsystem**: 5 app automation tools (`app_launch`, `app_analyze_screen`, `app_tap`, `app_swipe`, `app_type`), `AppAgentAccessibilityService`, `AppAgentFixtureActivity`, `AppAgentSmokeTest`.
