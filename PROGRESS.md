@@ -30,9 +30,13 @@ repo. All three apps are merged and shipping (`:app` + `:feature:jotter` + `:fea
 - [x] VERIFIED with 51/51 shared plugin tests (including persistence and coordinator
       handoff), shared tools/LLM/memory/settings suites, Hermes debug tests/APK assembly,
       Jeeves preflight/native APK, Jotter 11/11, and Butler 27/27.
-- [ ] UNVERIFIED on device (L-001): no real signed plugin install has emitted a package
-      event on hardware; event handling, persistence, and merged manifest compilation
-      are covered by deterministic tests/builds.
+- [x] VERIFIED on a connected Samsung SM-S928B: both `com.jeeves.app.debug` and
+      `com.hermes.agent.debug` installed and launched; `dumpsys package` showed the
+      shared receiver and both package actions. Reinstalling each host generated a real
+      `PACKAGE_REPLACED` event with no receiver/runtime error in logcat.
+- [ ] UNVERIFIED on device (L-001): no signed third-party plugin APK has emitted a
+      completion event yet, so exact pending-to-installed state transition remains
+      covered by deterministic persistence tests only.
 - [ ] NOT DONE: concrete review UI, service discovery, or Android/gRPC transport.
 
 ### Shared install-review orchestration (`port/hermes-0.9.x`) - 2026-08-20
