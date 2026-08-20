@@ -18,6 +18,25 @@ repo. All three apps are merged and shipping (`:app` + `:feature:jotter` + `:fea
 
 ## Status log (newest first)
 
+### Shared plugin repository delivery (`port/hermes-0.9.x`) - 2026-08-20
+- [x] Added shared HTTPS catalog retrieval with strict schema decoding and optional,
+      caller-scoped authorization. Plaintext URLs and credential-bearing URLs are
+      rejected before transport; catalogs are capped at 1 MiB.
+- [x] Added shared immutable APK delivery into caller-owned private storage. Downloads
+      are serialized, staged as temporary files, limited to 256 MiB, and promoted only
+      after the exact catalog size and SHA-256 match. Failed or cancelled transfers
+      remove their staging file, while verified cached artifacts are safely reused.
+- [x] VERIFIED from forced/no-build-cache gates: shared plugin 34/34, tools 49/49,
+      LLM 88/88, memory 21/21, and settings 16/16 PASS (208/208 shared). Jeeves app
+      283/283, Jotter 11/11, and Butler 27/27 also PASS (529/529 combined); mandatory
+      preflight and native debug APK assembly PASS. Hermes app 208/208 plus the same
+      shared tests PASS (416/416 combined), with forced native debug APK assembly.
+- [ ] UNVERIFIED (L-001): no live public catalog/artifact endpoint or repository token
+      exists yet, so real-host transfer was not run; delivery tests use deterministic
+      OkHttp responses and exercise authorization, limits, cache reuse, and corruption.
+- [ ] NOT DONE: Android package-installer handoff, persistent publisher trust and
+      approval storage, install UI, service discovery, or concrete Android/gRPC transport.
+
 ### Plugin APK inspection and native/worktree cleanup (`port/hermes-0.9.x`) - 2026-08-20
 - [x] Added the shared Android package-inspection boundary. Downloaded APK evidence now
       comes from the archive's embedded schema-v1 manifest, package/version, exported

@@ -182,11 +182,11 @@ immutable APK/package evidence, fail-closed hash/signature/service/compatibility
 and approval snapshots bound to the exact artifact, signer, version, and permissions.
 Catalog-declared signers are not treated as trust anchors.
 
-Still required before a feature can ship without an app release: authenticated catalog
-and artifact fetching, Android package-installer handoff, persistent publisher trust and
-approval storage, install UI, service discovery, and the Android/gRPC transport itself.
-Until those land, "module" still means "compiled in", and every feature addition is
-still a release.
+Authenticated catalog and artifact fetching is now implemented in shared core. Still
+required before a feature can ship without an app release: Android package-installer
+handoff, persistent publisher trust and approval storage, install UI, service discovery,
+and the Android/gRPC transport itself. Until those land, "module" still means "compiled
+in", and every feature addition is still a release.
 
 ## Appendix A — reproducing the survey
 
