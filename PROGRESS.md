@@ -18,6 +18,21 @@ repo. All three apps are merged and shipping (`:app` + `:feature:jotter` + `:fea
 
 ## Status log (newest first)
 
+### Shared install-review orchestration (`port/hermes-0.9.x`) - 2026-08-20
+- [x] Added the shared UI-neutral review coordinator. It refreshes persisted publisher
+      trust, validates user decisions, persists the post-trust exact review snapshot,
+      and refuses installer handoff when that snapshot is missing or changed. Hermes and
+      Jeeves can provide different screens without duplicating approval sequencing.
+- [x] VERIFIED with 50/50 shared plugin tests, including trust refresh, denial without
+      writes, trust-and-approval ordering, persisted-handoff requirements, and product
+      Hilt compilation. Hermes debug tests/APK assembly, Jeeves preflight/native APK,
+      Jotter, and Butler gates all passed.
+- [ ] UNVERIFIED on device (L-001): no signed public plugin artifact or product review
+      screen has been exercised on hardware; the coordinator and persistence paths are
+      covered by deterministic tests and both product builds.
+- [ ] NOT DONE: concrete review UI, install completion tracking, service discovery, or
+      Android/gRPC transport.
+
 ### Persistent plugin publisher trust and approval storage (`port/hermes-0.9.x`) - 2026-08-20
 - [x] Added shared app-private, versioned stores for publisher trust and exact install
       approvals. Trust is keyed by plugin ID and normalized signer fingerprint; approval
