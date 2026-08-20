@@ -7,11 +7,12 @@ import com.hermes.agent.data.llm.CloudLlmProvider
 import com.hermes.agent.data.llm.CloudModelCatalog
 import com.hermes.agent.data.llm.OpenAiCloudModelCatalog
 import com.hermes.agent.data.llm.CloudModelSource
-import com.hermes.agent.data.llm.LlmProvider
+import com.hermes.agent.data.llm.LlmProductConfig
 import com.hermes.agent.data.llm.LlmRouter
 import com.hermes.agent.data.llm.HybridLlmRouter
 import com.hermes.agent.data.remote.OpenAiApi
 import com.hermes.agent.domain.settings.SettingsRepository
+import com.hermes.agent.domain.llm.LlmProvider
 import com.hermes.agent.domain.repository.ChatRepository
 import com.hermes.agent.data.repository.ChatRepositoryImpl
 import com.hermes.agent.domain.repository.ConversationRepository
@@ -69,6 +70,10 @@ abstract class LlmModule {
 
         @Provides
         @Singleton
+        fun provideLlmProductConfig(): LlmProductConfig = LlmProductConfig("Jeeves")
+
+        @Provides
+        @Singleton
         fun provideInferenceEngine(
             @ApplicationContext context: Context,
         ): InferenceEngine = AiChat.getInferenceEngine(context)
@@ -96,7 +101,8 @@ abstract class LlmModule {
             settings: SettingsRepository,
             dispatchers: DispatcherProvider,
             json: Json,
+            productConfig: LlmProductConfig,
         ): CloudLlmProvider =
-            CloudLlmProvider(api, settings, dispatchers, json, CloudModelSource.AUX)
+            CloudLlmProvider(api, settings, dispatchers, json, CloudModelSource.AUX, productConfig)
     }
 }

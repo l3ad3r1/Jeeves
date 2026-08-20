@@ -1,7 +1,7 @@
 package com.hermes.agent.data.agent
 
 import com.hermes.agent.domain.llm.LlmMessage
-import com.hermes.agent.data.llm.LlmProvider
+import com.hermes.agent.domain.llm.LlmProvider
 import com.hermes.agent.domain.llm.ToolCall
 import com.hermes.agent.data.tool.ToolCallExecutor
 import com.hermes.agent.domain.agent.ExecutionGuard

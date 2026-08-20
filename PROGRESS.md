@@ -18,6 +18,21 @@ repo. All three apps are merged and shipping (`:app` + `:feature:jotter` + `:fea
 
 ## Status log (newest first)
 
+### Shared LLM and provider engine adopted (`port/hermes-0.9.x`) - 2026-08-20
+- [x] Jeeves now consumes public `agent-core :core:llm`; removed the duplicate
+      cloud/local providers, routing policies, OpenAI transport DTOs, model download
+      worker, ARM inference bridge, and eleven duplicate LLM test sources.
+- [x] Replaced the final app-local `LlmProvider` compatibility alias with the canonical
+      public domain contract. No shared LLM implementation remains in the Jeeves app.
+- [x] Added explicit `LlmProductConfig` composition so public engine code does not
+      hard-code either product. Hermes supplies `Hermes`; Jeeves supplies `Jeeves`,
+      preserving provider labels and the fallback on-device system prompt.
+- [x] VERIFIED from clean, no-build-cache outputs (local gate): Jeeves app 324/324,
+      shared LLM 88/88, shared memory 21/21, shared settings 16/16, Jotter 11/11,
+      and Butler 27/27 PASS (487/487 combined); debug APK assembly PASS. Hermes app
+      208/208, shared LLM 88/88, and debug APK assembly also PASS.
+- [ ] UNVERIFIED on device (L-001): no device is connected.
+
 ### Shared memory and RAG engine adopted (`port/hermes-0.9.x`) - 2026-08-20
 - [x] Jeeves now consumes public `agent-core :core:memory`; removed fourteen duplicate
       embedding, vector-store, learning, consolidation, and RAG sources plus three

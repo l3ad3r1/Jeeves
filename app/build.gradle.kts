@@ -213,6 +213,7 @@ dependencies {
     implementation(project(":core:settings"))
     implementation(project(":core:persistence"))
     implementation(project(":core:memory"))
+    implementation(project(":core:llm"))
     implementation(project(":core:jeeves-theme"))
 
     // --- Feature modules ---

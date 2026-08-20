@@ -9,7 +9,7 @@ import com.hermes.agent.data.agent.AgentLoopFailureReason
 import com.hermes.agent.data.agent.AgentLoopOutcome
 import com.hermes.agent.data.agent.AgentLoopRunner
 import com.hermes.agent.domain.llm.LlmMessage
-import com.hermes.agent.data.llm.LlmProvider
+import com.hermes.agent.domain.llm.LlmProvider
 import com.hermes.agent.domain.llm.LlmResponse
 import com.hermes.agent.domain.llm.LlmStreamChunk
 import com.hermes.agent.domain.llm.LlmToolResponse
