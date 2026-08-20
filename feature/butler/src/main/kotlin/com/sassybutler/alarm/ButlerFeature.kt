@@ -35,7 +35,13 @@ class ButlerFeature @Inject constructor(
     )
 
     override fun entries(): List<NavEntry> = listOf(
-        NavEntry("butler_alarms", "Alarms")
+        NavEntry(
+            route = "butler_alarms",
+            label = "Daybook",
+            subtitle = "Alarms, weather & calendar",
+            targetActivityClassName = "com.sassybutler.alarm.MainAlarmSetupActivity",
+            intentAction = "com.hermes.agent.action.SET_ALARM",
+        )
     )
 
     override fun habitInsight(context: Context): String? {

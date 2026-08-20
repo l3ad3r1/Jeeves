@@ -47,7 +47,13 @@ class JotterFeature @Inject constructor(
     )
 
     override fun entries(): List<NavEntry> = listOf(
-        NavEntry("jotter_notes", "Notes")
+        NavEntry(
+            route = "jotter_notes",
+            label = "AI Notes",
+            subtitle = "Capture & summarize",
+            targetActivityClassName = "com.l3ad3r1.octojotter.MainActivity",
+            intentAction = "com.hermes.agent.action.NEW_NOTE",
+        )
     )
 
     override fun habitInsight(context: Context): String? {

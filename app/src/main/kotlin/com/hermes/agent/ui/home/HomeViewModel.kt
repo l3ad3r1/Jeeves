@@ -15,6 +15,8 @@ import com.hermes.agent.domain.model.Conversation
 import com.hermes.agent.domain.repository.ConversationRepository
 import com.hermes.agent.domain.repository.MemoryRepository
 import com.hermes.agent.service.AgentServiceController
+import com.hermes.agent.domain.agent.AgentFeature
+import com.hermes.agent.domain.agent.NavEntry
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -38,7 +40,11 @@ class HomeViewModel @Inject constructor(
     private val localLlmManager: LocalLlmManager,
     private val llmRouter: LlmRouter,
     memoryRepository: MemoryRepository,
+    features: Set<@JvmSuppressWildcards AgentFeature> = emptySet(),
 ) : ViewModel() {
+
+    /** Dynamically registered sub-app feature entries. */
+    val appEntries: List<NavEntry> = features.flatMap { it.entries() }
 
     /** Most recent conversations for the dashboard's "Recent threads". */
     val recentThreads: StateFlow<List<Conversation>> =

@@ -159,41 +159,31 @@ fun HomeScreen(
 
         Spacer(Modifier.height(20.dp))
 
-        // Bundled apps. Jotter and Butler each keep their own Activity rather than being
-        // embedded in this nav graph: Jotter's is a FragmentActivity (BiometricPrompt
-        // needs one) and Butler's UI is View-based, not Compose. Both live in feature
-        // modules of this same APK, so a plain Intent starts them.
-        SectionLabel("Apps")
-        Spacer(Modifier.height(11.dp))
-        Row(horizontalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.fillMaxWidth()) {
-            QuickAction(
-                title = "AI Notes",
-                subtitle = "Capture & summarize",
-                modifier = Modifier.weight(1f),
-                onClick = {
-                    val intent = Intent().setClassName(context.packageName, "com.l3ad3r1.octojotter.MainActivity").apply {
-                        putExtra("EXTRA_EMBEDDED", true)
-                        addFlags(Intent.FLAG_ACTIVITY_NO_ANIMATION)
-                    }
-                    if (context.packageManager.resolveActivity(intent, 0) != null) {
-                        context.startActivity(intent)
-                    }
-                },
-            )
-            QuickAction(
-                title = "Daybook",
-                subtitle = "Alarms, weather & calendar",
-                modifier = Modifier.weight(1f),
-                onClick = {
-                    val intent = Intent().setClassName(context.packageName, "com.sassybutler.alarm.MainAlarmSetupActivity").apply {
-                        putExtra("EXTRA_EMBEDDED", true)
-                        addFlags(Intent.FLAG_ACTIVITY_NO_ANIMATION)
-                    }
-                    if (context.packageManager.resolveActivity(intent, 0) != null) {
-                        context.startActivity(intent)
-                    }
-                },
-            )
+        // Bundled sub-app feature entries contributed dynamically via AgentFeature.entries()
+        if (viewModel.appEntries.isNotEmpty()) {
+            SectionLabel("Apps")
+            Spacer(Modifier.height(11.dp))
+            Row(horizontalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.fillMaxWidth()) {
+                for (entry in viewModel.appEntries) {
+                    QuickAction(
+                        title = entry.label,
+                        subtitle = entry.subtitle,
+                        modifier = Modifier.weight(1f),
+                        onClick = {
+                            entry.targetActivityClassName?.let { className ->
+                                val intent = Intent().setClassName(context.packageName, className).apply {
+                                    putExtra("EXTRA_EMBEDDED", true)
+                                    addFlags(Intent.FLAG_ACTIVITY_NO_ANIMATION)
+                                }
+                                if (context.packageManager.resolveActivity(intent, 0) != null) {
+                                    context.startActivity(intent)
+                                }
+                            }
+                        },
+                    )
+                }
+            }
+            Spacer(Modifier.height(20.dp))
         }
 
         Spacer(Modifier.height(20.dp))

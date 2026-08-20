@@ -17,6 +17,9 @@ data class BackupContribution(
 data class NavEntry(
     val route: String,
     val label: String,
+    val subtitle: String = "",
+    val targetActivityClassName: String? = null,
+    val intentAction: String? = null,
 )
 
 data class RagDocument(
