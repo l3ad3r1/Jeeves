@@ -56,7 +56,7 @@ import com.hermes.agent.data.local.entity.SupplementalPromptEntity
         ExecutionStepEntity::class,
         ActivityLedgerEntity::class,
     ],
-    version = 14,
+    version = 15,
     exportSchema = false,
 )
 abstract class HermesDatabase : RoomDatabase() {
@@ -468,6 +468,13 @@ abstract class HermesDatabase : RoomDatabase() {
                     "CREATE INDEX IF NOT EXISTS index_prompt_revisions_roleName_replacedAt " +
                         "ON prompt_revisions(roleName, replacedAt)",
                 )
+            }
+        }
+
+        /** Adds the shared message evidence state introduced by the public core schema. */
+        val MIGRATION_14_15 = object : Migration(14, 15) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE messages ADD COLUMN evidence_state TEXT")
             }
         }
 

@@ -18,6 +18,21 @@ repo. All three apps are merged and shipping (`:app` + `:feature:jotter` + `:fea
 
 ## Status log (newest first)
 
+### Shared persistence schema adopted (`port/hermes-0.9.x`) - 2026-08-20
+- [x] Jeeves now consumes public `agent-core :core:persistence`; removed 29 duplicate
+      Room DAO/entity sources while keeping the product database and migration chain at
+      the app composition boundary.
+- [x] Upgraded Jeeves' database from version 14 to 15 with a tested migration that adds
+      the shared nullable `messages.evidence_state` column without changing existing
+      rows. Conversation persistence now round-trips the public evidence-state contract.
+- [x] Removed the remaining Hermes product name from the public activity-ledger schema
+      documentation; shared persistence is product-neutral.
+- [x] VERIFIED (local gate): shared persistence assembly PASS; Jeeves app 427/427,
+      shared settings 16/16, Jotter 11/11, and Butler 27/27 PASS (481/481 combined);
+      debug APK assembly PASS; `tools/preflight.sh` PASS.
+- [x] VERIFIED on Samsung SM-S928B: Jeeves AppAgent instrumentation 1/1 PASS. Package
+      checks before and after found no installed `com.hermes.agent*` package.
+
 ### Shared engine settings and security adopted (`port/hermes-0.9.x`) - 2026-08-20
 - [x] Jeeves now consumes public `agent-core :core:settings`; removed eleven duplicate
       engine DataStore/settings and security implementation sources plus two duplicate
