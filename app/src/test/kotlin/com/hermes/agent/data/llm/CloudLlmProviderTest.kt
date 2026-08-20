@@ -1,7 +1,7 @@
 package com.hermes.agent.data.llm
 
-import com.hermes.agent.domain.model.LlmMessage
-import com.hermes.agent.domain.model.LlmStreamChunk
+import com.hermes.agent.domain.llm.LlmMessage
+import com.hermes.agent.domain.llm.LlmStreamChunk
 
 import app.cash.turbine.test
 import com.hermes.agent.data.remote.OpenAiApi

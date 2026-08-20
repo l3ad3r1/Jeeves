@@ -7,7 +7,7 @@ import dagger.hilt.components.SingletonComponent
 import dagger.multibindings.IntoSet
 
 import com.hermes.agent.data.llm.CloudLlmProvider
-import com.hermes.agent.domain.model.LlmMessage
+import com.hermes.agent.domain.llm.LlmMessage
 import com.hermes.agent.data.local.dao.MessageDao
 import com.hermes.agent.domain.tool.Tool
 import com.hermes.agent.domain.tool.ToolDescriptor

@@ -1,8 +1,8 @@
 package com.hermes.agent.data.jotter
 
 import com.hermes.agent.data.llm.CloudLlmProvider
-import com.hermes.agent.domain.model.LlmMessage
-import com.hermes.agent.domain.model.LlmStreamChunk
+import com.hermes.agent.domain.llm.LlmMessage
+import com.hermes.agent.domain.llm.LlmStreamChunk
 import com.hermes.agent.data.llm.LocalLlmManager
 import com.hermes.agent.data.voice.VoiceOutputManager
 import com.jeeves.core.settings.ai.JotterAiProvider

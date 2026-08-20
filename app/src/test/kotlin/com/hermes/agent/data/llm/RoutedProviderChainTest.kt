@@ -1,9 +1,9 @@
 package com.hermes.agent.data.llm
 
-import com.hermes.agent.domain.model.LlmMessage
-import com.hermes.agent.domain.model.LlmStreamChunk
-import com.hermes.agent.domain.model.LlmResponse
-import com.hermes.agent.domain.model.LlmToolResponse
+import com.hermes.agent.domain.llm.LlmMessage
+import com.hermes.agent.domain.llm.LlmStreamChunk
+import com.hermes.agent.domain.llm.LlmResponse
+import com.hermes.agent.domain.llm.LlmToolResponse
 
 import io.mockk.coEvery
 import io.mockk.every

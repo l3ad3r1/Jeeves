@@ -1,6 +1,6 @@
 package com.hermes.agent.data.tool
 
-import com.hermes.agent.domain.model.ToolCall
+import com.hermes.agent.domain.llm.ToolCall
 
 import com.hermes.agent.data.security.OutputRedactor
 import com.hermes.agent.data.settings.SettingsRepository
@@ -62,7 +62,7 @@ class ToolCallExecutorTest {
         val executor = ToolCallExecutor(registry, fakeRedactor())
 
         val result = executor.execute(
-            com.hermes.agent.domain.model.ToolCall(
+            com.hermes.agent.domain.llm.ToolCall(
                 id = "c1",
                 name = "stub",
                 arguments = mapOf("x" to JsonPrimitive("hello")),
@@ -78,7 +78,7 @@ class ToolCallExecutorTest {
         val executor = ToolCallExecutor(registry, fakeRedactor())
 
         val result = executor.execute(
-            com.hermes.agent.domain.model.ToolCall(
+            com.hermes.agent.domain.llm.ToolCall(
                 id = "c1",
                 name = "nope",
                 arguments = emptyMap(),
@@ -97,7 +97,7 @@ class ToolCallExecutorTest {
         val executor = ToolCallExecutor(registry, fakeRedactor())
 
         val result = executor.execute(
-            com.hermes.agent.domain.model.ToolCall(
+            com.hermes.agent.domain.llm.ToolCall(
                 id = "c1",
                 name = "boom",
                 arguments = emptyMap(),
@@ -120,7 +120,7 @@ class ToolCallExecutorTest {
         var gateCalled = false
         val gate = object : ToolCallExecutor.ConfirmationGate {
             override suspend fun confirm(
-                call: com.hermes.agent.domain.model.ToolCall,
+                call: com.hermes.agent.domain.llm.ToolCall,
                 requiresConfirmation: Boolean,
             ): Boolean {
                 gateCalled = true
@@ -129,7 +129,7 @@ class ToolCallExecutorTest {
         }
 
         val result = executor.execute(
-            com.hermes.agent.domain.model.ToolCall(
+            com.hermes.agent.domain.llm.ToolCall(
                 id = "c1",
                 name = "guarded",
                 arguments = emptyMap(),
@@ -153,13 +153,13 @@ class ToolCallExecutorTest {
 
         val gate = object : ToolCallExecutor.ConfirmationGate {
             override suspend fun confirm(
-                call: com.hermes.agent.domain.model.ToolCall,
+                call: com.hermes.agent.domain.llm.ToolCall,
                 requiresConfirmation: Boolean,
             ): Boolean = false
         }
 
         val result = executor.execute(
-            com.hermes.agent.domain.model.ToolCall(
+            com.hermes.agent.domain.llm.ToolCall(
                 id = "c1",
                 name = "guarded",
                 arguments = emptyMap(),
@@ -183,7 +183,7 @@ class ToolCallExecutorTest {
         )
 
         val result = executor.execute(
-            com.hermes.agent.domain.model.ToolCall("c1", "leaky", emptyMap())
+            com.hermes.agent.domain.llm.ToolCall("c1", "leaky", emptyMap())
         )
         assertTrue(result.success)
         assertFalse(result.output.contains("super-secret-key-123"))
@@ -199,7 +199,7 @@ class ToolCallExecutorTest {
         val executor = ToolCallExecutor(registry, fakeRedactor())
 
         val result = executor.execute(
-            com.hermes.agent.domain.model.ToolCall("c1", "leaky", emptyMap())
+            com.hermes.agent.domain.llm.ToolCall("c1", "leaky", emptyMap())
         )
         assertTrue(result.success)
         assertFalse(result.output.contains("ghp_"))
@@ -215,9 +215,9 @@ class ToolCallExecutorTest {
 
         val results = executor.executeAll(
             listOf(
-                com.hermes.agent.domain.model.ToolCall("c1", "a", emptyMap()),
-                com.hermes.agent.domain.model.ToolCall("c2", "b", emptyMap()),
-                com.hermes.agent.domain.model.ToolCall("c3", "missing", emptyMap()),
+                com.hermes.agent.domain.llm.ToolCall("c1", "a", emptyMap()),
+                com.hermes.agent.domain.llm.ToolCall("c2", "b", emptyMap()),
+                com.hermes.agent.domain.llm.ToolCall("c3", "missing", emptyMap()),
             )
         )
         assertEquals(3, results.size)

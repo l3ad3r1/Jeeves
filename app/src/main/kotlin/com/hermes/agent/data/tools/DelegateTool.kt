@@ -6,10 +6,10 @@ import dagger.hilt.InstallIn
 import dagger.hilt.components.SingletonComponent
 import dagger.multibindings.IntoSet
 
-import com.hermes.agent.domain.model.LlmMessage
+import com.hermes.agent.domain.llm.LlmMessage
 import com.hermes.agent.data.llm.LlmRouter
 import com.hermes.agent.data.llm.RoutingDecision
-import com.hermes.agent.domain.model.ToolCall
+import com.hermes.agent.domain.llm.ToolCall
 import com.hermes.agent.data.tool.ToolCallExecutor
 import com.hermes.agent.domain.repository.AgentTaskRepository
 import com.hermes.agent.domain.tool.Tool

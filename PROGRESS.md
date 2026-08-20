@@ -18,6 +18,21 @@ repo. All three apps are merged and shipping (`:app` + `:feature:jotter` + `:fea
 
 ## Status log (newest first)
 
+### Shared core domain adopted (`port/hermes-0.9.x`) - 2026-08-20
+- [x] Jeeves now compiles against public `agent-core :core:domain`; removed 55
+      duplicated app-domain sources, the duplicate private `Tool` contract, and the
+      duplicate `ToolCallPrompt` source.
+- [x] Promoted the product-neutral `DeviceProfile` contract to public core and kept
+      compatibility aliases for clients migrating LLM protocol imports from
+      `domain.model` to canonical `domain.llm`. Optional feature modules retain the
+      `ParameterType` compatibility name while sharing the capability-aware tool API.
+- [x] Fixed the one cross-module Compose smart-cast exposed by moving `Message` out of
+      the app; no UI behavior changed.
+- [x] VERIFIED (local gate): shared domain 82/82 PASS; Hermes app 208/208 PASS and
+      debug APK assembly PASS; Jeeves app/Jotter/Butler 479/479 PASS and debug APK
+      assembly PASS.
+- [ ] UNVERIFIED on device (L-001): no device is connected.
+
 ### Private settings boundary clarified (`port/hermes-0.9.x`) - 2026-08-20
 - [x] Renamed the Gradle identity of Jeeves' local settings/contracts module from
       `:core:settings` to `:core:jeeves-settings`. Its filesystem and package names

@@ -1,11 +1,11 @@
 package com.hermes.agent.data.llm
 
-import com.hermes.agent.domain.model.LlmFinishReason
-import com.hermes.agent.domain.model.LlmMessage
-import com.hermes.agent.domain.model.LlmResponse
-import com.hermes.agent.domain.model.LlmStreamChunk
-import com.hermes.agent.domain.model.LlmToolResponse
-import com.hermes.agent.domain.model.ToolCall
+import com.hermes.agent.domain.llm.LlmFinishReason
+import com.hermes.agent.domain.llm.LlmMessage
+import com.hermes.agent.domain.llm.LlmResponse
+import com.hermes.agent.domain.llm.LlmStreamChunk
+import com.hermes.agent.domain.llm.LlmToolResponse
+import com.hermes.agent.domain.llm.ToolCall
 import com.hermes.agent.domain.tool.ToolDescriptor
 import kotlinx.coroutines.flow.Flow
 

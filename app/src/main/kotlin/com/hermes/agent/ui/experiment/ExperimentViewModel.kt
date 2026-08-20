@@ -3,8 +3,8 @@ package com.hermes.agent.ui.experiment
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.hermes.agent.data.llm.CloudLlmProvider
-import com.hermes.agent.domain.model.LlmMessage
-import com.hermes.agent.domain.model.LlmStreamChunk
+import com.hermes.agent.domain.llm.LlmMessage
+import com.hermes.agent.domain.llm.LlmStreamChunk
 import com.hermes.agent.data.settings.SettingsRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow

@@ -1,6 +1,6 @@
 package com.hermes.agent.data.llm
 
-import com.hermes.agent.domain.model.LlmMessage
+import com.hermes.agent.domain.llm.LlmMessage
 
 import javax.inject.Inject
 import javax.inject.Singleton

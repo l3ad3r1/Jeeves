@@ -3,7 +3,7 @@ package com.hermes.agent.data.butler
 import android.content.Context
 import com.hermes.agent.data.llm.CloudLlmProvider
 import com.hermes.agent.domain.agent.AgentFeature
-import com.hermes.agent.domain.model.LlmMessage
+import com.hermes.agent.domain.llm.LlmMessage
 import com.jeeves.core.settings.JeevesSettings
 import com.jeeves.core.settings.ai.ButlerAiProvider
 import dagger.hilt.EntryPoint

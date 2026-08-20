@@ -1,6 +1,6 @@
 package com.hermes.agent.domain.tool
 
-import com.hermes.agent.domain.model.ToolCall
+import com.hermes.agent.domain.llm.ToolCall
 import com.hermes.agent.domain.security.DeviceAuthenticationService
 import io.mockk.coEvery
 import io.mockk.coVerify

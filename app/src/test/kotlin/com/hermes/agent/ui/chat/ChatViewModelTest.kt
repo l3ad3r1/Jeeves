@@ -3,7 +3,7 @@ package com.hermes.agent.ui.chat
 import androidx.lifecycle.SavedStateHandle
 import com.hermes.agent.data.agent.ClarificationBus
 import com.hermes.agent.data.agent.TodoStore
-import com.hermes.agent.domain.model.ToolCall
+import com.hermes.agent.domain.llm.ToolCall
 import com.hermes.agent.data.settings.SettingsRepository
 import com.hermes.agent.data.settings.UserSettings
 import com.hermes.agent.data.voice.VoiceInputManager

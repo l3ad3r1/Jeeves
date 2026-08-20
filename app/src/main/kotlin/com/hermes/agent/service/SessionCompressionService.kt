@@ -1,7 +1,7 @@
 package com.hermes.agent.service
 
 import com.hermes.agent.data.local.entity.MessageEntity
-import com.hermes.agent.domain.model.LlmMessage
+import com.hermes.agent.domain.llm.LlmMessage
 import com.hermes.agent.data.llm.LlmProvider
 import javax.inject.Inject
 import javax.inject.Singleton

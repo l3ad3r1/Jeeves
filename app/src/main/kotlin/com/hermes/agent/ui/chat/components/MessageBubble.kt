@@ -57,9 +57,10 @@ fun MessageBubble(
             },
         horizontalAlignment = alignment,
     ) {
-        if (!isUser && message.agentRole != null) {
+        val agentRole = message.agentRole
+        if (!isUser && agentRole != null) {
             AgentRoleBadge(
-                role = message.agentRole,
+                role = agentRole,
                 modifier = Modifier.padding(bottom = 4.dp),
             )
         }
