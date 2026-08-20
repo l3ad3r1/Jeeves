@@ -1,7 +1,7 @@
 package com.hermes.agent.data.backup
 
 import android.content.Context
-import com.hermes.agent.data.settings.SettingsRepository
+import com.hermes.agent.domain.settings.SettingsRepository
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext

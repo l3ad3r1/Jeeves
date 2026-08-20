@@ -14,7 +14,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.lifecycle.lifecycleScope
-import com.hermes.agent.data.settings.SettingsRepository
+import com.hermes.agent.domain.settings.SettingsRepository
 import com.hermes.agent.ui.navigation.HermesNavGraph
 import com.hermes.agent.ui.onboarding.OnboardingScreen
 import com.hermes.agent.ui.theme.HermesTheme

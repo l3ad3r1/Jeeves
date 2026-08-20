@@ -11,7 +11,7 @@ import com.hermes.agent.data.llm.LlmProvider
 import com.hermes.agent.data.llm.LlmRouter
 import com.hermes.agent.data.llm.HybridLlmRouter
 import com.hermes.agent.data.remote.OpenAiApi
-import com.hermes.agent.data.settings.SettingsRepository
+import com.hermes.agent.domain.settings.SettingsRepository
 import com.hermes.agent.domain.repository.ChatRepository
 import com.hermes.agent.data.repository.ChatRepositoryImpl
 import com.hermes.agent.domain.repository.ConversationRepository
@@ -77,7 +77,7 @@ abstract class LlmModule {
          * Default (unqualified) [CloudModelSource]. Every bare
          * [CloudLlmProvider] injection — the orchestrator-facing primary
          * provider and all direct consumers — resolves to PRIMARY, i.e. the
-         * [com.hermes.agent.data.settings.UserSettings.cloudModel].
+         * [com.hermes.agent.domain.settings.UserSettings.cloudModel].
          */
         @Provides
         fun provideCloudModelSource(): CloudModelSource = CloudModelSource.PRIMARY

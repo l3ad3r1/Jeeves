@@ -22,7 +22,7 @@ import java.util.zip.ZipInputStream
 import androidx.datastore.preferences.core.PreferenceDataStoreFactory
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.stringPreferencesKey
-import com.hermes.agent.data.settings.SettingsRepository
+import com.hermes.agent.domain.settings.SettingsRepository
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonObject

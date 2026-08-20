@@ -18,6 +18,20 @@ repo. All three apps are merged and shipping (`:app` + `:feature:jotter` + `:fea
 
 ## Status log (newest first)
 
+### Shared engine settings and security adopted (`port/hermes-0.9.x`) - 2026-08-20
+- [x] Jeeves now consumes public `agent-core :core:settings`; removed eleven duplicate
+      engine DataStore/settings and security implementation sources plus two duplicate
+      security test sources. Call sites now use the canonical public settings contracts.
+- [x] Kept `:core:jeeves-settings` separate for Jeeves-only synchronous alarm/voice
+      preferences and feature contracts. This remains private product composition.
+- [x] Fixed shared settings defaults so each consuming app's `hermes.*` Gradle properties
+      and optional `hermes.local.properties` provide the cloud API key, base URL, and
+      model. Generated values match each product without exposing key material.
+- [x] VERIFIED (local gate): shared settings 16/16 PASS; Jeeves app 425/425, Jotter
+      11/11, and Butler 27/27 PASS (479/479 combined); Hermes app 208/208 PASS; both
+      debug APK assemblies PASS.
+- [ ] UNVERIFIED on device (L-001): no device is connected.
+
 ### Shared core plugin infrastructure adopted (`port/hermes-0.9.x`) - 2026-08-20
 - [x] Jeeves now consumes public `agent-core :core:plugin`; removed seven duplicate
       registry, sandbox, resource-monitor, and built-in plugin sources.

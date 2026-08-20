@@ -9,7 +9,7 @@ import com.hermes.agent.data.voice.VoiceInputEvent
 import com.hermes.agent.data.voice.VoiceInputManager
 import com.hermes.agent.data.voice.VoiceOutputEvent
 import com.hermes.agent.data.voice.VoiceOutputManager
-import com.hermes.agent.data.settings.SettingsRepository
+import com.hermes.agent.domain.settings.SettingsRepository
 import com.hermes.agent.domain.agent.ExecutionOrigin
 import com.hermes.agent.domain.agent.OrchestratorEvent
 import com.hermes.agent.domain.repository.ChatRepository

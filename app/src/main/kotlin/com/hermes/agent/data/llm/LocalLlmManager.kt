@@ -10,7 +10,7 @@ import androidx.core.content.ContextCompat
 import com.arm.aichat.InferenceEngine
 import com.arm.aichat.InferenceEngine.State
 import com.arm.aichat.isModelLoaded
-import com.hermes.agent.data.settings.SettingsRepository
+import com.hermes.agent.domain.settings.SettingsRepository
 import dagger.hilt.android.qualifiers.ApplicationContext
 import java.io.File
 import javax.inject.Inject

@@ -126,7 +126,7 @@ fun AssistantSettingsScreen(
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun OnDeviceAiCard(
-    settings: com.hermes.agent.data.settings.UserSettings,
+    settings: com.hermes.agent.domain.settings.UserSettings,
     viewModel: SettingsViewModel,
 ) {
     val isDownloaded by viewModel.isModelDownloaded.collectAsStateWithLifecycle()
@@ -319,7 +319,7 @@ private fun OnDeviceAiCard(
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun LegacyCloudSectionRemoved(
-    settings: com.hermes.agent.data.settings.UserSettings,
+    settings: com.hermes.agent.domain.settings.UserSettings,
     viewModel: SettingsViewModel,
 ) {
     val primaryDiscovery by viewModel.primaryModelDiscovery.collectAsStateWithLifecycle()

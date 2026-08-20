@@ -6,7 +6,7 @@ import dagger.hilt.InstallIn
 import dagger.hilt.components.SingletonComponent
 import dagger.multibindings.IntoSet
 
-import com.hermes.agent.data.settings.SettingsRepository
+import com.hermes.agent.domain.settings.SettingsRepository
 import com.hermes.agent.domain.terminal.RemoteTerminalBackend
 import com.hermes.agent.domain.tool.Tool
 import com.hermes.agent.domain.tool.ToolDescriptor

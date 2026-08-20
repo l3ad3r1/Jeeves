@@ -1,6 +1,6 @@
 package com.hermes.agent.data.llm
 
-import com.hermes.agent.data.settings.CloudProviderProfile
+import com.hermes.agent.domain.settings.CloudProviderProfile
 
 /** Non-secret provider metadata, mirroring Hermes Desktop's built-in provider catalog. */
 data class CloudProviderDefinition(
