@@ -18,6 +18,15 @@ repo. All three apps are merged and shipping (`:app` + `:feature:jotter` + `:fea
 
 ## Status log (newest first)
 
+### User-facing module repository setting (`port/hermes-0.9.x`) - 2026-08-20
+- [x] Added the shared `PluginModuleDownloadCoordinator` boundary and implementation. It
+      trims and validates the HTTPS catalog through the existing verifier, then downloads
+      verified APK bytes into the app-private artifact directory (L-001, L-007, L-013).
+- [x] Added a discoverable Modules row and screen to both Jeeves and Hermes. Users can enter
+      a public catalog URL, load validated entries, download a selected module, and see
+      loading, empty, saved, and error states instead of a silent no-op (L-001, L-007).
+- [x] VERIFIED shared domain/plugin tests and `:app:compileDebugKotlin` for both products.
+
 ### Shared plugin install completion tracking (`port/hermes-0.9.x`) - 2026-08-20
 - [x] Added restart-safe shared install state. A successful installer launch records the
       exact plugin package, version, digest, and signer as `HANDED_OFF`; the shared
