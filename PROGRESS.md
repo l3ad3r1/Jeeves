@@ -18,6 +18,23 @@ repo. All three apps are merged and shipping (`:app` + `:feature:jotter` + `:fea
 
 ## Status log (newest first)
 
+### Shared plugin install completion tracking (`port/hermes-0.9.x`) - 2026-08-20
+- [x] Added restart-safe shared install state. A successful installer launch records the
+      exact plugin package, version, digest, and signer as `HANDED_OFF`; the shared
+      package receiver processes Android `PACKAGE_ADDED`/`PACKAGE_REPLACED` events off
+      the main thread and marks only the matching record `INSTALLED`.
+- [x] Duplicate handoffs replace the pending record, duplicate completion broadcasts
+      are idempotent, and unrelated package events are ignored. The receiver uses a
+      Hilt entry point so both hosts consume the same core implementation without
+      applying the Hilt Android plugin to `:core:plugin`.
+- [x] VERIFIED with 51/51 shared plugin tests (including persistence and coordinator
+      handoff), shared tools/LLM/memory/settings suites, Hermes debug tests/APK assembly,
+      Jeeves preflight/native APK, Jotter 11/11, and Butler 27/27.
+- [ ] UNVERIFIED on device (L-001): no real signed plugin install has emitted a package
+      event on hardware; event handling, persistence, and merged manifest compilation
+      are covered by deterministic tests/builds.
+- [ ] NOT DONE: concrete review UI, service discovery, or Android/gRPC transport.
+
 ### Shared install-review orchestration (`port/hermes-0.9.x`) - 2026-08-20
 - [x] Added the shared UI-neutral review coordinator. It refreshes persisted publisher
       trust, validates user decisions, persists the post-trust exact review snapshot,
