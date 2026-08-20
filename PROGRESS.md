@@ -18,6 +18,21 @@ repo. All three apps are merged and shipping (`:app` + `:feature:jotter` + `:fea
 
 ## Status log (newest first)
 
+### Persistent plugin publisher trust and approval storage (`port/hermes-0.9.x`) - 2026-08-20
+- [x] Added shared app-private, versioned stores for publisher trust and exact install
+      approvals. Trust is keyed by plugin ID and normalized signer fingerprint; approval
+      snapshots include the full request, including permissions, digest, version, signer,
+      and trust state. Repeated writes replace existing records, revocation is explicit,
+      storage is bounded, and malformed or failed persistence fails closed.
+- [x] VERIFIED with Robolectric-backed SharedPreferences tests: shared plugin 46/46;
+      the test covers normalization, restart persistence, exact-artifact mismatch,
+      revocation, and replace-not-append behavior.
+- [ ] UNVERIFIED on device (L-001): no hardware restart or product review screen exists
+      yet; the Android persistence backend is exercised in a real Android-compatible
+      Robolectric environment and is Hilt-bound identically for Hermes and Jeeves.
+- [ ] NOT DONE: permission-review/install UI, install completion tracking, service
+      discovery, or concrete Android/gRPC transport.
+
 ### Shared Android plugin installer handoff (`port/hermes-0.9.x`) - 2026-08-20
 - [x] Added the shared package-installer contract, app-private plugin directory, and
       Android implementation. Both products receive the same Hilt-bound installer;
