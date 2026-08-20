@@ -207,6 +207,7 @@ dependencies {
     // The one settings store, shared with both feature modules.
     implementation(project(":core:settings"))
     implementation(project(":core:theme"))
+    implementation(project(":core:util"))
     implementation(project(":core:jeeves-theme"))
 
     // On-device sentence embeddings (all-MiniLM-L6-v2) for the RAG/memory

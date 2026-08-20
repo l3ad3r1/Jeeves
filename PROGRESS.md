@@ -18,6 +18,14 @@ repo. All three apps are merged and shipping (`:app` + `:feature:jotter` + `:fea
 
 ## Status log (newest first)
 
+### Shared core utility boundary (`port/hermes-0.9.x`) - 2026-08-20
+- [x] Replaced Jeeves' five byte-identical utility sources with the public
+      `agent-core :core:util` module: dispatcher abstraction, result wrapper, ID
+      generation, SQL LIKE escaping, and security-audit contracts.
+- [x] VERIFIED (local gate): shared utility tests 5/5 PASS; Jeeves app/Jotter/Butler
+      unit suites 479/479 PASS; debug APK assembly PASS. No source behavior changed.
+- [ ] UNVERIFIED on device (L-001): no device remained connected for this checkpoint.
+
 ### Shared core theme boundary (`port/hermes-0.9.x`) - 2026-08-20
 - [x] Replaced Jeeves' duplicated theme primitives with `:core:theme` from the sibling
       public `agent-core` checkout. Jeeves branding remains private in
