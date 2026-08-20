@@ -47,7 +47,7 @@ dependencies {
     // The one settings store shared with :app and :feature:jotter.
     implementation(project(":core:settings"))
     implementation(platform(libs.androidx.compose.bom))
-    implementation(project(":core:theme"))
+    implementation(project(":core:jeeves-theme"))
     
     // --- Jetpack Compose ---
     implementation(libs.androidx.compose.ui)

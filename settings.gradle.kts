@@ -40,5 +40,12 @@ rootProject.name = "Jeeves"
 include(":app")
 include(":core:settings")
 include(":core:theme")
+include(":core:jeeves-theme")
 include(":feature:jotter")
 include(":feature:butler")
+
+// Shared, product-neutral theme primitives live in the public agent-core repo.
+project(":core:theme").projectDir = file("../agent-core/core/theme")
+
+// Jeeves branding remains private and is composed over the shared primitives.
+project(":core:jeeves-theme").projectDir = file("core/theme")

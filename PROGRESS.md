@@ -18,6 +18,22 @@ repo. All three apps are merged and shipping (`:app` + `:feature:jotter` + `:fea
 
 ## Status log (newest first)
 
+### Shared core theme boundary (`port/hermes-0.9.x`) - 2026-08-20
+- [x] Replaced Jeeves' duplicated theme primitives with `:core:theme` from the sibling
+      public `agent-core` checkout. Jeeves branding remains private in
+      `:core:jeeves-theme`, while Hermes branding now remains in the Hermes app.
+      The public theme module contains only reusable controls, colors, shapes, and
+      accessibility primitives and no longer depends on engine domain/settings code.
+- [x] VERIFIED (local gate): standalone shared theme assembly PASS; Hermes app unit
+      suite 208/208 PASS and debug APK assembly PASS; Jeeves app/Jotter/Butler unit
+      suites 479/479 PASS and debug APK assembly PASS; `tools/preflight.sh` PASS.
+- [x] VERIFIED baseline on device before the boundary move: Hermes instrumentation
+      10/10 PASS and Jeeves AppAgent smoke instrumentation 1/1 PASS on the Samsung
+      SM-S928B. These tests use debug-only package IDs.
+- [ ] UNVERIFIED on device after the boundary move (L-001): the Samsung disconnected
+      before the post-change instrumentation rerun could start. The attempted run
+      completed compilation and packaging, then stopped with `No connected devices`.
+
 ### Modularization of Tools and Sub-App Seams (`port/hermes-0.9.x`) - 2026-08-20
 - [x] Executed full modularization steps 1 through 4 + Task A/B decoupling:
       - **Step 1:** Registered all 33 Hermes agent tools via Hilt `@Binds @IntoSet Tool` multibinding into `Set<Tool>`, refactoring `ToolsModule` with `@Multibinds`.
