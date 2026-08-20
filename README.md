@@ -27,6 +27,8 @@ load the catalog, and choose **Download**. HTTPS, catalog schema, artifact size,
 SHA-256 are checked before the APK is saved privately. The installer and approval flow
 then remain gated by the host's security policy.
 
+Starter catalog URL: `https://raw.githubusercontent.com/l3ad3r1/hermes-jeeves-modules/main/catalog-v1.json`
+
 Module authors can publish through the [Hermes/Jeeves Modules repository](https://github.com/l3ad3r1/hermes-jeeves-modules);
 its README explains the manifest, service, signing, catalog, and release steps.
 
