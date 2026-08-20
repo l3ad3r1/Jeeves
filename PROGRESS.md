@@ -18,6 +18,23 @@ repo. All three apps are merged and shipping (`:app` + `:feature:jotter` + `:fea
 
 ## Status log (newest first)
 
+### Shared memory and RAG engine adopted (`port/hermes-0.9.x`) - 2026-08-20
+- [x] Jeeves now consumes public `agent-core :core:memory`; removed fourteen duplicate
+      embedding, vector-store, learning, consolidation, and RAG sources plus three
+      duplicate test sources.
+- [x] Replaced Jeeves' second `LlmProvider` interface with a compatibility alias to the
+      canonical public domain contract. Shared memory services now depend on the public
+      abstraction while existing private provider implementations remain source-compatible.
+- [x] Kept ONNX Runtime as a private implementation dependency of shared memory and removed
+      Jeeves' redundant direct dependency. Also removed the remaining product-specific
+      model-manager name from public memory docs.
+- [x] VERIFIED from clean outputs (local gate): shared memory 21/21, shared settings
+      16/16, Jeeves app 410/410, Jotter 11/11, and Butler 27/27 PASS (485/485 combined);
+      debug APK assembly PASS. A forced no-build-cache memory run also passed 21/21.
+- [x] VERIFIED on Samsung SM-S928B: Jeeves AppAgent instrumentation 1/1 PASS. Package
+      checks before and after found no installed `com.hermes.agent*` package.
+- [x] `tools/preflight.sh` PASS.
+
 ### Shared persistence schema adopted (`port/hermes-0.9.x`) - 2026-08-20
 - [x] Jeeves now consumes public `agent-core :core:persistence`; removed 29 duplicate
       Room DAO/entity sources while keeping the product database and migration chain at
