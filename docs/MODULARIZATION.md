@@ -42,10 +42,10 @@ to do it now rather than later.
 It removes double-maintenance of the engine.
 
 It does **not** change release cadence. A Gradle module still compiles into the
-APK; adding one still ships a new APK. Features that arrive without an app
-release need the plugin sandbox (`domain/plugin` already defines the contract;
-`GrpcPluginSandbox` for standalone plugin APKs is still a stub). That is a
-separate project — see [Later](#later-out-of-band-features).
+APK; adding one still ships a new APK. Features that arrive without an app release
+need the remaining plugin delivery layers. Shared core now defines the remote
+sandbox seam and package/trust contract, but not network download, Android package
+installation, or the concrete transport. See [Later](#later-out-of-band-features).
 
 ## Repo layout
 
@@ -176,13 +176,16 @@ Explicitly **not** ported, per instruction: AI Notes (Jotter) and Daybook
 
 The shared registry now retains a remote plugin proxy, routes its complete lifecycle
 through its owning sandbox, and exposes an injectable `GrpcPluginTransport` boundary.
-No concrete transport is contributed yet, so the sandbox reports itself unavailable
-instead of pretending a native library probe proves gRPC support.
+Shared core also defines catalog schema v1, a strict JSON codec, immutable APK/package
+evidence, fail-closed hash/signature/compatibility checks, and approval snapshots bound
+to the exact artifact, signer, version, and permissions. Catalog-declared signers are
+not treated as trust anchors.
 
-Still required before a feature can ship without an app release: standalone APK
-discovery, a public catalog/download format, package-signature verification, user
-permission approval, and the Android/gRPC transport itself. Until those land,
-"module" still means "compiled in", and every feature addition is still a release.
+Still required before a feature can ship without an app release: authenticated catalog
+and artifact fetching, Android APK inspection and package-installer handoff, persistent
+publisher trust and approval storage, install UI, service discovery, and the Android/gRPC
+transport itself. Until those land, "module" still means "compiled in", and every
+feature addition is still a release.
 
 ## Appendix A — reproducing the survey
 

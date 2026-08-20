@@ -18,6 +18,28 @@ repo. All three apps are merged and shipping (`:app` + `:feature:jotter` + `:fea
 
 ## Status log (newest first)
 
+### Public plugin package and trust contract (`port/hermes-0.9.x`) - 2026-08-20
+- [x] Added shared, serializable catalog schema v1 for immutable APK metadata,
+      embedded plugin manifests, Android service identity, protocol compatibility,
+      package hashes, signer fingerprints, and minimum host versions.
+- [x] Added a strict catalog JSON codec and fail-closed package verifier. It rejects
+      insecure URLs, malformed or duplicate identities, incompatible protocols/hosts,
+      and mismatches in the embedded manifest, package, version, size, APK SHA-256, or
+      signing certificate.
+- [x] Added approval snapshots bound to the exact verified artifact, signer, version,
+      and permission list. Untrusted publishers require a separate explicit trust
+      decision, so catalog metadata is not treated as its own trust anchor.
+- [x] Published the repository contract and a minimal `catalog-v1.json` example in the
+      public shared core. Shared plugin coverage is now 24/24.
+- [x] VERIFIED (local gate): Jeeves app 283/283, shared plugin 24/24, shared tools
+      49/49, shared LLM 88/88, shared memory 21/21, shared settings 16/16, Jotter
+      11/11, and Butler 27/27 PASS (519/519 combined); debug APK assembly PASS.
+      Hermes app 208/208 plus the same 198 shared tests PASS (406/406 combined);
+      debug APK assembly PASS.
+- [ ] NOT DONE: catalog/artifact network fetching, Android APK inspection and package
+      installer handoff, persistent publisher trust, install UI, or concrete gRPC transport.
+- [ ] UNVERIFIED on device (L-001): no device is connected.
+
 ### Remote plugin runtime boundary opened (`port/hermes-0.9.x`) - 2026-08-20
 - [x] Fixed the shared registry so a plugin installed through the remote path retains
       its runtime proxy and its owning sandbox. Activation, suspension, resumption,
