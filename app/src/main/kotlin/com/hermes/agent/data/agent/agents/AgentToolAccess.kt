@@ -36,7 +36,7 @@ internal object AgentToolAccess {
                 "common", "time", "web", "conversation_search", "calculator", "notification",
                 "notes", "device_alarm", "notes_and_reminders", "navigation", "phone", "contacts",
                 "media", "device_control", "skills", "user_memory", "scheduler", "shell", "termux",
-                "todo", "voice", "clarify", "delegate", "media_generation", "app_automation", "documents"
+                "todo", "voice", "clarify", "delegate", "media_generation", "app_automation", "documents", "kanban"
             ),
             excludedCapabilities = setOf("calendar", "device_settings"),
         ),
@@ -44,7 +44,7 @@ internal object AgentToolAccess {
             capabilities = setOf(
                 "common", "time", "web", "conversation_search", "calculator", "calendar", "notes",
                 "skills", "user_memory", "scheduler", "todo", "clarify", "delegate", "notification",
-                "phone", "contacts", "navigation", "documents", "notes_and_reminders"
+                "phone", "contacts", "navigation", "documents", "notes_and_reminders", "kanban"
             ),
         ),
         AgentRole.RESEARCH to RoleGrant(
@@ -81,4 +81,3 @@ internal object AgentToolAccess {
     fun ToolRegistry.toolsFor(names: List<String>): List<ToolDescriptor> =
         descriptors().filter { it.name in names.toSet() }
 }
-

@@ -40,11 +40,14 @@ object ToolsModule {
         features: Set<@JvmSuppressWildcards AgentFeature> = emptySet(),
     ): ToolRegistry {
         val registry = ToolRegistryImpl()
-        val allTools = (tools + features.flatMap { it.tools() })
+        val featureTools = features
+            .sortedBy { it.id }
+            .flatMap { it.tools() }
+        val featureToolNames = featureTools.mapTo(mutableSetOf()) { it.descriptor.name }
+        val allTools = (tools.filterNot { it.descriptor.name in featureToolNames } + featureTools)
             .distinctBy { it.descriptor.name }
             .sortedWith(compareBy({ it.descriptor.category }, { it.descriptor.name }))
         allTools.forEach(registry::register)
         return registry
     }
 }
-

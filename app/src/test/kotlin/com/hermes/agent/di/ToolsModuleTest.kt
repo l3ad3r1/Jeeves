@@ -84,4 +84,22 @@ class ToolsModuleTest {
         val sortedNames = registry.all().map { it.descriptor.name }
         assertEquals(listOf("feature_tool_a", "feature_tool_b", "direct_tool"), sortedNames)
     }
+
+    @Test
+    fun provideToolRegistry_featureToolOverridesSameNamedCoreTool() {
+        val coreSpeak = stub("speak", "communication")
+        val featureSpeak = stub("speak", "feature")
+        val feature = object : com.hermes.agent.domain.agent.AgentFeature {
+            override val id: String = "butler"
+            override fun tools(): List<Tool> = listOf(featureSpeak)
+            override fun promptFragment(): String? = null
+            override fun backupContributions(): List<com.hermes.agent.domain.agent.BackupContribution> = emptyList()
+            override fun entries(): List<com.hermes.agent.domain.agent.NavEntry> = emptyList()
+        }
+
+        val registry = ToolsModule.provideToolRegistry(setOf(coreSpeak), setOf(feature))
+
+        assertEquals(1, registry.all().size)
+        assertEquals(featureSpeak, registry.byName("speak"))
+    }
 }

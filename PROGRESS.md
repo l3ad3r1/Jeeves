@@ -18,13 +18,33 @@ repo. All three apps are merged and shipping (`:app` + `:feature:jotter` + `:fea
 
 ## Status log (newest first)
 
+### Shared tool engine adopted (`port/hermes-0.9.x`) - 2026-08-20
+- [x] Jeeves now consumes public `agent-core :core:tools`; removed 44 duplicate tool,
+      app-automation, terminal, and voice implementation sources plus eight duplicate
+      test sources. The shared module also supplies the canonical Kanban and TTS tools.
+- [x] Activated Hilt/KSP generation inside `:core:tools`. This fixes the previous state
+      where annotated shared tool modules compiled but contributed no multibound tools
+      to either product's runtime registry.
+- [x] Added product-neutral `ProductIdentity` composition for display names and
+      notification channels. Hermes and Jeeves provide their own identity at the app
+      boundary; shared LLM and tool code no longer hard-code either product.
+- [x] Aligned the role capability taxonomy across both apps and made private feature
+      tools deterministic overrides of same-named core tools, so Butler's richer
+      `speak` implementation wins over the shared default.
+- [x] VERIFIED from clean, no-build-cache outputs (local gate): Jeeves app 289/289,
+      shared tools 49/49, shared LLM 88/88, shared memory 21/21, shared settings 16/16,
+      Jotter 11/11, and Butler 27/27 PASS (501/501 combined); debug APK assembly PASS.
+      Hermes app 208/208 plus the same 174 shared tests PASS (382/382 combined); debug
+      APK assembly PASS. Generated Hilt metadata contains the shared tool modules.
+- [ ] UNVERIFIED on device (L-001): no device is connected.
+
 ### Shared LLM and provider engine adopted (`port/hermes-0.9.x`) - 2026-08-20
 - [x] Jeeves now consumes public `agent-core :core:llm`; removed the duplicate
       cloud/local providers, routing policies, OpenAI transport DTOs, model download
       worker, ARM inference bridge, and eleven duplicate LLM test sources.
 - [x] Replaced the final app-local `LlmProvider` compatibility alias with the canonical
       public domain contract. No shared LLM implementation remains in the Jeeves app.
-- [x] Added explicit `LlmProductConfig` composition so public engine code does not
+- [x] Added explicit `ProductIdentity` composition so public engine code does not
       hard-code either product. Hermes supplies `Hermes`; Jeeves supplies `Jeeves`,
       preserving provider labels and the fallback on-device system prompt.
 - [x] VERIFIED from clean, no-build-cache outputs (local gate): Jeeves app 324/324,

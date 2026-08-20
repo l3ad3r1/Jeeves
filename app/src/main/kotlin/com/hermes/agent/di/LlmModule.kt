@@ -7,7 +7,7 @@ import com.hermes.agent.data.llm.CloudLlmProvider
 import com.hermes.agent.data.llm.CloudModelCatalog
 import com.hermes.agent.data.llm.OpenAiCloudModelCatalog
 import com.hermes.agent.data.llm.CloudModelSource
-import com.hermes.agent.data.llm.LlmProductConfig
+import com.hermes.agent.domain.product.ProductIdentity
 import com.hermes.agent.data.llm.LlmRouter
 import com.hermes.agent.data.llm.HybridLlmRouter
 import com.hermes.agent.data.remote.OpenAiApi
@@ -70,7 +70,8 @@ abstract class LlmModule {
 
         @Provides
         @Singleton
-        fun provideLlmProductConfig(): LlmProductConfig = LlmProductConfig("Jeeves")
+        fun provideProductIdentity(): ProductIdentity =
+            ProductIdentity(displayName = "Jeeves", notificationChannelId = "jeeves_notify")
 
         @Provides
         @Singleton
@@ -101,8 +102,8 @@ abstract class LlmModule {
             settings: SettingsRepository,
             dispatchers: DispatcherProvider,
             json: Json,
-            productConfig: LlmProductConfig,
+            productIdentity: ProductIdentity,
         ): CloudLlmProvider =
-            CloudLlmProvider(api, settings, dispatchers, json, CloudModelSource.AUX, productConfig)
+            CloudLlmProvider(api, settings, dispatchers, json, CloudModelSource.AUX, productIdentity)
     }
 }

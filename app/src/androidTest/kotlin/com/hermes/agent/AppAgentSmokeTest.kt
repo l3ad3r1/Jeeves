@@ -9,6 +9,7 @@ import com.hermes.agent.data.appagent.AppInteractionSession
 import com.hermes.agent.data.appagent.ScreenObservation
 import com.hermes.agent.data.appagent.ScreenObservationService
 import com.hermes.agent.data.appagent.ScreenSnapshotStore
+import com.hermes.agent.domain.product.ProductIdentity
 import com.hermes.agent.data.appagent.UiAutomationAppAutomationGateway
 import com.hermes.agent.data.tools.AppAnalyzeScreenTool
 import com.hermes.agent.data.tools.AppTapTool
@@ -47,7 +48,12 @@ class AppAgentSmokeTest {
         )
         val snapshots = ScreenSnapshotStore()
         val interactionSession = AppInteractionSession()
-        val observations = ScreenObservationService(automation, snapshots, interactionSession)
+        val observations = ScreenObservationService(
+            automation,
+            snapshots,
+            interactionSession,
+            ProductIdentity("Jeeves", "jeeves_notify"),
+        )
 
         ActivityScenario.launch(AppAgentFixtureActivity::class.java).use { scenario ->
             val root = awaitRoot(automation)
