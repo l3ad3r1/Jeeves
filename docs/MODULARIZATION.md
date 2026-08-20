@@ -174,11 +174,15 @@ Explicitly **not** ported, per instruction: AI Notes (Jotter) and Daybook
 
 ## Later: out-of-band features
 
-Only worth starting once the above is stable. `InProcessPluginSandbox` already
-loads first-party plugins inside the APK; `GrpcPluginSandbox` — standalone
-plugin APKs over local sockets — is a documented stub. Finishing it is what
-would let a feature ship without an app release. Until then, "module" means
-"compiled in", and every feature addition is still a release.
+The shared registry now retains a remote plugin proxy, routes its complete lifecycle
+through its owning sandbox, and exposes an injectable `GrpcPluginTransport` boundary.
+No concrete transport is contributed yet, so the sandbox reports itself unavailable
+instead of pretending a native library probe proves gRPC support.
+
+Still required before a feature can ship without an app release: standalone APK
+discovery, a public catalog/download format, package-signature verification, user
+permission approval, and the Android/gRPC transport itself. Until those land,
+"module" still means "compiled in", and every feature addition is still a release.
 
 ## Appendix A — reproducing the survey
 

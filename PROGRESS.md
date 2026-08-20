@@ -18,6 +18,29 @@ repo. All three apps are merged and shipping (`:app` + `:feature:jotter` + `:fea
 
 ## Status log (newest first)
 
+### Remote plugin runtime boundary opened (`port/hermes-0.9.x`) - 2026-08-20
+- [x] Fixed the shared registry so a plugin installed through the remote path retains
+      its runtime proxy and its owning sandbox. Activation, suspension, resumption,
+      unloading, and tool registration now stay on that sandbox instead of silently
+      falling back to the in-process implementation.
+- [x] Replaced the unreachable `grpc_wrap` native-library probe with an injectable,
+      multibound `GrpcPluginTransport` extension point. With no transport contribution,
+      remote activation fails explicitly and recoverably instead of reporting a false
+      implementation state.
+- [x] Fixed activation of a suspended plugin to call its sandbox's resume lifecycle;
+      suspended plugins are no longer reported by the ACTIVE plugin/tool queries.
+- [x] Removed Jeeves' stale six-test copy of the shared registry suite. Canonical shared
+      plugin coverage is now 16/16, including remote lifecycle ownership, unavailable
+      and failing transport probes, tool cleanup, and suspend-to-resume behavior.
+- [x] VERIFIED (local gate): Jeeves app 283/283, shared plugin 16/16, shared tools
+      49/49, shared LLM 88/88, shared memory 21/21, shared settings 16/16, Jotter
+      11/11, and Butler 27/27 PASS (511/511 combined); debug APK assembly PASS.
+      Hermes app 208/208 plus the same 190 shared tests PASS (398/398 combined);
+      debug APK assembly PASS.
+- [ ] NOT DONE: standalone APK discovery, catalog download, signature verification,
+      user permission approval, and the concrete Android/gRPC wire transport.
+- [ ] UNVERIFIED on device (L-001): no device is connected.
+
 ### Shared tool engine adopted (`port/hermes-0.9.x`) - 2026-08-20
 - [x] Jeeves now consumes public `agent-core :core:tools`; removed 44 duplicate tool,
       app-automation, terminal, and voice implementation sources plus eight duplicate
