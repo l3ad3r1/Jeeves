@@ -18,6 +18,35 @@ repo. All three apps are merged and shipping (`:app` + `:feature:jotter` + `:fea
 
 ## Status log (newest first)
 
+### Plugin APK inspection and native/worktree cleanup (`port/hermes-0.9.x`) - 2026-08-20
+- [x] Added the shared Android package-inspection boundary. Downloaded APK evidence now
+      comes from the archive's embedded schema-v1 manifest, package/version, exported
+      services, file digest/size, and exactly one current signing certificate; approval
+      fails closed when the catalog service is not exported by the APK.
+- [x] Restored `llama.cpp` to its exact pinned commit and removed the obsolete local
+      Vulkan patch, patch runner, CI/release patch steps, and Vulkan SDK installation.
+      The supported runtime remains CPU-only (`GGML_VULKAN=OFF`), and preflight now
+      rejects an uninitialized, unpinned, or dirty native submodule (L-020).
+- [x] Removed stale Antigravity task/report files and generated Gradle daemon settings,
+      archived Hermes' large test-run evidence outside the repository, and ignored these
+      transient artifact classes. Preserved the useful skill-editor finding by adding IME
+      padding in both products.
+- [x] Hardened the shared AppAgent device smoke-test setup: it waits for the actual
+      fixture controls and dismisses a notification shade that would otherwise mask the
+      test activity. This fixed the reproduced `com.android.systemui` false failure.
+- [x] VERIFIED from forced/no-build-cache gates: Jeeves app 283/283, shared plugin
+      27/27, tools 49/49, LLM 88/88, memory 21/21, settings 16/16, Jotter 11/11,
+      and Butler 27/27 PASS (522/522 combined); Hermes app 208/208 plus the same 201
+      shared tests PASS (409/409 combined). Both debug APK assemblies PASS, including
+      native CMake/`llama.cpp`; mandatory preflight PASS.
+- [x] VERIFIED on Samsung SM-S928B: Jeeves AppAgent instrumentation 1/1 and Hermes
+      instrumentation 10/10 PASS. Device package checks found no pre-existing
+      `com.hermes.agent*` installation before testing.
+- [ ] NOT DONE: catalog/artifact network fetching, package-installer handoff, persistent
+      publisher trust/approval storage, install UI, or concrete Android/gRPC transport.
+- [ ] NOT DONE from the archived UX notes: surface a subtle user-visible provider
+      failover indication; no cross-product UX contract has been chosen yet.
+
 ### Public plugin package and trust contract (`port/hermes-0.9.x`) - 2026-08-20
 - [x] Added shared, serializable catalog schema v1 for immutable APK metadata,
       embedded plugin manifests, Android service identity, protocol compatibility,

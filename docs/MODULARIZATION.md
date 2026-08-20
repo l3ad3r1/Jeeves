@@ -61,10 +61,11 @@ Three repos, as decided:
 builds for anyone without access, so nothing Jeeves-proprietary can live in it.
 
 **Consumption:** publish `agent-core` to GitHub Packages with semver, and pin a
-version in each app. Submodules were considered and rejected — this workspace
-already carries one silently-dirty submodule (`llama.cpp`), which is the failure
-mode in miniature. Publishing also forces the version skew to be visible in a
-diff instead of implied by a pointer.
+version in each app. Submodules were rejected for shared-core delivery because
+publishing forces version skew to be visible in a diff instead of implied by a
+pointer. Jeeves still pins `llama.cpp` as a native source dependency; preflight
+mechanically requires that checkout to be initialized, at the gitlink commit,
+and pristine.
 
 For local work on core + app together, use a Gradle composite build
 (`includeBuild("../agent-core")`) so changes are picked up without publishing.
@@ -176,16 +177,16 @@ Explicitly **not** ported, per instruction: AI Notes (Jotter) and Daybook
 
 The shared registry now retains a remote plugin proxy, routes its complete lifecycle
 through its owning sandbox, and exposes an injectable `GrpcPluginTransport` boundary.
-Shared core also defines catalog schema v1, a strict JSON codec, immutable APK/package
-evidence, fail-closed hash/signature/compatibility checks, and approval snapshots bound
-to the exact artifact, signer, version, and permissions. Catalog-declared signers are
-not treated as trust anchors.
+Shared core also defines catalog schema v1, a strict JSON codec, Android APK inspection,
+immutable APK/package evidence, fail-closed hash/signature/service/compatibility checks,
+and approval snapshots bound to the exact artifact, signer, version, and permissions.
+Catalog-declared signers are not treated as trust anchors.
 
 Still required before a feature can ship without an app release: authenticated catalog
-and artifact fetching, Android APK inspection and package-installer handoff, persistent
-publisher trust and approval storage, install UI, service discovery, and the Android/gRPC
-transport itself. Until those land, "module" still means "compiled in", and every
-feature addition is still a release.
+and artifact fetching, Android package-installer handoff, persistent publisher trust and
+approval storage, install UI, service discovery, and the Android/gRPC transport itself.
+Until those land, "module" still means "compiled in", and every feature addition is
+still a release.
 
 ## Appendix A — reproducing the survey
 

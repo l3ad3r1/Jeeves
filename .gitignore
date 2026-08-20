@@ -51,3 +51,7 @@ ci_*.txt
 logcat*.txt
 devicegate/
 temp_release_notes.md
+
+# Completed agent task/report artifacts belong in canonical docs, not repo roots.
+/ANTIGRAVITY-*.md
+/gradle/gradle-daemon-jvm.properties
