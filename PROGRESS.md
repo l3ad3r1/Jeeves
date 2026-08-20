@@ -18,6 +18,17 @@ repo. All three apps are merged and shipping (`:app` + `:feature:jotter` + `:fea
 
 ## Status log (newest first)
 
+### Private settings boundary clarified (`port/hermes-0.9.x`) - 2026-08-20
+- [x] Renamed the Gradle identity of Jeeves' local settings/contracts module from
+      `:core:settings` to `:core:jeeves-settings`. Its filesystem and package names
+      remain stable; this is a dependency-boundary correction, not a data migration.
+- [x] Documented that Jeeves' synchronous alarm/voice preferences and Android-bound
+      feature contracts are private product composition, distinct from public
+      `agent-core :core:settings` engine security/DataStore implementation.
+- [x] VERIFIED (local gate): app/Jotter/Butler unit suites 479/479 PASS and debug
+      APK assembly PASS; the private settings module compiles with no test sources.
+- [ ] UNVERIFIED on device (L-001): no device is connected.
+
 ### Shared core utility boundary (`port/hermes-0.9.x`) - 2026-08-20
 - [x] Replaced Jeeves' five byte-identical utility sources with the public
       `agent-core :core:util` module: dispatcher abstraction, result wrapper, ID

@@ -83,8 +83,8 @@ agent-core/
   core/memory      data/memory, data/rag          (9/0 and 3/0 identical)
   core/persistence data/local                     (22/4 identical) — see note
   core/plugin      data/plugin                    (5/0 identical)
-  core/settings    already a module in Jeeves
-  core/theme       already a module in Jeeves
+  core/settings    Hermes engine settings/security implementation
+  core/theme       product-neutral Compose primitives
   core/util        util                           (4/0 identical)
 ```
 
@@ -147,9 +147,10 @@ Each step must leave both apps building and their tests green. Do not batch.
 2. **Move `core/llm`, `core/tools`, `core/memory`, `core/plugin`.** Still
    overwhelmingly identical. Where a file diverged, Jeeves is the newer side —
    diff it, take Jeeves, and note anything Hermes loses.
-3. **Move `core/settings` and `core/theme`** from Jeeves, which already has them
-   as modules. Hermes has these same files inside `:app` (`core/theme` 2,
-   `core/settings` 1) and switches to the shared ones.
+3. **Move `core/settings` and `core/theme`.** Keep Jeeves' synchronous alarm/voice
+   preferences and private feature contracts in `:core:jeeves-settings`; they are
+   not the same responsibility as Hermes' DataStore-backed engine settings. Keep
+   product branding in each app and share only theme primitives.
 4. **Split `core/persistence`.** DAOs and entities move; `@Database` and
    migrations stay per app.
 5. **Introduce `AgentFeature`,** convert Jeeves' Jotter and Butler wiring to it,

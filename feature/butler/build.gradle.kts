@@ -44,8 +44,8 @@ android {
 }
 
 dependencies {
-    // The one settings store shared with :app and :feature:jotter.
-    implementation(project(":core:settings"))
+    // Jeeves-only synchronous settings and optional feature contracts.
+    implementation(project(":core:jeeves-settings"))
     implementation(platform(libs.androidx.compose.bom))
     implementation(project(":core:jeeves-theme"))
     

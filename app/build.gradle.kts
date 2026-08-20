@@ -204,8 +204,8 @@ kotlin {
 }
 
 dependencies {
-    // The one settings store, shared with both feature modules.
-    implementation(project(":core:settings"))
+    // Jeeves-only synchronous settings and optional feature contracts.
+    implementation(project(":core:jeeves-settings"))
     implementation(project(":core:theme"))
     implementation(project(":core:util"))
     implementation(project(":core:jeeves-theme"))

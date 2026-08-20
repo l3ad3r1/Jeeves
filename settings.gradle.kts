@@ -38,9 +38,9 @@ dependencyResolutionManagement {
 
 rootProject.name = "Jeeves"
 include(":app")
-include(":core:settings")
 include(":core:theme")
 include(":core:util")
+include(":core:jeeves-settings")
 include(":core:jeeves-theme")
 include(":feature:jotter")
 include(":feature:butler")
@@ -49,5 +49,6 @@ include(":feature:butler")
 project(":core:theme").projectDir = file("../agent-core/core/theme")
 project(":core:util").projectDir = file("../agent-core/core/util")
 
-// Jeeves branding remains private and is composed over the shared primitives.
+// Jeeves-only cross-feature settings/contracts and branding remain private.
+project(":core:jeeves-settings").projectDir = file("core/settings")
 project(":core:jeeves-theme").projectDir = file("core/theme")

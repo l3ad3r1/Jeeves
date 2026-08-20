@@ -1,5 +1,5 @@
 /*
- * :core:settings — the one place Jeeves saves user-facing settings.
+ * :core:jeeves-settings — Jeeves-only synchronous settings and feature contracts.
  *
  * Depended on by :app, :feature:jotter and :feature:butler. It must therefore depend on
  * none of them, and must stay free of Compose and Hilt so Butler's plain Views and
