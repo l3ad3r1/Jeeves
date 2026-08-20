@@ -183,10 +183,11 @@ and approval snapshots bound to the exact artifact, signer, version, and permiss
 Catalog-declared signers are not treated as trust anchors.
 
 Authenticated catalog and artifact fetching is now implemented in shared core. Still
-required before a feature can ship without an app release: Android package-installer
-handoff, persistent publisher trust and approval storage, install UI, service discovery,
-and the Android/gRPC transport itself. Until those land, "module" still means "compiled
-in", and every feature addition is still a release.
+required before a feature can ship without an app release: persistent publisher trust
+and approval storage, install UI, service discovery, and the Android/gRPC transport
+itself. Shared core now also owns the fail-closed Android package-installer handoff.
+Until the remaining layers land, "module" still means "compiled in", and every feature
+addition is still a release.
 
 ## Appendix A — reproducing the survey
 

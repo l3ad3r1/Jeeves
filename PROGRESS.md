@@ -18,6 +18,31 @@ repo. All three apps are merged and shipping (`:app` + `:feature:jotter` + `:fea
 
 ## Status log (newest first)
 
+### Shared Android plugin installer handoff (`port/hermes-0.9.x`) - 2026-08-20
+- [x] Added the shared package-installer contract, app-private plugin directory, and
+      Android implementation. Both products receive the same Hilt-bound installer;
+      their existing non-exported FileProviders now also expose the narrowly scoped
+      private `plugins/` root needed for system installation.
+- [x] The handoff fails closed unless the downloaded artifact, freshly inspected APK,
+      verified package, and user authorization still match the same catalog entry,
+      plugin ID, version, APK digest, and signer. Files outside private plugin storage
+      are rejected, including canonical path traversal.
+- [x] Missing unknown-sources permission is returned as an explicit state with a
+      separate settings action. Package-installer and settings launch failures remain
+      caller-visible for the future install UI (L-007); inspector and handoff
+      cancellation now propagate instead of becoming ordinary failures.
+- [x] VERIFIED from forced/no-build-cache gates: shared plugin 43/43, tools 49/49,
+      LLM 88/88, memory 21/21, and settings 16/16 PASS (217/217 shared). Jeeves app
+      283/283, Jotter 11/11, and Butler 27/27 PASS (538/538 combined); mandatory
+      preflight and native debug APK assembly PASS. Hermes app 208/208 plus the same
+      shared tests PASS (425/425 combined), with forced native debug APK assembly.
+- [ ] UNVERIFIED on device (L-001): the Android system install-confirmation screen was
+      not launched because no signed schema-v1 plugin APK or product install-review
+      flow exists yet. Binding, tamper, permission, path, launch-failure, and merged
+      APK resource paths were exercised by tests and builds.
+- [ ] NOT DONE: persistent publisher trust and approval storage, install/review UI,
+      install completion tracking, service discovery, or concrete Android/gRPC transport.
+
 ### Shared plugin repository delivery (`port/hermes-0.9.x`) - 2026-08-20
 - [x] Added shared HTTPS catalog retrieval with strict schema decoding and optional,
       caller-scoped authorization. Plaintext URLs and credential-bearing URLs are
