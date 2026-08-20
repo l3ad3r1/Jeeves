@@ -77,6 +77,24 @@ if [ "$fail" -ne 0 ]; then
   exit 1
 fi
 
+note "== Native dependency state =="
+if [ ! -f app/src/main/cpp/llama.cpp/CMakeLists.txt ]; then
+  note "FAIL L-020: llama.cpp is not initialized; run git submodule update --init --recursive."
+  exit 1
+fi
+expected_llama=$(git ls-files -s app/src/main/cpp/llama.cpp | awk '{print $2}')
+actual_llama=$(git -C app/src/main/cpp/llama.cpp rev-parse HEAD)
+if [ "$actual_llama" != "$expected_llama" ]; then
+  note "FAIL L-020: llama.cpp is not at the commit pinned by the parent repository."
+  exit 1
+fi
+llama_changes=$(git -C app/src/main/cpp/llama.cpp status --porcelain)
+if [ -n "$llama_changes" ]; then
+  note "FAIL L-020: llama.cpp must remain pristine; found:"
+  note "$llama_changes"
+  exit 1
+fi
+
 note "== Compile all modules =="
 ./gradlew :app:compileDebugKotlin :feature:jotter:compileDebugKotlin \
           :feature:butler:compileDebugKotlin --console=plain || exit 1
