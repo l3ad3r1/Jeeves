@@ -209,6 +209,7 @@ dependencies {
     implementation(project(":core:theme"))
     implementation(project(":core:util"))
     implementation(project(":core:domain"))
+    implementation(project(":core:plugin"))
     implementation(project(":core:jeeves-theme"))
 
     // On-device sentence embeddings (all-MiniLM-L6-v2) for the RAG/memory

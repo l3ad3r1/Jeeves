@@ -18,6 +18,18 @@ repo. All three apps are merged and shipping (`:app` + `:feature:jotter` + `:fea
 
 ## Status log (newest first)
 
+### Shared core plugin infrastructure adopted (`port/hermes-0.9.x`) - 2026-08-20
+- [x] Jeeves now consumes public `agent-core :core:plugin`; removed seven duplicate
+      registry, sandbox, resource-monitor, and built-in plugin sources.
+- [x] Moved `HostPluginContext` out of public core into Hermes product composition.
+      Jeeves retains its private host context because app version and settings access
+      are product-owned responsibilities. Built-in plugin author metadata is now the
+      product-neutral value `agent-core` in both apps.
+- [x] VERIFIED (local gate): shared plugin 12/12 PASS; Hermes app 208/208 PASS and
+      debug APK assembly PASS; Jeeves app/Jotter/Butler 479/479 PASS and debug APK
+      assembly PASS.
+- [ ] UNVERIFIED on device (L-001): no device is connected.
+
 ### Shared core domain adopted (`port/hermes-0.9.x`) - 2026-08-20
 - [x] Jeeves now compiles against public `agent-core :core:domain`; removed 55
       duplicated app-domain sources, the duplicate private `Tool` contract, and the
