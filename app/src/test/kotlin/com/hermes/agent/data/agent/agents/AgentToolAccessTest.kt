@@ -53,9 +53,9 @@ class AgentToolAccessTest {
             stub("web_fetch", "information", setOf("web")),
             stub("notify", "communication", setOf("notification")),
             stub("device_settings", "device", setOf("device_settings")),
-            stub("notes", "memory", setOf("notes")),
+            stub("notes", "productivity", setOf("notes")),
             stub("search_conversations", "information", setOf("conversation_search")),
-            stub("calendar_add_event", "productivity", setOf("calendar")),
+            stub("calendar", "productivity", setOf("calendar")),
             stub("alarm", "device", setOf("device_alarm")),
             stub("navigation", "device", setOf("navigation")),
             stub("communication", "communication", setOf("phone")),
@@ -80,6 +80,8 @@ class AgentToolAccessTest {
             stub("create_note", "productivity", setOf("documents")),
             stub("search_notes", "productivity", setOf("documents")),
             stub("set_alarm", "productivity", setOf("notes_and_reminders")),
+            stub("bookmarks", "productivity", setOf("bookmarks")),
+            stub("mood", "productivity", setOf("mood")),
         )
         tools.forEach(registry::register)
         return registry
@@ -128,20 +130,20 @@ class AgentToolAccessTest {
         val registry = sampleRegistry()
 
         val convTools = ConversationalAgent().availableTools(registry).map { it.name }.toSet()
-        assertEquals(31, convTools.size)
-        assertFalse("ConversationalAgent must not have calendar_add_event", convTools.contains("calendar_add_event"))
+        assertEquals(33, convTools.size)
+        assertFalse("ConversationalAgent must not have calendar", convTools.contains("calendar"))
         assertFalse("ConversationalAgent must not have device_settings", convTools.contains("device_settings"))
 
         val prodTools = ProductivityAgent().availableTools(registry).map { it.name }.toSet()
-        assertEquals(20, prodTools.size)
-        assertTrue("ProductivityAgent must have calendar_add_event", prodTools.contains("calendar_add_event"))
+        assertEquals(22, prodTools.size)
+        assertTrue("ProductivityAgent must have calendar", prodTools.contains("calendar"))
         assertTrue("ProductivityAgent must have create_note", prodTools.contains("create_note"))
         assertTrue("ProductivityAgent must have set_alarm", prodTools.contains("set_alarm"))
         assertTrue("ProductivityAgent must have search_notes", prodTools.contains("search_notes"))
 
         val resTools = ResearchAgent().availableTools(registry).map { it.name }.toSet()
-        assertEquals(10, resTools.size)
-        val expectedRes = setOf("todo", "clarify", "web_search", "web_fetch", "search_conversations", "memory", "notes", "skill_manager", "calculator", "delegate")
+        assertEquals(11, resTools.size)
+        val expectedRes = setOf("todo", "clarify", "web_search", "web_fetch", "search_conversations", "memory", "notes", "skill_manager", "calculator", "delegate", "bookmarks")
         assertEquals(expectedRes, resTools)
 
         val devTools = DeviceControlAgent().availableTools(registry).map { it.name }.toSet()
@@ -151,8 +153,8 @@ class AgentToolAccessTest {
         assertTrue("DeviceControlAgent must have app_launch", devTools.contains("app_launch"))
 
         val creativeTools = CreativeAgent().availableTools(registry).map { it.name }.toSet()
-        assertEquals(10, creativeTools.size)
-        val expectedCreative = setOf("todo", "clarify", "memory", "notes", "search_conversations", "skill_manager", "generate_image", "web_search", "web_fetch", "speak")
+        assertEquals(11, creativeTools.size)
+        val expectedCreative = setOf("todo", "clarify", "memory", "notes", "search_conversations", "skill_manager", "generate_image", "web_search", "web_fetch", "speak", "bookmarks")
         assertEquals(expectedCreative, creativeTools)
     }
 
