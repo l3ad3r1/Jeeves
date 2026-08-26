@@ -96,3 +96,15 @@
 -keep class com.sassybutler.alarm.AlarmForegroundService { *; }
 -keep class com.sassybutler.alarm.AlarmActivity { *; }
 -keep class com.sassybutler.alarm.MainAlarmSetupActivity { *; }
+
+# --- Rhino (core:plugin's sandboxed JS engine for community modules) ---
+# Rhino's JSON/reflection helpers reference java.beans.* (java.beans isn't part
+# of the Android core library) and javax.lang.model.SourceVersion. Neither path
+# is reachable from the interpreted-mode, class-shuttered sandbox this app runs
+# Rhino in — safe to silence rather than keep.
+-dontwarn java.beans.BeanDescriptor
+-dontwarn java.beans.BeanInfo
+-dontwarn java.beans.IntrospectionException
+-dontwarn java.beans.Introspector
+-dontwarn java.beans.PropertyDescriptor
+-dontwarn javax.lang.model.SourceVersion
