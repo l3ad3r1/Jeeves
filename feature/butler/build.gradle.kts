@@ -22,6 +22,7 @@ plugins {
     alias(libs.plugins.ksp)
     alias(libs.plugins.hilt)
     alias(libs.plugins.kotlin.compose)
+    alias(libs.plugins.kotlin.serialization)
 }
 
 android {
@@ -42,11 +43,19 @@ android {
     }
 }
 
+kotlin {
+    compilerOptions {
+        // Carried over from Octo Jotter's build: its annotated constructor properties
+        // rely on the pre-2.2 default annotation target.
+        freeCompilerArgs.add("-Xannotation-default-target=param-property")
+    }
+}
+
 dependencies {
-    // The one settings store shared with :app and :feature:jotter.
-    implementation(project(":core:settings"))
+    // Jeeves-only synchronous settings and optional feature contracts.
+    implementation(project(":core:jeeves-settings"))
     implementation(platform(libs.androidx.compose.bom))
-    implementation(project(":core:theme"))
+    implementation(project(":core:jeeves-theme"))
     
     // --- Jetpack Compose ---
     implementation(libs.androidx.compose.ui)
@@ -75,4 +84,14 @@ dependencies {
 
     // WorkManager
     implementation(libs.androidx.work.runtime.ktx)
+
+    // Kotlin Serialization
+    implementation(libs.kotlinx.serialization.json)
+
+    // --- Testing ---
+    testImplementation(libs.junit)
+    testImplementation(libs.mockk)
+    testImplementation(libs.kotlinx.coroutines.test)
+    testImplementation(libs.robolectric)
+    testImplementation(libs.androidx.test.core)
 }

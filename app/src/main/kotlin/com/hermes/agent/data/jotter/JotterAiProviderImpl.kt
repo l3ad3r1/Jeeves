@@ -1,11 +1,11 @@
 package com.hermes.agent.data.jotter
 
 import com.hermes.agent.data.llm.CloudLlmProvider
-import com.hermes.agent.data.llm.LlmMessage
-import com.hermes.agent.data.llm.LlmStreamChunk
+import com.hermes.agent.domain.llm.LlmMessage
+import com.hermes.agent.domain.llm.LlmStreamChunk
 import com.hermes.agent.data.llm.LocalLlmManager
 import com.hermes.agent.data.voice.VoiceOutputManager
-import com.l3ad3r1.octojotter.domain.JotterAiProvider
+import com.jeeves.core.settings.ai.JotterAiProvider
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.mapNotNull

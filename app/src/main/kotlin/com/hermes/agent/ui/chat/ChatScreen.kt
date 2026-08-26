@@ -93,6 +93,7 @@ fun ChatScreen(
     val listState = rememberLazyListState()
     val snackbarHostState = remember { SnackbarHostState() }
     var planDrawerOpen by remember { mutableStateOf(false) }
+    var chatTab by remember { mutableStateOf(0) } // 0=Chat, 1=Terminal
     val pendingConfirmation by viewModel.pendingToolConfirmation.collectAsStateWithLifecycle()
 
     // Auto-scroll only when the user is already near the bottom of the list.
@@ -172,11 +173,14 @@ fun ChatScreen(
                     .fillMaxSize()
                     .padding(innerPadding),
             ) {
-                if (uiState.todos.isNotEmpty()) {
+                ChatModeTabs(selected = chatTab, onSelect = { chatTab = it })
+                if (chatTab == 0 && uiState.todos.isNotEmpty()) {
                     TodoPanel(todos = uiState.todos)
                 }
                 Box(modifier = Modifier.weight(1f).fillMaxSize()) {
-                    if (uiState.messages.isEmpty() && uiState.streamingText == null) {
+                    if (chatTab == 1) {
+                        TerminalPanel()
+                    } else if (uiState.messages.isEmpty() && uiState.streamingText == null) {
                         EmptyChatState(
                             onPromptSelected = viewModel::sendMessage,
                             modifier = Modifier.fillMaxSize(),

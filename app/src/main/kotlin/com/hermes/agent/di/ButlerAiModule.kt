@@ -1,7 +1,7 @@
 package com.hermes.agent.di
 
 import com.hermes.agent.data.butler.ButlerAiProviderImpl
-import com.sassybutler.alarm.di.ButlerAiProvider
+import com.jeeves.core.settings.ai.ButlerAiProvider
 import dagger.Binds
 import dagger.Module
 import dagger.hilt.InstallIn

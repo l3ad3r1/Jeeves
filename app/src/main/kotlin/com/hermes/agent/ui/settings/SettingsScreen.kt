@@ -18,8 +18,10 @@ import androidx.compose.material.icons.outlined.Build
 import androidx.compose.material.icons.outlined.History
 import androidx.compose.material.icons.outlined.Notifications
 import androidx.compose.material.icons.outlined.ColorLens
+import androidx.compose.material.icons.outlined.Face
 import androidx.compose.material.icons.outlined.Description
 import androidx.compose.material.icons.outlined.Info
+import androidx.compose.material.icons.outlined.Extension
 import androidx.compose.material.icons.outlined.Link
 import androidx.compose.material.icons.outlined.Psychology
 import androidx.compose.material.icons.outlined.Schedule
@@ -74,6 +76,13 @@ fun SettingsScreen(
                     )
                     HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp))
                     NavRow(
+                        icon = Icons.Outlined.Face,
+                        title = "Assistant face",
+                        subtitle = "Body shape, colour, and resting expression",
+                        onClick = { onNavigate("settings_bot_face") },
+                    )
+                    HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp))
+                    NavRow(
                         icon = Icons.Outlined.Alarm,
                         title = "Daybook",
                         subtitle = "Wake-ups, weather & calendar",
@@ -90,8 +99,15 @@ fun SettingsScreen(
                     NavRow(
                         icon = Icons.Outlined.Build,
                         title = "Advanced",
-                        subtitle = "Backup, updates, and session export",
+                        subtitle = "Backup and updates",
                         onClick = { onNavigate("settings_advanced") },
+                    )
+                    HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp))
+                    NavRow(
+                        icon = Icons.Outlined.Extension,
+                        title = "Modules",
+                        subtitle = "Download verified modules from the shared repository",
+                        onClick = { onNavigate("settings_modules") },
                     )
                     HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp))
                     NavRow(
@@ -153,6 +169,13 @@ fun SettingsScreen(
                         title = "Refine skills",
                         subtitle = "Improve a skill from how it was actually used",
                         onClick = { onNavigate("refine_skills") },
+                    )
+                    HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp))
+                    NavRow(
+                        icon = Icons.Outlined.Science,
+                        title = "Agent operating notes",
+                        subtitle = "Learned guidance layered on each agent's built-in prompt",
+                        onClick = { onNavigate("refine_prompts") },
                     )
                     HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp))
                     NavRow(

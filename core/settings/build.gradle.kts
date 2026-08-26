@@ -1,5 +1,5 @@
 /*
- * :core:settings — the one place Jeeves saves user-facing settings.
+ * :core:jeeves-settings — Jeeves-only synchronous settings and feature contracts.
  *
  * Depended on by :app, :feature:jotter and :feature:butler. It must therefore depend on
  * none of them, and must stay free of Compose and Hilt so Butler's plain Views and
@@ -15,6 +15,7 @@
 
 plugins {
     alias(libs.plugins.android.library)
+    alias(libs.plugins.kotlin.serialization)
 }
 
 android {
@@ -31,8 +32,18 @@ android {
     }
 }
 
+kotlin {
+    compilerOptions {
+        // Carried over from Octo Jotter's build: its annotated constructor properties
+        // rely on the pre-2.2 default annotation target.
+        freeCompilerArgs.add("-Xannotation-default-target=param-property")
+    }
+}
+
 dependencies {
+    api(project(":core:domain"))
     implementation(libs.androidx.core.ktx)
     // Flows for the Compose settings UI; the sync getters need nothing.
     implementation(libs.kotlinx.coroutines.android)
+    implementation(libs.kotlinx.serialization.json)
 }

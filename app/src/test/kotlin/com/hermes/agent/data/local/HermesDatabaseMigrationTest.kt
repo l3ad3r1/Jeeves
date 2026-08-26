@@ -93,4 +93,37 @@ class HermesDatabaseMigrationTest {
         }
         assertTrue("index_activity_ledger_timestamp" in indices)
     }
+
+    @Test
+    fun `migration 14 to 15 adds nullable message evidence state`() {
+        val configuration = SupportSQLiteOpenHelper.Configuration.builder(
+            ApplicationProvider.getApplicationContext(),
+        ).name(null).callback(object : SupportSQLiteOpenHelper.Callback(14) {
+            override fun onCreate(db: androidx.sqlite.db.SupportSQLiteDatabase) {
+                db.execSQL("CREATE TABLE messages (id TEXT NOT NULL PRIMARY KEY)")
+                db.execSQL("INSERT INTO messages (id) VALUES ('existing-message')")
+            }
+
+            override fun onUpgrade(
+                db: androidx.sqlite.db.SupportSQLiteDatabase,
+                oldVersion: Int,
+                newVersion: Int,
+            ) = Unit
+        }).build()
+        helper = FrameworkSQLiteOpenHelperFactory().create(configuration)
+        val database = checkNotNull(helper).writableDatabase
+
+        HermesDatabase.MIGRATION_14_15.migrate(database)
+
+        val columns = mutableSetOf<String>()
+        database.query("PRAGMA table_info('messages')").use { cursor ->
+            val nameIndex = cursor.getColumnIndexOrThrow("name")
+            while (cursor.moveToNext()) columns += cursor.getString(nameIndex)
+        }
+        assertTrue("evidence_state" in columns)
+        database.query("SELECT evidence_state FROM messages WHERE id = 'existing-message'").use { cursor ->
+            assertTrue(cursor.moveToFirst())
+            assertTrue(cursor.isNull(0))
+        }
+    }
 }

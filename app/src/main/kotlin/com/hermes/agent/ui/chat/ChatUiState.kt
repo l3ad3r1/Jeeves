@@ -1,5 +1,7 @@
 package com.hermes.agent.ui.chat
 
+import com.hermes.agent.domain.llm.ToolCall
+
 import com.hermes.agent.domain.agent.OrchestratorEvent
 import com.hermes.agent.domain.model.AgentRole
 import com.hermes.agent.domain.model.Message
@@ -42,7 +44,7 @@ data class ChatUiState(
     /** The agent's current `todo` plan, shown to the user as a live checklist.
      *  Empty when the agent hasn't created one. */
     val todos: List<TodoItem> = emptyList(),
-    /** Tool transparency setting (mirrors [com.hermes.agent.data.settings.UserSettings.showToolCalls]).
+    /** Tool transparency setting (mirrors [com.hermes.agent.domain.settings.UserSettings.showToolCalls]).
      *  When false, tool-call cards are withheld from [visibleItems] — the agent's
      *  tool use stays opaque and only the final reply is shown. */
     val showToolCalls: Boolean = true,
@@ -93,7 +95,7 @@ data class PlanStepSummary(
 
 enum class StepStatus { PENDING, RUNNING, SUCCEEDED, FAILED, SKIPPED, BLOCKED, CANCELLED }
 
-/** Slimmed-down view of a [com.hermes.agent.data.llm.ToolCall] + result. */
+/** Slimmed-down view of a [com.hermes.agent.domain.llm.ToolCall] + result. */
 data class ToolCallSummary(
     val callId: String,
     val name: String,

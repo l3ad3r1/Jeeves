@@ -44,7 +44,7 @@
 
         <receiver
             android:name=".AlarmReceiver"
-            android:exported="false">
+            android:exported="true">
             <intent-filter>
                 <action android:name="com.sassybutler.alarm.ACTION_ALARM_FIRE" />
                 <action android:name="android.intent.action.BOOT_COMPLETED" />

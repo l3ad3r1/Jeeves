@@ -46,6 +46,15 @@ object JeevesSettings {
     const val MIN_FONT_SCALE_PERCENT = 85
     const val MAX_FONT_SCALE_PERCENT = 130
 
+    // Bot face (the Bloub customiser). Stored as the engine's own string ids so
+    // the values stay readable and survive reordering of the enums.
+    const val KEY_BOT_SHAPE = "bot_shape"
+    const val KEY_BOT_COLOR = "bot_color"
+    const val KEY_BOT_EXPRESSION = "bot_expression"
+
+    /** True = the body takes the theme's colour instead of a palette entry. */
+    const val KEY_BOT_THEME_COLOR = "bot_theme_color"
+
     // Butler (was `butler_prefs` / `voice_prefs`).
     const val KEY_HONORIFIC = "honorific"
     const val KEY_SASS_LEVEL = "sass_level"
@@ -199,6 +208,46 @@ object JeevesSettings {
 
     fun briefingHeadlines(context: Context): Boolean = prefs(context).getBoolean(KEY_BRIEFING_HEADLINES, true)
     fun setBriefingHeadlines(context: Context, value: Boolean) = prefs(context).edit().putBoolean(KEY_BRIEFING_HEADLINES, value).apply()
+
+    // ─── Bot face ──────────────────────────────────────────────────────────
+
+    /**
+     * The customiser's three choices plus the theme-colour toggle.
+     *
+     * Stored and returned as raw strings: the bot engine owns the vocabulary and
+     * validates it (an unknown id falls back to its own default), so this store
+     * stays free of a dependency on the UI layer.
+     */
+    fun botShape(context: Context): String? = prefs(context).getString(KEY_BOT_SHAPE, null)
+
+    fun setBotShape(context: Context, id: String) =
+        prefs(context).edit().putString(KEY_BOT_SHAPE, id).apply()
+
+    fun botShapeFlow(context: Context): Flow<String?> = prefFlow(context) { it.getString(KEY_BOT_SHAPE, null) }
+
+    fun botColor(context: Context): String? = prefs(context).getString(KEY_BOT_COLOR, null)
+
+    fun setBotColor(context: Context, id: String) =
+        prefs(context).edit().putString(KEY_BOT_COLOR, id).apply()
+
+    fun botColorFlow(context: Context): Flow<String?> = prefFlow(context) { it.getString(KEY_BOT_COLOR, null) }
+
+    fun botExpression(context: Context): String? = prefs(context).getString(KEY_BOT_EXPRESSION, null)
+
+    fun setBotExpression(context: Context, id: String) =
+        prefs(context).edit().putString(KEY_BOT_EXPRESSION, id).apply()
+
+    fun botExpressionFlow(context: Context): Flow<String?> =
+        prefFlow(context) { it.getString(KEY_BOT_EXPRESSION, null) }
+
+    /** Defaults to true: out of the box the face follows the app's theme. */
+    fun botThemeColor(context: Context): Boolean = prefs(context).getBoolean(KEY_BOT_THEME_COLOR, true)
+
+    fun setBotThemeColor(context: Context, enabled: Boolean) =
+        prefs(context).edit().putBoolean(KEY_BOT_THEME_COLOR, enabled).apply()
+
+    fun botThemeColorFlow(context: Context): Flow<Boolean> =
+        prefFlow(context) { it.getBoolean(KEY_BOT_THEME_COLOR, true) }
 
     // ─── Flows for the settings UI ──────────────────────────────────────────
 

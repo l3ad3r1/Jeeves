@@ -2,9 +2,9 @@ package com.hermes.agent.ui.onboarding
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.hermes.agent.data.device.DeviceProfile
+import com.hermes.agent.domain.model.DeviceProfile
 import com.hermes.agent.data.device.DeviceProfiler
-import com.hermes.agent.data.settings.SettingsRepository
+import com.hermes.agent.domain.settings.SettingsRepository
 import com.hermes.agent.domain.repository.MemoryRepository
 import com.hermes.agent.data.backup.LocalBackupManager
 import android.net.Uri

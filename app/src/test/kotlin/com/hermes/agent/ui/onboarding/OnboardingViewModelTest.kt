@@ -1,7 +1,7 @@
 package com.hermes.agent.ui.onboarding
 
-import com.hermes.agent.data.settings.SettingsRepository
-import com.hermes.agent.data.settings.UserSettings
+import com.hermes.agent.domain.settings.SettingsRepository
+import com.hermes.agent.domain.settings.UserSettings
 import io.mockk.coEvery
 import io.mockk.coVerify
 import io.mockk.mockk
@@ -36,9 +36,14 @@ class OnboardingViewModelTest {
         coEvery { it.current() } returns UserSettings()
     }
 
-    /** Build a VM with the current 3-arg constructor; memory + profiler relaxed. */
+    /** Build a VM with the current 4-arg constructor; the rest are relaxed mocks. */
     private fun vm(settings: SettingsRepository = mockSettings()) =
-        OnboardingViewModel(settings, mockk(relaxed = true), mockk(relaxed = true))
+        OnboardingViewModel(
+            settings,
+            mockk(relaxed = true),
+            mockk(relaxed = true),
+            mockk(relaxed = true),
+        )
 
     @Test
     fun `initial step is WELCOME`() = runTest {
@@ -48,6 +53,8 @@ class OnboardingViewModelTest {
     @Test
     fun `next advances step`() = runTest {
         val viewModel = vm()
+        viewModel.next()
+        assertEquals(OnboardingViewModel.RESTORE, viewModel.step.value)
         viewModel.next()
         assertEquals(OnboardingViewModel.PROFILE, viewModel.step.value)
         viewModel.next()
@@ -69,7 +76,7 @@ class OnboardingViewModelTest {
         viewModel.next()
         viewModel.next()
         viewModel.back()
-        assertEquals(OnboardingViewModel.PROFILE, viewModel.step.value)
+        assertEquals(OnboardingViewModel.RESTORE, viewModel.step.value)
         viewModel.back()
         viewModel.back()
         assertEquals(OnboardingViewModel.WELCOME, viewModel.step.value)

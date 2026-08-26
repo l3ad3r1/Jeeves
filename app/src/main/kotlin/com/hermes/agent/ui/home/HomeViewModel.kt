@@ -3,18 +3,22 @@ package com.hermes.agent.ui.home
 import android.net.Uri
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.hermes.agent.data.llm.LlmRouter
 import com.hermes.agent.data.llm.LocalLlmManager
 import com.hermes.agent.data.llm.ModelCatalog
 import com.hermes.agent.data.memory.UserModelService
-import com.hermes.agent.data.settings.SettingsRepository
-import com.hermes.agent.data.settings.UserSettings
+import com.hermes.agent.domain.settings.SettingsRepository
+import com.hermes.agent.domain.settings.UserSettings
 import com.hermes.agent.data.voice.VoiceActivity
 import com.hermes.agent.domain.agent.AgentActivity
 import com.hermes.agent.domain.model.Conversation
 import com.hermes.agent.domain.repository.ConversationRepository
 import com.hermes.agent.domain.repository.MemoryRepository
 import com.hermes.agent.service.AgentServiceController
+import com.hermes.agent.domain.agent.AgentFeature
+import com.hermes.agent.domain.agent.NavEntry
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -22,6 +26,7 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
@@ -33,8 +38,13 @@ class HomeViewModel @Inject constructor(
     private val conversationRepository: ConversationRepository,
     private val settings: SettingsRepository,
     private val localLlmManager: LocalLlmManager,
+    private val llmRouter: LlmRouter,
     memoryRepository: MemoryRepository,
+    features: Set<@JvmSuppressWildcards AgentFeature> = emptySet(),
 ) : ViewModel() {
+
+    /** Dynamically registered sub-app feature entries. */
+    val appEntries: List<NavEntry> = features.flatMap { it.entries() }
 
     /** Most recent conversations for the dashboard's "Recent threads". */
     val recentThreads: StateFlow<List<Conversation>> =
@@ -46,25 +56,34 @@ class HomeViewModel @Inject constructor(
      * The model a turn would actually run on, for the home screen's
      * "Active model" card.
      *
-     * Mirrors the two conditions [com.hermes.agent.data.llm.HybridLlmRouter]
-     * routes on: cloud is used only when it is switched on *and* has a key;
-     * otherwise the on-device model, if one is present. This used to report
-     * `cloudModel` unconditionally, which named a cloud model on a device
-     * running purely on-device — the card said one thing and the app did
-     * another.
+     * Asks [com.hermes.agent.data.llm.LlmRouter] instead of reading a settings
+     * field, because the field stopped being the answer. Two earlier versions
+     * of this card were wrong in different ways:
+     *
+     *  - it reported `cloudModel` unconditionally, naming a cloud model on a
+     *    device running purely on-device;
+     *  - it then gated on "cloud on and *any* provider keyed" but still printed
+     *    `cloudModel`, so a request served by a provider profile (say NVIDIA NIM
+     *    on glm-5.2) was labelled with whatever sat in the primary slot.
+     *
+     * The router ranks every configured provider by quality, cost and latency,
+     * so the primary slot is frequently not the winner. Only the router knows
+     * which one is, so only the router should be asked.
      */
     val modelName: StateFlow<String> =
         settings.observe()
             .map { s ->
-                val cloudActive = s.cloudEnabled && (
-                    s.cloudApiKey.isNotBlank() || s.cloudProviderProfiles.any { it.enabled && it.apiKey.isNotBlank() }
-                )
+                val target = runCatching { llmRouter.activeTarget() }.getOrNull()
                 when {
-                    cloudActive -> s.cloudModel.ifBlank { "not configured" }
-                    localLlmManager.isModelDownloaded() -> localModelLabel(s)
-                    else -> "not configured"
+                    target == null ->
+                        if (localLlmManager.isModelDownloaded()) localModelLabel(s) else "not configured"
+                    target.isOnDevice -> localModelLabel(s)
+                    else -> target.model.ifBlank { "not configured" }
                 }
             }
+            // The cloud provider resolves its model id with a blocking settings
+            // read, so this must not run on the main thread.
+            .flowOn(Dispatchers.IO)
             .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), "")
 
     /**

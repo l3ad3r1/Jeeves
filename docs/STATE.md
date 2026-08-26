@@ -16,7 +16,7 @@ Instruction compaction is verified across all active projects; no publication ac
 ## Decisions
 - DECISION: keep the design-reference templates/claude.md unchanged because it is content, not an active instruction file.
 - DECISION: retain artifact-signing safety and destructive-action safety; remove forced commit, push, PR, and publication workflow rules.
-- DECISION: the unified store is SharedPreferences-backed, not DataStore — `ButlerPrefs` is read
+- DECISION: the private `:core:jeeves-settings` unified store is SharedPreferences-backed, not DataStore — `ButlerPrefs` is read
   synchronously from `AlarmForegroundService`/`AudioEngine`/Views; DataStore has no sync read and
   making the alarm path async is a rewrite with real wake-up risk.
 - DECISION: Hermes's own `hermes_settings` DataStore stays for agent/cloud settings. The unified
@@ -41,7 +41,7 @@ Instruction compaction is verified across all active projects; no publication ac
 - Step 1 `c815d49` — one update channel. RESULT: `jeeves.updateRepo` drives BuildConfig
   UPDATE_REPO/OTA_ENABLED; blank => UI hidden + unique work CANCELLED (not just skipped, since
   earlier builds enqueued it with KEEP). Both switch directions verified from generated BuildConfig.
-- Step 2 `9d180ea` — one settings store. RESULT: `:core:settings` / `JeevesSettings`
+- Step 2 `9d180ea` — one settings store. RESULT: now named `:core:jeeves-settings` / `JeevesSettings`
   (SharedPreferences `jeeves_settings`); `butler_prefs` + `voice_prefs` migrate on first touch,
   `theme_settings` DataStore migrates from HermesApp's IO coroutine. 251 tests, 0 failures;
   migration tests proven red when ensureMigrated is stubbed out.

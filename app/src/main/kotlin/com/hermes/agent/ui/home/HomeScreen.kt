@@ -36,7 +36,7 @@ import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.hermes.agent.domain.model.Conversation
-import com.hermes.agent.ui.components.ExpressiveEyes
+import com.hermes.agent.ui.bloub.HermesBot
 import com.hermes.agent.ui.components.HermesDiamond
 import com.jeeves.core.theme.GeistMono
 import androidx.compose.material.icons.Icons
@@ -70,26 +70,27 @@ fun HomeScreen(
             .padding(horizontal = 18.dp)
             .padding(top = 8.dp, bottom = 26.dp),
     ) {
-        // Header: Hermes's face (expressive eyes) + context-aware greeting.
+        // Header: the bot's face + context-aware greeting.
         Row(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(vertical = 10.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            ExpressiveEyes(
+            // 86.dp is the whole viewBox, not the ball: the bot itself is about
+            // 0.63 of it, and the margin is what the orbit rings need to stay in
+            // frame. Colour and shape come from the customiser.
+            HermesBot(
                 mood = presence.mood,
-                eyeColor = scheme.primary,
-                width = 72.dp,
-                height = 40.dp,
-                // Poke Hermes: startled eyes + a quip for a few seconds.
+                size = 86.dp,
+                // Poke Jeeves: the body collapses and the particles spiral in.
                 modifier = Modifier.clickable(
                     interactionSource = remember { MutableInteractionSource() },
                     indication = null,
                     onClick = viewModel::poke,
                 ),
             )
-            Spacer(Modifier.size(14.dp))
+            Spacer(Modifier.size(8.dp))
             Column(Modifier.weight(1f)) {
                 Text(presence.greeting, style = MaterialTheme.typography.bodyMedium, color = scheme.onSurfaceVariant)
                 Text(
@@ -159,37 +160,31 @@ fun HomeScreen(
 
         Spacer(Modifier.height(20.dp))
 
-        // Bundled apps. Jotter and Butler each keep their own Activity rather than being
-        // embedded in this nav graph: Jotter's is a FragmentActivity (BiometricPrompt
-        // needs one) and Butler's UI is View-based, not Compose. Both live in feature
-        // modules of this same APK, so a plain Intent starts them.
-        SectionLabel("Apps")
-        Spacer(Modifier.height(11.dp))
-        Row(horizontalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.fillMaxWidth()) {
-            QuickAction(
-                title = "AI Notes",
-                subtitle = "Capture & summarize",
-                modifier = Modifier.weight(1f),
-                onClick = {
-                    val intent = Intent(context, com.l3ad3r1.octojotter.MainActivity::class.java).apply {
-                        putExtra("EXTRA_EMBEDDED", true)
-                        addFlags(Intent.FLAG_ACTIVITY_NO_ANIMATION)
-                    }
-                    context.startActivity(intent)
-                },
-            )
-            QuickAction(
-                title = "Daybook",
-                subtitle = "Alarms, weather & calendar",
-                modifier = Modifier.weight(1f),
-                onClick = {
-                    val intent = Intent(context, com.sassybutler.alarm.MainAlarmSetupActivity::class.java).apply {
-                        putExtra("EXTRA_EMBEDDED", true)
-                        addFlags(Intent.FLAG_ACTIVITY_NO_ANIMATION)
-                    }
-                    context.startActivity(intent)
-                },
-            )
+        // Bundled sub-app feature entries contributed dynamically via AgentFeature.entries()
+        if (viewModel.appEntries.isNotEmpty()) {
+            SectionLabel("Apps")
+            Spacer(Modifier.height(11.dp))
+            Row(horizontalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.fillMaxWidth()) {
+                for (entry in viewModel.appEntries) {
+                    QuickAction(
+                        title = entry.label,
+                        subtitle = entry.subtitle,
+                        modifier = Modifier.weight(1f),
+                        onClick = {
+                            entry.targetActivityClassName?.let { className ->
+                                val intent = Intent().setClassName(context.packageName, className).apply {
+                                    putExtra("EXTRA_EMBEDDED", true)
+                                    addFlags(Intent.FLAG_ACTIVITY_NO_ANIMATION)
+                                }
+                                if (context.packageManager.resolveActivity(intent, 0) != null) {
+                                    context.startActivity(intent)
+                                }
+                            }
+                        },
+                    )
+                }
+            }
+            Spacer(Modifier.height(20.dp))
         }
 
         Spacer(Modifier.height(20.dp))

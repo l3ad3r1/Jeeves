@@ -1,6 +1,5 @@
 package com.hermes.agent.ui.settings
 
-import android.content.Intent
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -14,8 +13,8 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.outlined.Backup
+import androidx.compose.material.icons.outlined.Key
 import androidx.compose.material.icons.outlined.SaveAlt
-import androidx.compose.material.icons.outlined.Science
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CircularProgressIndicator
@@ -36,8 +35,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -53,10 +52,9 @@ fun AdvancedSettingsScreen(
     viewModel: SettingsViewModel = hiltViewModel(),
 ) {
     val settings by viewModel.settings.collectAsStateWithLifecycle()
-    val backupState by viewModel.backupState.collectAsStateWithLifecycle()
     val localBackupState by viewModel.localBackupState.collectAsStateWithLifecycle()
-    val exportState by viewModel.exportState.collectAsStateWithLifecycle()
-    val context = LocalContext.current
+    val pendingRestoreSecrets by viewModel.pendingRestoreSecrets.collectAsStateWithLifecycle()
+    val restoreSecretsState by viewModel.restoreSecretsState.collectAsStateWithLifecycle()
 
     Scaffold(
         topBar = {
@@ -86,38 +84,12 @@ fun AdvancedSettingsScreen(
                 onDismiss = viewModel::dismissLocalBackupState,
             )
 
-            SectionHeader(text = "GitHub Gist Backup")
-            BackupSection(
-                githubPat = settings.githubPat,
-                gistId = settings.gistId,
-                lastBackupTimestamp = settings.lastBackupTimestamp,
-                state = backupState,
-                onPatChange = viewModel::setGithubPat,
-                onGistIdChange = viewModel::setGistId,
-                onBackup = viewModel::backupNow,
-                onRestore = viewModel::restoreBackup,
-                onDismiss = viewModel::dismissBackupState,
-                onClearGistId = viewModel::clearGistId,
-            )
-
-            SectionHeader(text = "Self-Evolution")
-            ExportSection(
-                state = exportState,
-                onExport = viewModel::exportSessions,
-                onShare = { zip ->
-                    val uri = androidx.core.content.FileProvider.getUriForFile(
-                        context,
-                        "${context.packageName}.fileprovider",
-                        zip,
-                    )
-                    val share = Intent(Intent.ACTION_SEND).apply {
-                        type = "application/zip"
-                        putExtra(Intent.EXTRA_STREAM, uri)
-                        addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
-                    }
-                    context.startActivity(Intent.createChooser(share, "Share session export"))
-                },
-                onDismiss = viewModel::dismissExportState,
+            BackupPasswordSection(
+                passphrase = settings.backupPassphrase,
+                pendingRestore = pendingRestoreSecrets,
+                state = restoreSecretsState,
+                onApply = viewModel::applyRestorePassphrase,
+                onDismiss = viewModel::dismissRestoreSecretsState,
             )
 
         }
@@ -125,223 +97,94 @@ fun AdvancedSettingsScreen(
 }
 
 @Composable
-private fun ExportSection(
-    state: ExportUiState,
-    onExport: () -> Unit,
-    onShare: (java.io.File) -> Unit,
-    onDismiss: () -> Unit,
-) {
-    Card(modifier = Modifier.fillMaxWidth()) {
-        Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                Icon(
-                    imageVector = Icons.Outlined.Science,
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.size(20.dp),
-                )
-                Text("Export sessions for evolution", style = MaterialTheme.typography.bodyLarge)
-            }
-            Text(
-                "Exports your conversations as a JSON archive for the offline " +
-                    "hermes-agent-self-evolution tool. Unzip into ~/.hermes/sessions/ " +
-                    "on your computer, then run the evolver with --eval-source sessiondb. " +
-                    "The archive contains raw chat text — treat it as sensitive.",
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-
-            when (state) {
-                is ExportUiState.InProgress -> {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    ) {
-                        CircularProgressIndicator(modifier = Modifier.size(18.dp), strokeWidth = 2.dp)
-                        Text("Exporting…", style = MaterialTheme.typography.bodySmall)
-                    }
-                }
-                is ExportUiState.Ready -> {
-                    Text(
-                        "Exported ${state.sessionCount} sessions (${state.messageCount} messages).",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.primary,
-                    )
-                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        Button(onClick = { onShare(state.zipFile) }, modifier = Modifier.weight(1f)) {
-                            Text("Share archive")
-                        }
-                        OutlinedButton(onClick = onDismiss, modifier = Modifier.weight(1f)) {
-                            Text("Done")
-                        }
-                    }
-                }
-                is ExportUiState.Error -> {
-                    Text(
-                        state.message,
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.error,
-                    )
-                    FilledTonalButton(onClick = onExport, modifier = Modifier.fillMaxWidth()) {
-                        Text("Retry export")
-                    }
-                }
-                is ExportUiState.Idle -> {
-                    FilledTonalButton(onClick = onExport, modifier = Modifier.fillMaxWidth()) {
-                        Text("Export sessions")
-                    }
-                }
-            }
-        }
-    }
-}
-
-@Composable
-private fun BackupSection(
-    githubPat: String,
-    gistId: String,
-    lastBackupTimestamp: Long,
+private fun BackupPasswordSection(
+    passphrase: String,
+    pendingRestore: Boolean,
     state: BackupUiState,
-    onPatChange: (String) -> Unit,
-    onGistIdChange: (String) -> Unit,
-    onBackup: () -> Unit,
-    onRestore: () -> Unit,
+    onApply: (String) -> Unit,
     onDismiss: () -> Unit,
-    onClearGistId: () -> Unit,
 ) {
-    val dateFmt = remember { SimpleDateFormat("MMM d, yyyy HH:mm", Locale.getDefault()) }
+    // Nothing to show until a backup has been made (which mints the password)
+    // or a restore is waiting on one.
+    if (passphrase.isBlank() && !pendingRestore) return
+
+    val clipboard = androidx.compose.ui.platform.LocalClipboardManager.current
+    var revealed by remember { mutableStateOf(false) }
+    var entered by remember { mutableStateOf("") }
 
     Card(modifier = Modifier.fillMaxWidth()) {
         Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 Icon(
-                    imageVector = Icons.Outlined.Backup,
+                    imageVector = Icons.Outlined.Key,
                     contentDescription = null,
                     tint = MaterialTheme.colorScheme.primary,
                     modifier = Modifier.size(20.dp),
                 )
-                Text("GitHub Gist Backup", style = MaterialTheme.typography.bodyLarge)
+                Text("Backup password", style = MaterialTheme.typography.bodyLarge)
             }
-            Text(
-                "Backs up Cloud LLM settings (excluding credentials), memories, " +
-                    "skills, cron jobs, notes, and alarms to a private GitHub Gist — " +
-                    "Locked or encrypted notes are skipped. Keep the PAT and gist safe. " +
-                    "To restore on a new install, paste " +
-                    "the same PAT and Gist ID below, then tap Restore.",
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
 
-            var pat by remember(githubPat) { mutableStateOf(githubPat) }
-            OutlinedTextField(
-                value = pat,
-                onValueChange = {
-                    pat = it
-                    onPatChange(it)
-                },
-                label = { Text("GitHub Personal Access Token") },
-                supportingText = {
-                    Text(
-                        "Classic PAT: github.com → Settings → Developer settings → " +
-                            "Personal access tokens (classic) → gist scope.\n" +
-                            "Fine-grained PAT: enable Gists → Read and write."
-                    )
-                },
-                visualTransformation = PasswordVisualTransformation(),
-                singleLine = true,
-                colors = hermesFieldColors(),
-                modifier = Modifier.fillMaxWidth(),
-            )
-
-            var gist by remember(gistId) { mutableStateOf(gistId) }
-            OutlinedTextField(
-                value = gist,
-                onValueChange = {
-                    gist = it
-                    onGistIdChange(it)
-                },
-                label = { Text("Gist ID") },
-                supportingText = {
-                    Text(
-                        "Auto-filled after your first backup. On a new install, paste " +
-                            "the Gist ID from your previous device (the id in the gist URL)."
-                    )
-                },
-                singleLine = true,
-                trailingIcon = {
-                    if (gist.isNotBlank()) {
-                        Text(
-                            "Clear",
-                            style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.error,
-                            modifier = Modifier
-                                .clickable {
-                                    gist = ""
-                                    onClearGistId()
-                                }
-                                .padding(horizontal = 12.dp),
-                        )
-                    }
-                },
-                colors = hermesFieldColors(),
-                modifier = Modifier.fillMaxWidth(),
-            )
-
-            if (lastBackupTimestamp > 0L) {
+            if (pendingRestore) {
                 Text(
-                    "Last backup: ${dateFmt.format(Date(lastBackupTimestamp))}",
+                    "A restored backup is holding API keys from another device. " +
+                        "Enter that device's backup password to unlock them.",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
+                OutlinedTextField(
+                    value = entered,
+                    onValueChange = { entered = it },
+                    label = { Text("Backup password from the old device") },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth(),
+                )
+                Button(
+                    onClick = { onApply(entered) },
+                    enabled = entered.isNotBlank() && state !is BackupUiState.InProgress,
+                    modifier = Modifier.fillMaxWidth(),
+                ) { Text("Unlock keys") }
+            }
+
+            if (passphrase.isNotBlank()) {
+                Text(
+                    "Your backups encrypt API keys with this password. This device " +
+                        "remembers it, so backup and restore here need nothing from you — " +
+                        "but restoring on a NEW device will ask for it. Save it somewhere safe.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                Text(
+                    if (revealed) passphrase else "•".repeat(passphrase.length.coerceAtMost(24)),
+                    style = MaterialTheme.typography.bodyMedium.copy(fontFamily = FontFamily.Monospace),
+                )
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    OutlinedButton(onClick = { revealed = !revealed }, modifier = Modifier.weight(1f)) {
+                        Text(if (revealed) "Hide" else "Show")
+                    }
+                    OutlinedButton(
+                        onClick = { clipboard.setText(androidx.compose.ui.text.AnnotatedString(passphrase)) },
+                        modifier = Modifier.weight(1f),
+                    ) { Text("Copy") }
+                }
             }
 
             when (state) {
-                is BackupUiState.InProgress -> {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    ) {
-                        CircularProgressIndicator(modifier = Modifier.size(18.dp), strokeWidth = 2.dp)
-                        Text("Working…", style = MaterialTheme.typography.bodySmall)
-                    }
+                is BackupUiState.InProgress -> Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    CircularProgressIndicator(modifier = Modifier.size(18.dp), strokeWidth = 2.dp)
+                    Text("Unlocking…", style = MaterialTheme.typography.bodySmall)
                 }
                 is BackupUiState.Success -> {
-                    Text(
-                        state.message,
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.primary,
-                    )
-                    OutlinedButton(onClick = onDismiss, modifier = Modifier.fillMaxWidth()) {
-                        Text("Dismiss")
-                    }
+                    Text(state.message, color = MaterialTheme.colorScheme.primary, style = MaterialTheme.typography.bodySmall)
+                    OutlinedButton(onClick = onDismiss, modifier = Modifier.fillMaxWidth()) { Text("Done") }
                 }
                 is BackupUiState.Error -> {
-                    Text(
-                        state.message,
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.error,
-                    )
+                    Text(state.message, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
+                    OutlinedButton(onClick = onDismiss, modifier = Modifier.fillMaxWidth()) { Text("Dismiss") }
                 }
-                else -> Unit
-            }
-
-            if (state !is BackupUiState.InProgress && state !is BackupUiState.Success) {
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    FilledTonalButton(
-                        onClick = onBackup,
-                        modifier = Modifier.weight(1f),
-                        enabled = githubPat.isNotBlank(),
-                    ) {
-                        Text("Backup now")
-                    }
-                    OutlinedButton(
-                        onClick = onRestore,
-                        modifier = Modifier.weight(1f),
-                        enabled = githubPat.isNotBlank() && gistId.isNotBlank(),
-                    ) {
-                        Text("Restore")
-                    }
-                }
+                is BackupUiState.Idle -> Unit
             }
         }
     }
@@ -375,7 +218,7 @@ private fun LocalBackupSection(
             }
             Text(
                 "Creates a complete snapshot of all app data, chats, and settings. " +
-                "The backup is saved to your Internal Storage/Hermes Agent/Backup folder.",
+                "The backup is saved to your Internal Storage/Jeeves/Backup folder.",
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )

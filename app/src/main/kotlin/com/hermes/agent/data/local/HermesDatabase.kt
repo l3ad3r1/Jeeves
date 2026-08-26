@@ -17,6 +17,15 @@ import com.hermes.agent.data.local.dao.MemoryDao
 import com.hermes.agent.data.local.dao.MessageDao
 import com.hermes.agent.data.local.dao.ScheduledTaskDao
 import com.hermes.agent.data.local.dao.SkillDao
+import com.hermes.agent.data.local.dao.PromptRevisionDao
+import com.hermes.agent.data.local.dao.SkillRevisionDao
+import com.hermes.agent.data.local.dao.SupplementalPromptDao
+import com.hermes.agent.data.local.dao.BookmarkDao
+import com.hermes.agent.data.local.dao.CalendarEventDao
+import com.hermes.agent.data.local.dao.MoodEntryDao
+import com.hermes.agent.data.local.dao.NoteDao
+import com.hermes.agent.data.local.dao.ScriptPluginDao
+import com.hermes.agent.data.local.dao.TodoTaskDao
 import com.hermes.agent.data.local.entity.ActivityLedgerEntity
 import com.hermes.agent.data.local.entity.AgentTaskEntity
 import com.hermes.agent.data.local.entity.ConnectorEntity
@@ -30,6 +39,15 @@ import com.hermes.agent.data.local.entity.MemoryEntity
 import com.hermes.agent.data.local.entity.MessageEntity
 import com.hermes.agent.data.local.entity.ScheduledTaskEntity
 import com.hermes.agent.data.local.entity.SkillEntity
+import com.hermes.agent.data.local.entity.PromptRevisionEntity
+import com.hermes.agent.data.local.entity.SkillRevisionEntity
+import com.hermes.agent.data.local.entity.SupplementalPromptEntity
+import com.hermes.agent.data.local.entity.BookmarkEntity
+import com.hermes.agent.data.local.entity.CalendarEventEntity
+import com.hermes.agent.data.local.entity.MoodEntryEntity
+import com.hermes.agent.data.local.entity.NoteEntity
+import com.hermes.agent.data.local.entity.ScriptPluginEntity
+import com.hermes.agent.data.local.entity.TodoTaskEntity
 
 @Database(
     entities = [
@@ -42,13 +60,25 @@ import com.hermes.agent.data.local.entity.SkillEntity
         ConnectorEntity::class,
         AgentTaskEntity::class,
         SkillEntity::class,
+        SkillRevisionEntity::class,
+        SupplementalPromptEntity::class,
+        PromptRevisionEntity::class,
         KanbanTicketEntity::class,
         ExecutionPlanEntity::class,
         ExecutionStepEntity::class,
         ActivityLedgerEntity::class,
+        NoteEntity::class,
+        TodoTaskEntity::class,
+        CalendarEventEntity::class,
+        BookmarkEntity::class,
+        MoodEntryEntity::class,
+        ScriptPluginEntity::class,
     ],
-    version = 12,
-    exportSchema = false,
+    version = 18,
+    // Exported so the upgrade can be validated against what Room generates.
+    // Without this there is no way to catch a migration that drifts from the
+    // entities, and that failure only ever appears on a user's device.
+    exportSchema = true,
 )
 abstract class HermesDatabase : RoomDatabase() {
     abstract fun conversationDao(): ConversationDao
@@ -60,9 +90,18 @@ abstract class HermesDatabase : RoomDatabase() {
     abstract fun connectorDao(): ConnectorDao
     abstract fun agentTaskDao(): AgentTaskDao
     abstract fun skillDao(): SkillDao
+    abstract fun skillRevisionDao(): SkillRevisionDao
+    abstract fun supplementalPromptDao(): SupplementalPromptDao
+    abstract fun promptRevisionDao(): PromptRevisionDao
     abstract fun kanbanTicketDao(): KanbanTicketDao
     abstract fun executionPlanDao(): ExecutionPlanDao
     abstract fun activityLedgerDao(): ActivityLedgerDao
+    abstract fun noteDao(): NoteDao
+    abstract fun todoTaskDao(): TodoTaskDao
+    abstract fun calendarEventDao(): CalendarEventDao
+    abstract fun bookmarkDao(): BookmarkDao
+    abstract fun moodEntryDao(): MoodEntryDao
+    abstract fun scriptPluginDao(): ScriptPluginDao
 
     companion object {
         const val DATABASE_NAME = "hermes.db"
@@ -392,6 +431,183 @@ abstract class HermesDatabase : RoomDatabase() {
             }
         }
 
+        /**
+         * Skill revision history (rollback for self-modification).
+         *
+         * Refinement can run unattended from SkillRefineWorker, so a skill may
+         * be rewritten with nobody watching. This table holds the outgoing
+         * version of every edit so it can be restored.
+         */
+        val MIGRATION_12_13 = object : Migration(12, 13) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(
+                    """
+                    CREATE TABLE IF NOT EXISTS skill_revisions (
+                        id TEXT NOT NULL PRIMARY KEY,
+                        skillId TEXT NOT NULL,
+                        skillName TEXT NOT NULL,
+                        version TEXT NOT NULL,
+                        description TEXT NOT NULL,
+                        content TEXT NOT NULL,
+                        note TEXT NOT NULL,
+                        replacedAt INTEGER NOT NULL
+                    )
+                    """.trimIndent(),
+                )
+                db.execSQL(
+                    "CREATE INDEX IF NOT EXISTS index_skill_revisions_skillId_replacedAt " +
+                        "ON skill_revisions(skillId, replacedAt)",
+                )
+            }
+        }
+
+        /**
+         * Continual-harness state: per-role supplemental prompts plus their
+         * revision history. The base system prompts stay in code and are not
+         * represented here — only the learnable layer is persisted.
+         */
+        val MIGRATION_13_14 = object : Migration(13, 14) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(
+                    """
+                    CREATE TABLE IF NOT EXISTS supplemental_prompts (
+                        roleName TEXT NOT NULL PRIMARY KEY,
+                        content TEXT NOT NULL,
+                        version TEXT NOT NULL,
+                        createdAt INTEGER NOT NULL,
+                        updatedAt INTEGER NOT NULL
+                    )
+                    """.trimIndent(),
+                )
+                db.execSQL(
+                    """
+                    CREATE TABLE IF NOT EXISTS prompt_revisions (
+                        id TEXT NOT NULL PRIMARY KEY,
+                        roleName TEXT NOT NULL,
+                        version TEXT NOT NULL,
+                        content TEXT NOT NULL,
+                        note TEXT NOT NULL,
+                        replacedAt INTEGER NOT NULL
+                    )
+                    """.trimIndent(),
+                )
+                db.execSQL(
+                    "CREATE INDEX IF NOT EXISTS index_prompt_revisions_roleName_replacedAt " +
+                        "ON prompt_revisions(roleName, replacedAt)",
+                )
+            }
+        }
+
+        /** Adds the shared message evidence state introduced by the public core schema. */
+        val MIGRATION_14_15 = object : Migration(14, 15) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE messages ADD COLUMN evidence_state TEXT")
+            }
+        }
+
+        /**
+         * Schema version 16: the five productivity tables.
+         *
+         * Hermes reached the same tables across its versions 14 to 17; Jeeves
+         * was at 15 when they landed, so it takes them in one step. The two
+         * apps own their own schema versions by design — only the table shapes
+         * have to match, and they do, because the entities are shared through
+         * :core:persistence.
+         *
+         * Every index here is declared on its entity as well. An index created
+         * by a migration but absent from the entity fails Room's validation on
+         * upgrade with "Migration didn't properly handle", and a clean install
+         * never shows it because it builds from the entity list instead.
+         */
+        val MIGRATION_15_16 = object : Migration(15, 16) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(
+                    """
+                    CREATE TABLE IF NOT EXISTS notes (
+                        id TEXT NOT NULL PRIMARY KEY,
+                        title TEXT NOT NULL,
+                        content TEXT NOT NULL,
+                        tagsJson TEXT NOT NULL,
+                        category TEXT NOT NULL,
+                        isStarred INTEGER NOT NULL,
+                        folder TEXT,
+                        createdAt INTEGER NOT NULL,
+                        updatedAt INTEGER NOT NULL
+                    )
+                    """.trimIndent(),
+                )
+                db.execSQL("CREATE INDEX IF NOT EXISTS index_notes_category ON notes(category)")
+                db.execSQL("CREATE INDEX IF NOT EXISTS index_notes_updatedAt ON notes(updatedAt)")
+
+                db.execSQL(
+                    """
+                    CREATE TABLE IF NOT EXISTS todo_tasks (
+                        id TEXT NOT NULL PRIMARY KEY,
+                        title TEXT NOT NULL,
+                        body TEXT NOT NULL,
+                        done INTEGER NOT NULL,
+                        priority TEXT NOT NULL,
+                        tagsJson TEXT NOT NULL,
+                        dueDateMs INTEGER,
+                        reminderText TEXT,
+                        createdAt INTEGER NOT NULL,
+                        updatedAt INTEGER NOT NULL,
+                        completedAt INTEGER
+                    )
+                    """.trimIndent(),
+                )
+                db.execSQL("CREATE INDEX IF NOT EXISTS index_todo_tasks_done ON todo_tasks(done)")
+                db.execSQL("CREATE INDEX IF NOT EXISTS index_todo_tasks_dueDateMs ON todo_tasks(dueDateMs)")
+
+                db.execSQL(
+                    """
+                    CREATE TABLE IF NOT EXISTS calendar_events (
+                        id TEXT NOT NULL PRIMARY KEY,
+                        title TEXT NOT NULL,
+                        description TEXT NOT NULL,
+                        sourceCalendar TEXT NOT NULL,
+                        startMs INTEGER NOT NULL,
+                        endMs INTEGER NOT NULL,
+                        allDay INTEGER NOT NULL,
+                        location TEXT,
+                        reminderMinutes INTEGER NOT NULL,
+                        createdAt INTEGER NOT NULL
+                    )
+                    """.trimIndent(),
+                )
+                db.execSQL("CREATE INDEX IF NOT EXISTS index_calendar_events_startMs ON calendar_events(startMs)")
+
+                db.execSQL(
+                    """
+                    CREATE TABLE IF NOT EXISTS bookmarks (
+                        id TEXT NOT NULL PRIMARY KEY,
+                        url TEXT NOT NULL,
+                        title TEXT NOT NULL,
+                        note TEXT NOT NULL,
+                        tagsJson TEXT NOT NULL,
+                        createdAt INTEGER NOT NULL
+                    )
+                    """.trimIndent(),
+                )
+                db.execSQL("CREATE INDEX IF NOT EXISTS index_bookmarks_url ON bookmarks(url)")
+
+                db.execSQL(
+                    """
+                    CREATE TABLE IF NOT EXISTS mood_entries (
+                        id TEXT NOT NULL PRIMARY KEY,
+                        dateMs INTEGER NOT NULL,
+                        mood TEXT NOT NULL,
+                        intensity INTEGER NOT NULL,
+                        note TEXT NOT NULL,
+                        tagsJson TEXT NOT NULL,
+                        createdAt INTEGER NOT NULL
+                    )
+                    """.trimIndent(),
+                )
+                db.execSQL("CREATE INDEX IF NOT EXISTS index_mood_entries_dateMs ON mood_entries(dateMs)")
+            }
+        }
+
         val MIGRATION_3_4 = object : Migration(3, 4) {
             override fun migrate(db: SupportSQLiteDatabase) {
                 db.execSQL(
@@ -422,6 +638,61 @@ abstract class HermesDatabase : RoomDatabase() {
                     """.trimIndent()
                 )
             }
+        }
+
+        val MIGRATION_16_17 = object : Migration(16, 17) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                ensureSearchIndex(db)
+            }
+        }
+
+        /**
+         * Adds the installed-module table for script plugins. The manifest is
+         * stored as fetched, alongside the exact permissions the user approved
+         * for that snapshot.
+         */
+        val MIGRATION_17_18 = object : Migration(17, 18) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(
+                    """
+                    CREATE TABLE IF NOT EXISTS script_plugins (
+                        id TEXT NOT NULL PRIMARY KEY,
+                        name TEXT NOT NULL,
+                        version TEXT NOT NULL,
+                        author TEXT NOT NULL,
+                        description TEXT NOT NULL,
+                        manifestJson TEXT NOT NULL,
+                        grantedPermissions TEXT NOT NULL,
+                        enabled INTEGER NOT NULL,
+                        sourceUrl TEXT NOT NULL,
+                        installedAt INTEGER NOT NULL
+                    )
+                    """.trimIndent(),
+                )
+                db.execSQL("CREATE INDEX IF NOT EXISTS index_script_plugins_enabled ON script_plugins(enabled)")
+            }
+        }
+
+        val MIGRATION_16_18 = object : Migration(16, 18) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                MIGRATION_16_17.migrate(db)
+                MIGRATION_17_18.migrate(db)
+            }
+        }
+
+        /**
+         * The search index is not a Room entity, so nothing in Room's own
+         * machinery guarantees it exists: a database can arrive at the current
+         * version without one — most easily by restoring a backup taken from an
+         * install that never had it, which runs no migration at all. Checked on
+         * every open so that path self-heals rather than failing at the first
+         * search.
+         */
+        fun ensureSearchIndex(db: SupportSQLiteDatabase) {
+            val present = db.query(
+                "SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'conversation_fts'",
+            ).use { it.moveToFirst() }
+            if (!present) createSearchIndex(db)
         }
     }
 }

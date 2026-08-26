@@ -20,6 +20,7 @@
 plugins {
     alias(libs.plugins.android.library)
     alias(libs.plugins.kotlin.compose)
+    alias(libs.plugins.kotlin.serialization)
     alias(libs.plugins.ksp)
     alias(libs.plugins.hilt)
 }
@@ -65,9 +66,9 @@ kotlin {
 }
 
 dependencies {
-    // The one settings store shared with :app and :feature:butler.
-    implementation(project(":core:settings"))
-    implementation(project(":core:theme"))
+    // Jeeves-only synchronous settings and optional feature contracts.
+    implementation(project(":core:jeeves-settings"))
+    implementation(project(":core:jeeves-theme"))
 
     // --- Hilt (contributes JotterModule to the host's single object graph) ---
     implementation(libs.hilt.android)
@@ -114,6 +115,14 @@ dependencies {
     // --- Coroutines ---
     implementation(libs.kotlinx.coroutines.android)
 
+    // --- Kotlin Serialization ---
+    implementation(libs.kotlinx.serialization.json)
+
     // --- Community-plugin scripting runtime (interpreted, sandboxed, no native code) ---
     implementation(libs.rhino)
+
+    // --- Testing ---
+    testImplementation(libs.junit)
+    testImplementation(libs.mockk)
+    testImplementation(libs.kotlinx.coroutines.test)
 }

@@ -1,25 +1,11 @@
 package com.sassybutler.alarm.di
 
+import com.jeeves.core.settings.ai.ButlerAiProvider
 import dagger.hilt.EntryPoint
 import dagger.hilt.InstallIn
 import dagger.hilt.components.SingletonComponent
 
-interface ButlerAiProvider {
-    suspend fun generateMorningGreeting(
-        weatherContext: String,
-        timeContext: String,
-        honorific: String,
-        sassLevel: Int
-    ): String?
-
-    suspend fun generateBriefing(
-        contextData: String,
-        honorific: String,
-        sassLevel: Int
-    ): String?
-
-    suspend fun preGenerateBriefing(context: android.content.Context)
-}
+typealias ButlerAiProvider = com.jeeves.core.settings.ai.ButlerAiProvider
 
 @EntryPoint
 @InstallIn(SingletonComponent::class)

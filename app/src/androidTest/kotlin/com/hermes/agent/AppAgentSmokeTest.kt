@@ -9,6 +9,7 @@ import com.hermes.agent.data.appagent.AppInteractionSession
 import com.hermes.agent.data.appagent.ScreenObservation
 import com.hermes.agent.data.appagent.ScreenObservationService
 import com.hermes.agent.data.appagent.ScreenSnapshotStore
+import com.hermes.agent.domain.product.ProductIdentity
 import com.hermes.agent.data.appagent.UiAutomationAppAutomationGateway
 import com.hermes.agent.data.tools.AppAnalyzeScreenTool
 import com.hermes.agent.data.tools.AppTapTool
@@ -47,8 +48,15 @@ class AppAgentSmokeTest {
         )
         val snapshots = ScreenSnapshotStore()
         val interactionSession = AppInteractionSession()
-        val observations = ScreenObservationService(automation, snapshots, interactionSession)
+        val observations = ScreenObservationService(
+            automation,
+            snapshots,
+            interactionSession,
+            ProductIdentity("Jeeves", "jeeves_notify"),
+        )
 
+        // A notification shade left open by the device owner masks the fixture window.
+        uiAutomation.executeShellCommand("cmd statusbar collapse").close()
         ActivityScenario.launch(AppAgentFixtureActivity::class.java).use { scenario ->
             val root = awaitRoot(automation)
             interactionSession.authorize(root.packageName?.toString().orEmpty())
@@ -109,12 +117,24 @@ class AppAgentSmokeTest {
 
     private suspend fun awaitRoot(
         automation: UiAutomationAppAutomationGateway,
+        expectedPackage: String = "com.hermes.agent.debug",
     ): android.view.accessibility.AccessibilityNodeInfo {
         repeat(DEVICE_WAIT_ATTEMPTS) {
-            automation.activeWindowRoot()?.let { return it }
+            val root = automation.activeWindowRoot()
+            if (root != null) {
+                val nodes = ScreenAnalyzer.analyze(root, null).nodes
+                if (nodes.any { AppAgentFixtureActivity.TAP_TARGET_DESCRIPTION in it.description }) {
+                    return root
+                }
+            }
             delay(DEVICE_WAIT_MS)
         }
-        error("UiAutomation did not expose an active-window root.")
+        val lastRoot = automation.activeWindowRoot()
+        val packageName = lastRoot?.packageName?.toString() ?: "null"
+        error(
+            "UiAutomation did not expose the fixture controls. " +
+                "Observed active window package: '$packageName' (expected: '$expectedPackage').",
+        )
     }
 
     private suspend fun awaitActivityState(
@@ -133,7 +153,7 @@ class AppAgentSmokeTest {
     }
 
     private companion object {
-        const val DEVICE_WAIT_ATTEMPTS = 40
+        const val DEVICE_WAIT_ATTEMPTS = 100
         const val DEVICE_WAIT_MS = 100L
     }
 }

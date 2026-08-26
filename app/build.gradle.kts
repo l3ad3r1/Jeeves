@@ -31,6 +31,12 @@ val localProps = Properties().apply {
     if (f.exists()) load(f.inputStream())
 }
 
+ksp {
+    // Room writes its expected schema here so the 15 -> 16 upgrade can be
+    // verified mechanically instead of by eye.
+    arg("room.schemaLocation", "$projectDir/schemas")
+}
+
 android {
     namespace = "com.hermes.agent"
     compileSdk = 36
@@ -45,6 +51,8 @@ android {
         versionName = project.findProperty("jeeves.versionName") as String? ?: "0.9.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+        // MigrationTestHelper loads the exported schemas from assets.
+        sourceSets["androidTest"].assets.srcDir("$projectDir/schemas")
         vectorDrawables { useSupportLibrary = true }
 
         // Surface Gradle properties into BuildConfig so runtime code can read them.
@@ -116,6 +124,11 @@ android {
                 arguments += "-DGGML_BACKEND_DL=ON"
                 arguments += "-DGGML_CPU_ALL_VARIANTS=ON"
                 arguments += "-DGGML_LLAMAFILE=OFF"
+                // 16 KB page support (Android 15+). NDK r27+ already links this
+                // way by default, but the flag is explicit so a toolchain
+                // downgrade cannot silently reintroduce 4 KB-aligned segments.
+                arguments += "-DCMAKE_SHARED_LINKER_FLAGS=-Wl,-z,max-page-size=16384"
+                arguments += "-DCMAKE_EXE_LINKER_FLAGS=-Wl,-z,max-page-size=16384"
                 
                 // The NDK sysroot has vulkan.h but NOT the C++ vulkan.hpp that
                 // ggml-vulkan includes; both glslc and the Vulkan-Hpp headers
@@ -166,7 +179,7 @@ android {
         // 15+ devices. (The legacy-packaging override existed only to extract
         // the now-removed BusyBox executable.)
         jniLibs {
-            useLegacyPackaging = true
+            useLegacyPackaging = false
             // ONNX Runtime ships libonnxruntime.so in more than one AAR entry.
             // Carried over from Sassy Butler's app module (:feature:butler consumes it).
             pickFirsts += "**/libonnxruntime.so"
@@ -194,20 +207,26 @@ kotlin {
         freeCompilerArgs.addAll(
             "-Xjvm-default=all",
             "-opt-in=kotlin.RequiresOptIn",
+            // Carried over from Octo Jotter's build: its annotated constructor properties
+            // rely on the pre-2.2 default annotation target.
+            "-Xannotation-default-target=param-property",
         )
     }
 }
 
 dependencies {
-    // The one settings store, shared with both feature modules.
-    implementation(project(":core:settings"))
+    // Jeeves-only synchronous settings and optional feature contracts.
+    implementation(project(":core:jeeves-settings"))
     implementation(project(":core:theme"))
-
-    // On-device sentence embeddings (all-MiniLM-L6-v2) for the RAG/memory
-    // subsystem. The native lib is already packaged (via :feature:butler's TTS,
-    // see packaging.pickFirsts below); this puts the classes on :app's compile
-    // classpath so MiniLmEmbeddingService can use them.
-    implementation(libs.onnxruntime.android)
+    implementation(project(":core:util"))
+    implementation(project(":core:domain"))
+    implementation(project(":core:plugin"))
+    implementation(project(":core:settings"))
+    implementation(project(":core:persistence"))
+    implementation(project(":core:memory"))
+    implementation(project(":core:llm"))
+    implementation(project(":core:tools"))
+    implementation(project(":core:jeeves-theme"))
 
     // --- Feature modules ---
     implementation(project(":feature:jotter"))
@@ -284,5 +303,6 @@ dependencies {
     androidTestImplementation(libs.androidx.test.runner)
     androidTestImplementation(libs.androidx.compose.ui.test.junit4)
     androidTestImplementation("androidx.test.uiautomator:uiautomator:2.3.0")
+    androidTestImplementation("androidx.room:room-testing:2.7.0")
     debugImplementation(libs.androidx.compose.ui.test.manifest)
 }

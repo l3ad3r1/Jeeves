@@ -3,7 +3,7 @@ package com.hermes.agent.di
 import com.hermes.agent.data.calendar.AndroidCalendarEventGateway
 import com.hermes.agent.data.security.EncryptedSettingsRepository
 import com.hermes.agent.data.security.KeystoreManager
-import com.hermes.agent.data.settings.SettingsRepository
+import com.hermes.agent.domain.settings.SettingsRepository
 import com.hermes.agent.data.settings.SettingsRepositoryImpl
 import com.hermes.agent.data.settings.SettingsToolAuthorizationSettings
 import com.hermes.agent.domain.calendar.CalendarEventGateway
@@ -30,6 +30,12 @@ import javax.inject.Singleton
 @Module
 @InstallIn(SingletonComponent::class)
 abstract class AppModule {
+
+    @Binds
+    @Singleton
+    abstract fun bindSkillUsageListener(
+        impl: com.hermes.agent.data.evolution.SkillRefineScheduler,
+    ): com.hermes.agent.domain.skill.SkillUsageListener
 
     @Binds
     @Singleton
@@ -64,7 +70,3 @@ object PlainSettingsModule {
     @PlainSettings
     fun providePlainSettingsRepository(impl: SettingsRepositoryImpl): SettingsRepository = impl
 }
-
-@javax.inject.Qualifier
-@Retention(AnnotationRetention.BINARY)
-annotation class PlainSettings

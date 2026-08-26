@@ -14,7 +14,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.lifecycle.lifecycleScope
-import com.hermes.agent.data.settings.SettingsRepository
+import com.hermes.agent.domain.settings.SettingsRepository
 import com.hermes.agent.ui.navigation.HermesNavGraph
 import com.hermes.agent.ui.onboarding.OnboardingScreen
 import com.hermes.agent.ui.theme.HermesTheme
@@ -37,6 +37,9 @@ class MainActivity : ComponentActivity() {
 
     @Inject
     lateinit var settings: SettingsRepository
+
+    @Inject
+    lateinit var features: Set<@JvmSuppressWildcards com.hermes.agent.domain.agent.AgentFeature>
 
     override fun onCreate(savedInstanceState: Bundle?) {
         // Hold the splash long enough for Jeeves to don his jacket + tie his
@@ -103,23 +106,19 @@ class MainActivity : ComponentActivity() {
 
     private fun handleIntent(intent: android.content.Intent?) {
         if (intent == null) return
+        val matchingEntry = features.flatMap { it.entries() }.firstOrNull { it.intentAction == intent.action }
+        if (matchingEntry?.targetActivityClassName != null) {
+            val i = android.content.Intent().setClassName(packageName, matchingEntry.targetActivityClassName!!).apply {
+                putExtra("EXTRA_EMBEDDED", true)
+                addFlags(android.content.Intent.FLAG_ACTIVITY_NO_ANIMATION)
+            }
+            if (packageManager.resolveActivity(i, 0) != null) {
+                startActivity(i)
+                finish()
+                return
+            }
+        }
         when (intent.action) {
-            "com.hermes.agent.action.NEW_NOTE" -> {
-                val i = android.content.Intent(this, com.l3ad3r1.octojotter.MainActivity::class.java).apply {
-                    putExtra("EXTRA_EMBEDDED", true)
-                    addFlags(android.content.Intent.FLAG_ACTIVITY_NO_ANIMATION)
-                }
-                startActivity(i)
-                finish()
-            }
-            "com.hermes.agent.action.SET_ALARM" -> {
-                val i = android.content.Intent(this, com.sassybutler.alarm.MainAlarmSetupActivity::class.java).apply {
-                    putExtra("EXTRA_EMBEDDED", true)
-                    addFlags(android.content.Intent.FLAG_ACTIVITY_NO_ANIMATION)
-                }
-                startActivity(i)
-                finish()
-            }
             "com.hermes.agent.action.ASK_JEEVES" -> {
                 // To open chat directly, we should start the ChatScreen, but it's handled via nav graph.
                 // For now, doing nothing leaves it in the MainActivity which opens to the nav graph.

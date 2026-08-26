@@ -6,6 +6,7 @@ import androidx.test.core.app.ApplicationProvider
 import app.cash.turbine.test
 import com.hermes.agent.data.local.HermesDatabase
 import com.hermes.agent.domain.model.AgentRole
+import com.hermes.agent.domain.model.EvidenceState
 import com.hermes.agent.domain.model.Message
 import com.hermes.agent.domain.model.MessageRole
 import com.hermes.agent.util.DefaultDispatcherProvider
@@ -87,6 +88,24 @@ class ConversationRepositoryImplTest {
         val conv = repo.observeConversation(convId).first()
         assertEquals(1, conv?.messageCount)
         assertEquals("Hello Hermes", conv?.lastMessagePreview)
+    }
+
+    @Test
+    fun `addMessage preserves evidence state through persistence`() = runTest {
+        val convId = repo.createConversation()
+        repo.addMessage(
+            convId,
+            Message(
+                id = IdGenerator.newId(),
+                conversationId = convId,
+                role = MessageRole.ASSISTANT,
+                content = "Evidence-backed response",
+                timestamp = System.currentTimeMillis(),
+                evidenceState = EvidenceState.PREPARED,
+            ),
+        )
+
+        assertEquals(EvidenceState.PREPARED, repo.observeMessages(convId).first().single().evidenceState)
     }
 
     @Test

@@ -38,7 +38,31 @@ dependencyResolutionManagement {
 
 rootProject.name = "Jeeves"
 include(":app")
-include(":core:settings")
 include(":core:theme")
+include(":core:util")
+include(":core:domain")
+include(":core:plugin")
+include(":core:settings")
+include(":core:persistence")
+include(":core:memory")
+include(":core:llm")
+include(":core:tools")
+include(":core:jeeves-settings")
+include(":core:jeeves-theme")
 include(":feature:jotter")
 include(":feature:butler")
+
+// Shared, product-neutral theme primitives live in the public agent-core repo.
+project(":core:theme").projectDir = file("../agent-core/core/theme")
+project(":core:util").projectDir = file("../agent-core/core/util")
+project(":core:domain").projectDir = file("../agent-core/core/domain")
+project(":core:plugin").projectDir = file("../agent-core/core/plugin")
+project(":core:settings").projectDir = file("../agent-core/core/settings")
+project(":core:persistence").projectDir = file("../agent-core/core/persistence")
+project(":core:memory").projectDir = file("../agent-core/core/memory")
+project(":core:llm").projectDir = file("../agent-core/core/llm")
+project(":core:tools").projectDir = file("../agent-core/core/tools")
+
+// Jeeves-only cross-feature settings/contracts and branding remain private.
+project(":core:jeeves-settings").projectDir = file("core/settings")
+project(":core:jeeves-theme").projectDir = file("core/theme")

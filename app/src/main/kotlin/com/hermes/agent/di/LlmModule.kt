@@ -7,11 +7,12 @@ import com.hermes.agent.data.llm.CloudLlmProvider
 import com.hermes.agent.data.llm.CloudModelCatalog
 import com.hermes.agent.data.llm.OpenAiCloudModelCatalog
 import com.hermes.agent.data.llm.CloudModelSource
-import com.hermes.agent.data.llm.LlmProvider
+import com.hermes.agent.domain.product.ProductIdentity
 import com.hermes.agent.data.llm.LlmRouter
 import com.hermes.agent.data.llm.HybridLlmRouter
 import com.hermes.agent.data.remote.OpenAiApi
-import com.hermes.agent.data.settings.SettingsRepository
+import com.hermes.agent.domain.settings.SettingsRepository
+import com.hermes.agent.domain.llm.LlmProvider
 import com.hermes.agent.domain.repository.ChatRepository
 import com.hermes.agent.data.repository.ChatRepositoryImpl
 import com.hermes.agent.domain.repository.ConversationRepository
@@ -69,6 +70,11 @@ abstract class LlmModule {
 
         @Provides
         @Singleton
+        fun provideProductIdentity(): ProductIdentity =
+            ProductIdentity(displayName = "Jeeves", notificationChannelId = "jeeves_notify")
+
+        @Provides
+        @Singleton
         fun provideInferenceEngine(
             @ApplicationContext context: Context,
         ): InferenceEngine = AiChat.getInferenceEngine(context)
@@ -77,7 +83,7 @@ abstract class LlmModule {
          * Default (unqualified) [CloudModelSource]. Every bare
          * [CloudLlmProvider] injection — the orchestrator-facing primary
          * provider and all direct consumers — resolves to PRIMARY, i.e. the
-         * [com.hermes.agent.data.settings.UserSettings.cloudModel].
+         * [com.hermes.agent.domain.settings.UserSettings.cloudModel].
          */
         @Provides
         fun provideCloudModelSource(): CloudModelSource = CloudModelSource.PRIMARY
@@ -96,7 +102,8 @@ abstract class LlmModule {
             settings: SettingsRepository,
             dispatchers: DispatcherProvider,
             json: Json,
+            productIdentity: ProductIdentity,
         ): CloudLlmProvider =
-            CloudLlmProvider(api, settings, dispatchers, json, CloudModelSource.AUX)
+            CloudLlmProvider(api, settings, dispatchers, json, CloudModelSource.AUX, productIdentity)
     }
 }

@@ -1,7 +1,7 @@
 package com.hermes.agent.di
 
 import com.hermes.agent.data.jotter.JotterAiProviderImpl
-import com.l3ad3r1.octojotter.domain.JotterAiProvider
+import com.jeeves.core.settings.ai.JotterAiProvider
 import dagger.Binds
 import dagger.Module
 import dagger.hilt.InstallIn

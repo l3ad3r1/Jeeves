@@ -15,9 +15,11 @@ import com.hermes.agent.data.log.FileLogTree
 import com.hermes.agent.data.log.LogManager
 import com.hermes.agent.data.performance.MemoryPressureMonitor
 import com.hermes.agent.debug.DebugScreenAwake
+import com.hermes.agent.domain.agent.AgentFeature
 import com.jeeves.core.settings.JeevesSettings
-import com.l3ad3r1.octojotter.data.local.ThemePreferences
 import com.hermes.agent.domain.repository.ExecutionPlanRepository
+import com.hermes.agent.domain.repository.SkillRepository
+import com.hermes.agent.data.plugin.ScriptPluginRepository
 import dagger.hilt.android.HiltAndroidApp
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -57,6 +59,23 @@ class HermesApp : Application(), Configuration.Provider {
     @Inject
     lateinit var executionPlanRepositoryProvider: Provider<ExecutionPlanRepository>
 
+    @Inject
+    lateinit var encryptedSettingsProvider:
+        Provider<com.hermes.agent.data.security.EncryptedSettingsRepository>
+
+    @Inject
+    lateinit var restoredSecretsProvider:
+        Provider<com.hermes.agent.data.backup.RestoredSecretsApplier>
+
+    @Inject
+    lateinit var skillRepositoryProvider: Provider<SkillRepository>
+
+    @Inject
+    lateinit var scriptPluginRepositoryProvider: Provider<ScriptPluginRepository>
+
+    @Inject
+    lateinit var features: Set<@JvmSuppressWildcards AgentFeature>
+
     private val applicationScope = CoroutineScope(Dispatchers.Default)
 
     override fun onCreate() {
@@ -76,6 +95,27 @@ class HermesApp : Application(), Configuration.Provider {
             runCatching { noteIndexerProvider.get().start(applicationScope) }
                 .onFailure { Timber.tag("NoteIndexer").w(it, "note indexing unavailable") }
         }
+        // A settings file restored from another install carries secrets encrypted
+        // under that install's keystore key. They can never be decrypted here, so
+        // they are cleared rather than left to masquerade as configured keys.
+        // Idempotent and cheap, so it runs every start instead of needing a flag
+        // handshake with the restore path.
+        applicationScope.launch {
+            // Order matters: credentials staged by a restore are applied first,
+            // then the sweep clears anything still unreadable. Reversed, the
+            // sweep would run before the restore had a chance to supply the
+            // working values.
+            runCatching { restoredSecretsProvider.get().applyPending() }
+                .onFailure { Timber.tag("RestoreSecrets").w(it, "restore apply unavailable") }
+            runCatching { encryptedSettingsProvider.get().clearUnreadableSecrets() }
+                .onFailure { Timber.tag("Settings").w(it, "secret sweep unavailable") }
+
+            // The Gist backup is gone, but an install that used it still holds
+            // the GitHub token it was given. Deleting the feature does not
+            // delete the credential, so clear it once here. Idempotent.
+            runCatching { encryptedSettingsProvider.get().purgeRetiredGistCredentials() }
+                .onFailure { Timber.tag("Settings").w(it, "retired-credential purge failed") }
+        }
         applicationScope.launch {
             runCatching { executionPlanRepositoryProvider.get().reconcileInterruptedSteps() }
                 .onSuccess { count ->
@@ -84,31 +124,42 @@ class HermesApp : Application(), Configuration.Provider {
                 .onFailure { Timber.tag("ExecutionPlan").w(it, "plan reconciliation unavailable") }
         }
 
+        applicationScope.launch {
+            runCatching { skillRepositoryProvider.get().seedBuiltIn() }
+                .onFailure { Timber.tag("Skills").w(it, "built-in skill seeding failed") }
+        }
+
+        // Installed modules register their tools at startup. Without this the
+        // agent would only see them after the user opened Settings → Modules,
+        // so an installed module would silently do nothing until then.
+        applicationScope.launch {
+            runCatching { scriptPluginRepositoryProvider.get().reloadEnabled() }
+                .onSuccess { failures ->
+                    if (failures.isNotEmpty()) {
+                        Timber.tag("Modules").w("modules failed to load: %s", failures.joinToString())
+                    }
+                }
+                .onFailure { Timber.tag("Modules").w(it, "module loading unavailable") }
+        }
+
         // Phase 4: start memory pressure polling. If the App Startup
         // initializer already started it via Hilt EntryPoint, this is a
         // no-op; otherwise we start it now that Hilt is initialized.
         memoryPressureMonitor.start()
-        migrateLegacyThemeSetting()
+        warmUpSettingsAndNotifyFeatures()
         scheduleMemoryConsolidation()
         scheduleSkillImprovement()
         scheduleOtaUpdateCheck()
     }
 
-    /**
-     * Jotter's theme used to live in its own `theme_settings` DataStore. It now lives in
-     * JeevesSettings with everything else, but DataStore has no synchronous read, so — unlike
-     * Butler's SharedPreferences — it cannot migrate on first touch. Do it here, off the main
-     * thread, before any Activity can observe the theme. It is a no-op once migrated.
-     */
-    private fun migrateLegacyThemeSetting() {
+    private fun warmUpSettingsAndNotifyFeatures() {
         CoroutineScope(Dispatchers.IO).launch {
-            // Touch the store here first so its one-time SharedPreferences migration (which
-            // commit()s) runs off the main thread rather than on whichever caller gets there
-            // first — MainActivity reads the theme during composition.
             runCatching { JeevesSettings.prefs(this@HermesApp) }
                 .onFailure { Timber.tag("Migration").w(it, "settings store warm-up failed") }
-            runCatching { ThemePreferences(this@HermesApp).migrateLegacyTheme() }
-                .onFailure { Timber.tag("Migration").w(it, "legacy theme migration failed") }
+            features.forEach { feature ->
+                runCatching { feature.onAppCreate(this@HermesApp, this) }
+                    .onFailure { Timber.tag("Feature").w(it, "feature ${feature.id} onAppCreate failed") }
+            }
         }
     }
 

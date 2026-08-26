@@ -18,6 +18,340 @@ repo. All three apps are merged and shipping (`:app` + `:feature:jotter` + `:fea
 
 ## Status log (newest first)
 
+### User-facing module repository setting (`port/hermes-0.9.x`) - 2026-08-20
+- [x] Added the shared `PluginModuleDownloadCoordinator` boundary and implementation. It
+      trims and validates the HTTPS catalog through the existing verifier, then downloads
+      verified APK bytes into the app-private artifact directory (L-001, L-007, L-013).
+- [x] Added a discoverable Modules row and screen to both Jeeves and Hermes. Users can enter
+      a public catalog URL, load validated entries, download a selected module, and see
+      loading, empty, saved, and error states instead of a silent no-op (L-001, L-007).
+- [x] VERIFIED shared domain/plugin tests and `:app:compileDebugKotlin` for both products.
+
+### Shared plugin install completion tracking (`port/hermes-0.9.x`) - 2026-08-20
+- [x] Added restart-safe shared install state. A successful installer launch records the
+      exact plugin package, version, digest, and signer as `HANDED_OFF`; the shared
+      package receiver processes Android `PACKAGE_ADDED`/`PACKAGE_REPLACED` events off
+      the main thread and marks only the matching record `INSTALLED`.
+- [x] Duplicate handoffs replace the pending record, duplicate completion broadcasts
+      are idempotent, and unrelated package events are ignored. The receiver uses a
+      Hilt entry point so both hosts consume the same core implementation without
+      applying the Hilt Android plugin to `:core:plugin`.
+- [x] VERIFIED with 51/51 shared plugin tests (including persistence and coordinator
+      handoff), shared tools/LLM/memory/settings suites, Hermes debug tests/APK assembly,
+      Jeeves preflight/native APK, Jotter 11/11, and Butler 27/27.
+- [x] VERIFIED on a connected Samsung SM-S928B: both `com.jeeves.app.debug` and
+      `com.hermes.agent.debug` installed and launched; `dumpsys package` showed the
+      shared receiver and both package actions. Reinstalling each host generated a real
+      `PACKAGE_REPLACED` event with no receiver/runtime error in logcat.
+- [ ] UNVERIFIED on device (L-001): no signed third-party plugin APK has emitted a
+      completion event yet, so exact pending-to-installed state transition remains
+      covered by deterministic persistence tests only.
+- [ ] NOT DONE: concrete review UI, service discovery, or Android/gRPC transport.
+
+### Shared install-review orchestration (`port/hermes-0.9.x`) - 2026-08-20
+- [x] Added the shared UI-neutral review coordinator. It refreshes persisted publisher
+      trust, validates user decisions, persists the post-trust exact review snapshot,
+      and refuses installer handoff when that snapshot is missing or changed. Hermes and
+      Jeeves can provide different screens without duplicating approval sequencing.
+- [x] VERIFIED with 50/50 shared plugin tests, including trust refresh, denial without
+      writes, trust-and-approval ordering, persisted-handoff requirements, and product
+      Hilt compilation. Hermes debug tests/APK assembly, Jeeves preflight/native APK,
+      Jotter, and Butler gates all passed.
+- [ ] UNVERIFIED on device (L-001): no signed public plugin artifact or product review
+      screen has been exercised on hardware; the coordinator and persistence paths are
+      covered by deterministic tests and both product builds.
+- [ ] NOT DONE: concrete review UI, install completion tracking, service discovery, or
+      Android/gRPC transport.
+
+### Persistent plugin publisher trust and approval storage (`port/hermes-0.9.x`) - 2026-08-20
+- [x] Added shared app-private, versioned stores for publisher trust and exact install
+      approvals. Trust is keyed by plugin ID and normalized signer fingerprint; approval
+      snapshots include the full request, including permissions, digest, version, signer,
+      and trust state. Repeated writes replace existing records, revocation is explicit,
+      storage is bounded, and malformed or failed persistence fails closed.
+- [x] VERIFIED with Robolectric-backed SharedPreferences tests: shared plugin 46/46;
+      the test covers normalization, restart persistence, exact-artifact mismatch,
+      revocation, and replace-not-append behavior.
+- [ ] UNVERIFIED on device (L-001): no hardware restart or product review screen exists
+      yet; the Android persistence backend is exercised in a real Android-compatible
+      Robolectric environment and is Hilt-bound identically for Hermes and Jeeves.
+- [ ] NOT DONE: permission-review/install UI, install completion tracking, service
+      discovery, or concrete Android/gRPC transport.
+
+### Shared Android plugin installer handoff (`port/hermes-0.9.x`) - 2026-08-20
+- [x] Added the shared package-installer contract, app-private plugin directory, and
+      Android implementation. Both products receive the same Hilt-bound installer;
+      their existing non-exported FileProviders now also expose the narrowly scoped
+      private `plugins/` root needed for system installation.
+- [x] The handoff fails closed unless the downloaded artifact, freshly inspected APK,
+      verified package, and user authorization still match the same catalog entry,
+      plugin ID, version, APK digest, and signer. Files outside private plugin storage
+      are rejected, including canonical path traversal.
+- [x] Missing unknown-sources permission is returned as an explicit state with a
+      separate settings action. Package-installer and settings launch failures remain
+      caller-visible for the future install UI (L-007); inspector and handoff
+      cancellation now propagate instead of becoming ordinary failures.
+- [x] VERIFIED from forced/no-build-cache gates: shared plugin 43/43, tools 49/49,
+      LLM 88/88, memory 21/21, and settings 16/16 PASS (217/217 shared). Jeeves app
+      283/283, Jotter 11/11, and Butler 27/27 PASS (538/538 combined); mandatory
+      preflight and native debug APK assembly PASS. Hermes app 208/208 plus the same
+      shared tests PASS (425/425 combined), with forced native debug APK assembly.
+- [ ] UNVERIFIED on device (L-001): the Android system install-confirmation screen was
+      not launched because no signed schema-v1 plugin APK or product install-review
+      flow exists yet. Binding, tamper, permission, path, launch-failure, and merged
+      APK resource paths were exercised by tests and builds.
+- [ ] NOT DONE: persistent publisher trust and approval storage, install/review UI,
+      install completion tracking, service discovery, or concrete Android/gRPC transport.
+
+### Shared plugin repository delivery (`port/hermes-0.9.x`) - 2026-08-20
+- [x] Added shared HTTPS catalog retrieval with strict schema decoding and optional,
+      caller-scoped authorization. Plaintext URLs and credential-bearing URLs are
+      rejected before transport; catalogs are capped at 1 MiB.
+- [x] Added shared immutable APK delivery into caller-owned private storage. Downloads
+      are serialized, staged as temporary files, limited to 256 MiB, and promoted only
+      after the exact catalog size and SHA-256 match. Failed or cancelled transfers
+      remove their staging file, while verified cached artifacts are safely reused.
+- [x] VERIFIED from forced/no-build-cache gates: shared plugin 34/34, tools 49/49,
+      LLM 88/88, memory 21/21, and settings 16/16 PASS (208/208 shared). Jeeves app
+      283/283, Jotter 11/11, and Butler 27/27 also PASS (529/529 combined); mandatory
+      preflight and native debug APK assembly PASS. Hermes app 208/208 plus the same
+      shared tests PASS (416/416 combined), with forced native debug APK assembly.
+- [ ] UNVERIFIED (L-001): no live public catalog/artifact endpoint or repository token
+      exists yet, so real-host transfer was not run; delivery tests use deterministic
+      OkHttp responses and exercise authorization, limits, cache reuse, and corruption.
+- [ ] NOT DONE: Android package-installer handoff, persistent publisher trust and
+      approval storage, install UI, service discovery, or concrete Android/gRPC transport.
+
+### Plugin APK inspection and native/worktree cleanup (`port/hermes-0.9.x`) - 2026-08-20
+- [x] Added the shared Android package-inspection boundary. Downloaded APK evidence now
+      comes from the archive's embedded schema-v1 manifest, package/version, exported
+      services, file digest/size, and exactly one current signing certificate; approval
+      fails closed when the catalog service is not exported by the APK.
+- [x] Restored `llama.cpp` to its exact pinned commit and removed the obsolete local
+      Vulkan patch, patch runner, CI/release patch steps, and Vulkan SDK installation.
+      The supported runtime remains CPU-only (`GGML_VULKAN=OFF`), and preflight now
+      rejects an uninitialized, unpinned, or dirty native submodule (L-020).
+- [x] Removed stale Antigravity task/report files and generated Gradle daemon settings,
+      archived Hermes' large test-run evidence outside the repository, and ignored these
+      transient artifact classes. Preserved the useful skill-editor finding by adding IME
+      padding in both products.
+- [x] Hardened the shared AppAgent device smoke-test setup: it waits for the actual
+      fixture controls and dismisses a notification shade that would otherwise mask the
+      test activity. This fixed the reproduced `com.android.systemui` false failure.
+- [x] VERIFIED from forced/no-build-cache gates: Jeeves app 283/283, shared plugin
+      27/27, tools 49/49, LLM 88/88, memory 21/21, settings 16/16, Jotter 11/11,
+      and Butler 27/27 PASS (522/522 combined); Hermes app 208/208 plus the same 201
+      shared tests PASS (409/409 combined). Both debug APK assemblies PASS, including
+      native CMake/`llama.cpp`; mandatory preflight PASS.
+- [x] VERIFIED on Samsung SM-S928B: Jeeves AppAgent instrumentation 1/1 and Hermes
+      instrumentation 10/10 PASS. Device package checks found no pre-existing
+      `com.hermes.agent*` installation before testing.
+- [ ] NOT DONE: catalog/artifact network fetching, package-installer handoff, persistent
+      publisher trust/approval storage, install UI, or concrete Android/gRPC transport.
+- [ ] NOT DONE from the archived UX notes: surface a subtle user-visible provider
+      failover indication; no cross-product UX contract has been chosen yet.
+
+### Public plugin package and trust contract (`port/hermes-0.9.x`) - 2026-08-20
+- [x] Added shared, serializable catalog schema v1 for immutable APK metadata,
+      embedded plugin manifests, Android service identity, protocol compatibility,
+      package hashes, signer fingerprints, and minimum host versions.
+- [x] Added a strict catalog JSON codec and fail-closed package verifier. It rejects
+      insecure URLs, malformed or duplicate identities, incompatible protocols/hosts,
+      and mismatches in the embedded manifest, package, version, size, APK SHA-256, or
+      signing certificate.
+- [x] Added approval snapshots bound to the exact verified artifact, signer, version,
+      and permission list. Untrusted publishers require a separate explicit trust
+      decision, so catalog metadata is not treated as its own trust anchor.
+- [x] Published the repository contract and a minimal `catalog-v1.json` example in the
+      public shared core. Shared plugin coverage is now 24/24.
+- [x] VERIFIED (local gate): Jeeves app 283/283, shared plugin 24/24, shared tools
+      49/49, shared LLM 88/88, shared memory 21/21, shared settings 16/16, Jotter
+      11/11, and Butler 27/27 PASS (519/519 combined); debug APK assembly PASS.
+      Hermes app 208/208 plus the same 198 shared tests PASS (406/406 combined);
+      debug APK assembly PASS.
+- [ ] NOT DONE: catalog/artifact network fetching, Android APK inspection and package
+      installer handoff, persistent publisher trust, install UI, or concrete gRPC transport.
+- [ ] UNVERIFIED on device (L-001): no device is connected.
+
+### Remote plugin runtime boundary opened (`port/hermes-0.9.x`) - 2026-08-20
+- [x] Fixed the shared registry so a plugin installed through the remote path retains
+      its runtime proxy and its owning sandbox. Activation, suspension, resumption,
+      unloading, and tool registration now stay on that sandbox instead of silently
+      falling back to the in-process implementation.
+- [x] Replaced the unreachable `grpc_wrap` native-library probe with an injectable,
+      multibound `GrpcPluginTransport` extension point. With no transport contribution,
+      remote activation fails explicitly and recoverably instead of reporting a false
+      implementation state.
+- [x] Fixed activation of a suspended plugin to call its sandbox's resume lifecycle;
+      suspended plugins are no longer reported by the ACTIVE plugin/tool queries.
+- [x] Removed Jeeves' stale six-test copy of the shared registry suite. Canonical shared
+      plugin coverage is now 16/16, including remote lifecycle ownership, unavailable
+      and failing transport probes, tool cleanup, and suspend-to-resume behavior.
+- [x] VERIFIED (local gate): Jeeves app 283/283, shared plugin 16/16, shared tools
+      49/49, shared LLM 88/88, shared memory 21/21, shared settings 16/16, Jotter
+      11/11, and Butler 27/27 PASS (511/511 combined); debug APK assembly PASS.
+      Hermes app 208/208 plus the same 190 shared tests PASS (398/398 combined);
+      debug APK assembly PASS.
+- [ ] NOT DONE: standalone APK discovery, catalog download, signature verification,
+      user permission approval, and the concrete Android/gRPC wire transport.
+- [ ] UNVERIFIED on device (L-001): no device is connected.
+
+### Shared tool engine adopted (`port/hermes-0.9.x`) - 2026-08-20
+- [x] Jeeves now consumes public `agent-core :core:tools`; removed 44 duplicate tool,
+      app-automation, terminal, and voice implementation sources plus eight duplicate
+      test sources. The shared module also supplies the canonical Kanban and TTS tools.
+- [x] Activated Hilt/KSP generation inside `:core:tools`. This fixes the previous state
+      where annotated shared tool modules compiled but contributed no multibound tools
+      to either product's runtime registry.
+- [x] Added product-neutral `ProductIdentity` composition for display names and
+      notification channels. Hermes and Jeeves provide their own identity at the app
+      boundary; shared LLM and tool code no longer hard-code either product.
+- [x] Aligned the role capability taxonomy across both apps and made private feature
+      tools deterministic overrides of same-named core tools, so Butler's richer
+      `speak` implementation wins over the shared default.
+- [x] VERIFIED from clean, no-build-cache outputs (local gate): Jeeves app 289/289,
+      shared tools 49/49, shared LLM 88/88, shared memory 21/21, shared settings 16/16,
+      Jotter 11/11, and Butler 27/27 PASS (501/501 combined); debug APK assembly PASS.
+      Hermes app 208/208 plus the same 174 shared tests PASS (382/382 combined); debug
+      APK assembly PASS. Generated Hilt metadata contains the shared tool modules.
+- [ ] UNVERIFIED on device (L-001): no device is connected.
+
+### Shared LLM and provider engine adopted (`port/hermes-0.9.x`) - 2026-08-20
+- [x] Jeeves now consumes public `agent-core :core:llm`; removed the duplicate
+      cloud/local providers, routing policies, OpenAI transport DTOs, model download
+      worker, ARM inference bridge, and eleven duplicate LLM test sources.
+- [x] Replaced the final app-local `LlmProvider` compatibility alias with the canonical
+      public domain contract. No shared LLM implementation remains in the Jeeves app.
+- [x] Added explicit `ProductIdentity` composition so public engine code does not
+      hard-code either product. Hermes supplies `Hermes`; Jeeves supplies `Jeeves`,
+      preserving provider labels and the fallback on-device system prompt.
+- [x] VERIFIED from clean, no-build-cache outputs (local gate): Jeeves app 324/324,
+      shared LLM 88/88, shared memory 21/21, shared settings 16/16, Jotter 11/11,
+      and Butler 27/27 PASS (487/487 combined); debug APK assembly PASS. Hermes app
+      208/208, shared LLM 88/88, and debug APK assembly also PASS.
+- [ ] UNVERIFIED on device (L-001): no device is connected.
+
+### Shared memory and RAG engine adopted (`port/hermes-0.9.x`) - 2026-08-20
+- [x] Jeeves now consumes public `agent-core :core:memory`; removed fourteen duplicate
+      embedding, vector-store, learning, consolidation, and RAG sources plus three
+      duplicate test sources.
+- [x] Replaced Jeeves' second `LlmProvider` interface with a compatibility alias to the
+      canonical public domain contract. Shared memory services now depend on the public
+      abstraction while existing private provider implementations remain source-compatible.
+- [x] Kept ONNX Runtime as a private implementation dependency of shared memory and removed
+      Jeeves' redundant direct dependency. Also removed the remaining product-specific
+      model-manager name from public memory docs.
+- [x] VERIFIED from clean outputs (local gate): shared memory 21/21, shared settings
+      16/16, Jeeves app 410/410, Jotter 11/11, and Butler 27/27 PASS (485/485 combined);
+      debug APK assembly PASS. A forced no-build-cache memory run also passed 21/21.
+- [x] VERIFIED on Samsung SM-S928B: Jeeves AppAgent instrumentation 1/1 PASS. Package
+      checks before and after found no installed `com.hermes.agent*` package.
+- [x] `tools/preflight.sh` PASS.
+
+### Shared persistence schema adopted (`port/hermes-0.9.x`) - 2026-08-20
+- [x] Jeeves now consumes public `agent-core :core:persistence`; removed 29 duplicate
+      Room DAO/entity sources while keeping the product database and migration chain at
+      the app composition boundary.
+- [x] Upgraded Jeeves' database from version 14 to 15 with a tested migration that adds
+      the shared nullable `messages.evidence_state` column without changing existing
+      rows. Conversation persistence now round-trips the public evidence-state contract.
+- [x] Removed the remaining Hermes product name from the public activity-ledger schema
+      documentation; shared persistence is product-neutral.
+- [x] VERIFIED (local gate): shared persistence assembly PASS; Jeeves app 427/427,
+      shared settings 16/16, Jotter 11/11, and Butler 27/27 PASS (481/481 combined);
+      debug APK assembly PASS; `tools/preflight.sh` PASS.
+- [x] VERIFIED on Samsung SM-S928B: Jeeves AppAgent instrumentation 1/1 PASS. Package
+      checks before and after found no installed `com.hermes.agent*` package.
+
+### Shared engine settings and security adopted (`port/hermes-0.9.x`) - 2026-08-20
+- [x] Jeeves now consumes public `agent-core :core:settings`; removed eleven duplicate
+      engine DataStore/settings and security implementation sources plus two duplicate
+      security test sources. Call sites now use the canonical public settings contracts.
+- [x] Kept `:core:jeeves-settings` separate for Jeeves-only synchronous alarm/voice
+      preferences and feature contracts. This remains private product composition.
+- [x] Fixed shared settings defaults so each consuming app's `hermes.*` Gradle properties
+      and optional `hermes.local.properties` provide the cloud API key, base URL, and
+      model. Generated values match each product without exposing key material.
+- [x] VERIFIED (local gate): shared settings 16/16 PASS; Jeeves app 425/425, Jotter
+      11/11, and Butler 27/27 PASS (479/479 combined); Hermes app 208/208 PASS; both
+      debug APK assemblies PASS.
+- [ ] UNVERIFIED on device (L-001): no device is connected.
+
+### Shared core plugin infrastructure adopted (`port/hermes-0.9.x`) - 2026-08-20
+- [x] Jeeves now consumes public `agent-core :core:plugin`; removed seven duplicate
+      registry, sandbox, resource-monitor, and built-in plugin sources.
+- [x] Moved `HostPluginContext` out of public core into Hermes product composition.
+      Jeeves retains its private host context because app version and settings access
+      are product-owned responsibilities. Built-in plugin author metadata is now the
+      product-neutral value `agent-core` in both apps.
+- [x] VERIFIED (local gate): shared plugin 12/12 PASS; Hermes app 208/208 PASS and
+      debug APK assembly PASS; Jeeves app/Jotter/Butler 479/479 PASS and debug APK
+      assembly PASS.
+- [ ] UNVERIFIED on device (L-001): no device is connected.
+
+### Shared core domain adopted (`port/hermes-0.9.x`) - 2026-08-20
+- [x] Jeeves now compiles against public `agent-core :core:domain`; removed 55
+      duplicated app-domain sources, the duplicate private `Tool` contract, and the
+      duplicate `ToolCallPrompt` source.
+- [x] Promoted the product-neutral `DeviceProfile` contract to public core and kept
+      compatibility aliases for clients migrating LLM protocol imports from
+      `domain.model` to canonical `domain.llm`. Optional feature modules retain the
+      `ParameterType` compatibility name while sharing the capability-aware tool API.
+- [x] Fixed the one cross-module Compose smart-cast exposed by moving `Message` out of
+      the app; no UI behavior changed.
+- [x] VERIFIED (local gate): shared domain 82/82 PASS; Hermes app 208/208 PASS and
+      debug APK assembly PASS; Jeeves app/Jotter/Butler 479/479 PASS and debug APK
+      assembly PASS.
+- [ ] UNVERIFIED on device (L-001): no device is connected.
+
+### Private settings boundary clarified (`port/hermes-0.9.x`) - 2026-08-20
+- [x] Renamed the Gradle identity of Jeeves' local settings/contracts module from
+      `:core:settings` to `:core:jeeves-settings`. Its filesystem and package names
+      remain stable; this is a dependency-boundary correction, not a data migration.
+- [x] Documented that Jeeves' synchronous alarm/voice preferences and Android-bound
+      feature contracts are private product composition, distinct from public
+      `agent-core :core:settings` engine security/DataStore implementation.
+- [x] VERIFIED (local gate): app/Jotter/Butler unit suites 479/479 PASS and debug
+      APK assembly PASS; the private settings module compiles with no test sources.
+- [ ] UNVERIFIED on device (L-001): no device is connected.
+
+### Shared core utility boundary (`port/hermes-0.9.x`) - 2026-08-20
+- [x] Replaced Jeeves' five byte-identical utility sources with the public
+      `agent-core :core:util` module: dispatcher abstraction, result wrapper, ID
+      generation, SQL LIKE escaping, and security-audit contracts.
+- [x] VERIFIED (local gate): shared utility tests 5/5 PASS; Jeeves app/Jotter/Butler
+      unit suites 479/479 PASS; debug APK assembly PASS. No source behavior changed.
+- [ ] UNVERIFIED on device (L-001): no device remained connected for this checkpoint.
+
+### Shared core theme boundary (`port/hermes-0.9.x`) - 2026-08-20
+- [x] Replaced Jeeves' duplicated theme primitives with `:core:theme` from the sibling
+      public `agent-core` checkout. Jeeves branding remains private in
+      `:core:jeeves-theme`, while Hermes branding now remains in the Hermes app.
+      The public theme module contains only reusable controls, colors, shapes, and
+      accessibility primitives and no longer depends on engine domain/settings code.
+- [x] VERIFIED (local gate): standalone shared theme assembly PASS; Hermes app unit
+      suite 208/208 PASS and debug APK assembly PASS; Jeeves app/Jotter/Butler unit
+      suites 479/479 PASS and debug APK assembly PASS; `tools/preflight.sh` PASS.
+- [x] VERIFIED baseline on device before the boundary move: Hermes instrumentation
+      10/10 PASS and Jeeves AppAgent smoke instrumentation 1/1 PASS on the Samsung
+      SM-S928B. These tests use debug-only package IDs.
+- [ ] UNVERIFIED on device after the boundary move (L-001): the Samsung disconnected
+      before the post-change instrumentation rerun could start. The attempted run
+      completed compilation and packaging, then stopped with `No connected devices`.
+
+### Modularization of Tools and Sub-App Seams (`port/hermes-0.9.x`) - 2026-08-20
+- [x] Executed full modularization steps 1 through 4 + Task A/B decoupling:
+      - **Step 1:** Registered all 33 Hermes agent tools via Hilt `@Binds @IntoSet Tool` multibinding into `Set<Tool>`, refactoring `ToolsModule` with `@Multibinds`.
+      - **Step 2:** Refactored `AgentToolAccess` from static string name matching to capability and category grants (`capabilities: Set<String>`), preserving pinned per-role counts (31/20/10/19/10).
+      - **Step 3:** Eliminated domain layer leakage (`domain -> android` is 0; `domain -> data` is 0; `HabitExtractor` moved to `data/agent/`, LLM protocol types and `DeviceProfile` moved to `domain/model/`).
+      - **Step 4 & Task A:** Extracted shared contracts (`Tool`, `AgentFeature`, `BackupData`, `VoiceCatalog`, `JotterAiProvider`, `ButlerAiProvider`) to `:core:settings`. Moved note and alarm tools, `NoteBackupExtensions`, `BriefingComposer`, and `VoiceOutputManager` fallback to `:feature:jotter` and `:feature:butler`. Restored two-engine TTS in `TtsTool` with platform fallback.
+      - **Task B:** Routed all sub-app navigation entries and shortcut intent handling dynamically through `AgentFeature.entries()`, eliminating all hardcoded string activity names in `:app`.
+- [x] VERIFIED (local gate):
+      - Acceptance test: `:app` compiles and passes all 441 unit tests with `:feature:jotter` and `:feature:butler` removed from `settings.gradle.kts` and `app/build.gradle.kts`.
+      - Full unit test suite with all modules restored: 479 tests across 79 test classes (0 failures, 0 skipped, 0 errors).
+      - Zero imports of `com.l3ad3r1.octojotter.*` or `com.sassybutler.alarm.*` in `app/src/`.
+- [ ] UNVERIFIED on device (L-001): Physical/virtual connected device checks (`adb devices` returned no attached devices during execution).
+
 ### Hermes 0.9.x port to Jeeves (`port/hermes-0.9.x`) - 2026-08-17
 - [x] Ported all major Hermes 0.9.x (v0.9.0 - v0.9.3) features and enhancements into Jeeves:
       - **AppAgent subsystem**: 5 app automation tools (`app_launch`, `app_analyze_screen`, `app_tap`, `app_swipe`, `app_type`), `AppAgentAccessibilityService`, `AppAgentFixtureActivity`, `AppAgentSmokeTest`.

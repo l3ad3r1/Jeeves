@@ -89,6 +89,7 @@ class SkillsViewModel @Inject constructor(
                     content = content,
                     category = s.addCategory.trim().ifBlank { "general" },
                     tags = s.addTags.split(",").map { it.trim() }.filter { it.isNotBlank() },
+                    revisionNote = "Manual edit",
                 )
             }.onSuccess { hideAddDialog() }
              .onFailure { e -> _state.value = _state.value.copy(error = e.message) }
