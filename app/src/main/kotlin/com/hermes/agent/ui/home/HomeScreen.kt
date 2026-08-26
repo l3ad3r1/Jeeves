@@ -36,7 +36,7 @@ import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.hermes.agent.domain.model.Conversation
-import com.hermes.agent.ui.components.ExpressiveEyes
+import com.hermes.agent.ui.bloub.HermesBot
 import com.hermes.agent.ui.components.HermesDiamond
 import com.jeeves.core.theme.GeistMono
 import androidx.compose.material.icons.Icons
@@ -70,26 +70,27 @@ fun HomeScreen(
             .padding(horizontal = 18.dp)
             .padding(top = 8.dp, bottom = 26.dp),
     ) {
-        // Header: Hermes's face (expressive eyes) + context-aware greeting.
+        // Header: the bot's face + context-aware greeting.
         Row(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(vertical = 10.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            ExpressiveEyes(
+            // 86.dp is the whole viewBox, not the ball: the bot itself is about
+            // 0.63 of it, and the margin is what the orbit rings need to stay in
+            // frame. Colour and shape come from the customiser.
+            HermesBot(
                 mood = presence.mood,
-                eyeColor = scheme.primary,
-                width = 72.dp,
-                height = 40.dp,
-                // Poke Hermes: startled eyes + a quip for a few seconds.
+                size = 86.dp,
+                // Poke Jeeves: the body collapses and the particles spiral in.
                 modifier = Modifier.clickable(
                     interactionSource = remember { MutableInteractionSource() },
                     indication = null,
                     onClick = viewModel::poke,
                 ),
             )
-            Spacer(Modifier.size(14.dp))
+            Spacer(Modifier.size(8.dp))
             Column(Modifier.weight(1f)) {
                 Text(presence.greeting, style = MaterialTheme.typography.bodyMedium, color = scheme.onSurfaceVariant)
                 Text(

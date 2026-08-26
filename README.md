@@ -45,7 +45,9 @@ its README explains the manifest, service, signing, catalog, and release steps.
 - **Self-Improvement**: Jeeves reflects on how its skills and agents actually performed on your
   device and proposes improvements. Every change is gated, needs your approval, and is version
   history you can roll back. (The older offline session-export path is retired.)
-- **Local Backups**: Securely back up your memory, skills, and configuration to a private GitHub Gist.
+- **Local Backups**: Back up your memory, skills, and configuration to an encrypted archive on
+  your own device. Credentials travel in a passphrase-protected `secrets.json` inside the archive,
+  never in plaintext. (The older GitHub Gist backup is retired.)
 
 ## Building from Source
 

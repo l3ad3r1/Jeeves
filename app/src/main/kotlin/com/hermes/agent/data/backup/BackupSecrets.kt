@@ -20,7 +20,6 @@ data class BackupSecrets(
     val iterations: Int = BackupCrypto.ITERATIONS,
     val cloudApiKey: String = "",
     val auxApiKey: String = "",
-    val githubPat: String = "",
     val apiServerKey: String = "",
     val sshPassword: String = "",
     /** Provider id → encrypted API key, so profiles survive a rename or reorder. */

@@ -4,7 +4,6 @@ import android.content.Context
 import android.net.Uri
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.hermes.agent.data.backup.GithubBackupService
 import com.hermes.agent.data.backup.LocalBackupManager
 import com.hermes.agent.data.llm.CloudModelCatalog
 import com.hermes.agent.data.llm.CloudProviderRegistry
@@ -101,7 +100,6 @@ class SettingsViewModel @Inject constructor(
     private val keystore: KeystoreManager,
     private val otaUpdateChecker: OtaUpdateChecker,
     private val otaInstaller: OtaInstaller,
-    private val githubBackupService: GithubBackupService,
     private val sessionExporter: SessionExporter,
     private val cloudModelCatalog: CloudModelCatalog,
     private val localLlmManager: com.hermes.agent.data.llm.LocalLlmManager,
@@ -131,6 +129,31 @@ class SettingsViewModel @Inject constructor(
     fun setFontFamily(family: String) = JeevesSettings.setFontFamily(appContext, family)
 
     fun setFontScalePercent(percent: Int) = JeevesSettings.setFontScalePercent(appContext, percent)
+
+    // ─── Bot face (the Bloub customiser) ────────────────────────────────
+    //
+    // Raw string ids, validated by the bot engine when it reads them: the store
+    // and this ViewModel stay free of a dependency on the engine's vocabulary.
+
+    val botShape: StateFlow<String?> = JeevesSettings.botShapeFlow(appContext)
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), JeevesSettings.botShape(appContext))
+
+    val botColor: StateFlow<String?> = JeevesSettings.botColorFlow(appContext)
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), JeevesSettings.botColor(appContext))
+
+    val botExpression: StateFlow<String?> = JeevesSettings.botExpressionFlow(appContext)
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), JeevesSettings.botExpression(appContext))
+
+    val botThemeColor: StateFlow<Boolean> = JeevesSettings.botThemeColorFlow(appContext)
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), JeevesSettings.botThemeColor(appContext))
+
+    fun setBotShape(id: String) = JeevesSettings.setBotShape(appContext, id)
+
+    fun setBotColor(id: String) = JeevesSettings.setBotColor(appContext, id)
+
+    fun setBotExpression(id: String) = JeevesSettings.setBotExpression(appContext, id)
+
+    fun setBotThemeColor(enabled: Boolean) = JeevesSettings.setBotThemeColor(appContext, enabled)
 
     /** Butler's preferences, editable here as well as in Butler's own sheet. */
     private val _alarmSettings = MutableStateFlow(readAlarmSettings())
@@ -227,6 +250,8 @@ class SettingsViewModel @Inject constructor(
         viewModelScope.launch { localLlmManager.startDownload() }
     }
 
+    fun cancelModelDownload() = localLlmManager.cancelDownload()
+
     fun clearModelDownloadError() = localLlmManager.clearDownloadError()
 
     /** Persist the chosen catalog model; the download check follows the switch. */
@@ -263,9 +288,6 @@ class SettingsViewModel @Inject constructor(
 
     private val _updateState = MutableStateFlow<UpdateUiState>(UpdateUiState.Idle)
     val updateState: StateFlow<UpdateUiState> = _updateState.asStateFlow()
-
-    private val _backupState = MutableStateFlow<BackupUiState>(BackupUiState.Idle)
-    val backupState: StateFlow<BackupUiState> = _backupState.asStateFlow()
 
     /**
      * True when a restored archive is holding credentials this device's own
@@ -411,13 +433,56 @@ class SettingsViewModel @Inject constructor(
         if (changed) settingsRepository.setCloudProviderProfiles(repaired)
     }
 
+    fun addProvider(
+        definitionId: String,
+        customName: String? = null,
+        customBaseUrl: String? = null,
+        apiKey: String = "",
+    ) = viewModelScope.launch {
+        val current = settingsRepository.current().cloudProviderProfiles
+        val profile = if (definitionId == "custom" || definitionId.startsWith("custom_")) {
+            val id = if (definitionId == "custom") "custom_${System.currentTimeMillis()}" else definitionId
+            val name = customName?.takeIf { it.isNotBlank() } ?: "Custom Provider"
+            val baseUrl = customBaseUrl?.trim()?.ifBlank { "http://localhost:11434/v1" } ?: "http://localhost:11434/v1"
+            com.hermes.agent.domain.settings.CloudProviderProfile(
+                id = id,
+                name = name,
+                baseUrl = baseUrl,
+                model = "default",
+                apiKey = apiKey.trim(),
+                enabled = true,
+                quality = 0.85,
+                cost = 0.05,
+                latency = 0.65,
+                toolReliability = 0.85,
+            )
+        } else {
+            val definition = CloudProviderRegistry.definition(definitionId) ?: return@launch
+            CloudProviderRegistry.profile(definition, apiKey.trim()).copy(
+                baseUrl = customBaseUrl?.trim()?.ifBlank { definition.defaultBaseUrl } ?: definition.defaultBaseUrl,
+                enabled = apiKey.isNotBlank(),
+            )
+        }
+        settingsRepository.setCloudProviderProfiles(current.filterNot { it.id == profile.id } + profile)
+        if (profile.apiKey.isNotBlank() || profile.id.startsWith("custom_")) {
+            settingsRepository.setCloudEnabled(true)
+            refreshProviderModels(profile.id)
+        }
+    }
+
+    fun removeProvider(providerId: String) = viewModelScope.launch {
+        val current = settingsRepository.current().cloudProviderProfiles
+        settingsRepository.setCloudProviderProfiles(current.filterNot { it.id == providerId })
+        _providerModelDiscovery.value = _providerModelDiscovery.value - providerId
+    }
+
     fun setProviderApiKey(providerId: String, key: String) = viewModelScope.launch {
         updateProvider(providerId) { it.copy(apiKey = key, enabled = key.isNotBlank()) }
         if (key.isNotBlank()) settingsRepository.setCloudEnabled(true)
     }
 
     fun setProviderEnabled(providerId: String, enabled: Boolean) = viewModelScope.launch {
-        updateProvider(providerId) { it.copy(enabled = enabled && it.apiKey.isNotBlank()) }
+        updateProvider(providerId) { it.copy(enabled = enabled && (it.apiKey.isNotBlank() || it.id.startsWith("custom_"))) }
     }
 
     fun setProviderBaseUrl(providerId: String, baseUrl: String) = viewModelScope.launch {
@@ -436,17 +501,17 @@ class SettingsViewModel @Inject constructor(
             val profile = current.cloudProviderProfiles.firstOrNull { it.id == providerId }
                 ?: CloudProviderRegistry.definition(providerId)?.let(CloudProviderRegistry::profile)
                 ?: return@launch
-            if (profile.apiKey.isBlank() || profile.baseUrl.isBlank()) {
+            if (profile.baseUrl.isBlank()) {
                 setProviderDiscovery(providerId, ModelDiscoveryUiState.Idle)
                 return@launch
             }
             setProviderDiscovery(providerId, ModelDiscoveryUiState.Loading)
             val state = discoverModels(CloudEndpoint(profile.baseUrl, profile.apiKey))
             if (state is ModelDiscoveryUiState.Ready) {
-                val definition = requireNotNull(CloudProviderRegistry.definition(providerId))
+                val definition = CloudProviderRegistry.definition(providerId)
                 val bestModel = CloudProviderRegistry.bestModel(definition, state.models)
                 val selectedModel = when {
-                    bestModel == null -> profile.model
+                    bestModel == null -> profile.model.ifBlank { state.models.firstOrNull().orEmpty() }
                     profile.modelAutoSelected -> bestModel
                     profile.model !in state.models -> bestModel
                     else -> profile.model
@@ -477,8 +542,20 @@ class SettingsViewModel @Inject constructor(
         transform: (com.hermes.agent.domain.settings.CloudProviderProfile) -> com.hermes.agent.domain.settings.CloudProviderProfile,
     ) {
         val current = settingsRepository.current().cloudProviderProfiles
-        val definition = requireNotNull(CloudProviderRegistry.definition(providerId))
-        val existing = current.firstOrNull { it.id == providerId } ?: CloudProviderRegistry.profile(definition)
+        val existing = current.firstOrNull { it.id == providerId }
+            ?: CloudProviderRegistry.definition(providerId)?.let(CloudProviderRegistry::profile)
+            ?: com.hermes.agent.domain.settings.CloudProviderProfile(
+                id = providerId,
+                name = "Custom Provider",
+                baseUrl = "",
+                model = "",
+                apiKey = "",
+                enabled = false,
+                quality = 0.85,
+                cost = 0.05,
+                latency = 0.65,
+                toolReliability = 0.85,
+            )
         settingsRepository.setCloudProviderProfiles(
             current.filterNot { it.id == providerId } + transform(existing),
         )
@@ -640,66 +717,6 @@ class SettingsViewModel @Inject constructor(
 
     fun dismissUpdateState() {
         _updateState.value = UpdateUiState.Idle
-    }
-
-    // --- Backup ---
-
-    fun setGithubPat(pat: String) = viewModelScope.launch {
-        settingsRepository.setGithubPat(pat)
-    }
-
-    /** Lets the user paste a Gist ID manually — needed to restore on a fresh install. */
-    fun setGistId(gistId: String) = viewModelScope.launch {
-        settingsRepository.setGistId(gistId.trim())
-    }
-
-    fun backupNow() {
-        if (_backupState.value is BackupUiState.InProgress) return
-        _backupState.value = BackupUiState.InProgress
-        viewModelScope.launch {
-            val s = settings.value
-            val result = githubBackupService.backup(s.githubPat, s.gistId.ifBlank { null })
-            _backupState.value = when (result) {
-                is GithubBackupService.BackupResult.Success -> {
-                    settingsRepository.setGistId(result.gistId)
-                    settingsRepository.setLastBackupTimestamp(result.timestamp)
-                    BackupUiState.Success("Backup saved to GitHub Gist (${result.gistId.take(8)}…)")
-                }
-                is GithubBackupService.BackupResult.Failure ->
-                    BackupUiState.Error(result.message)
-            }
-        }
-    }
-
-    fun restoreBackup() {
-        if (_backupState.value is BackupUiState.InProgress) return
-        _backupState.value = BackupUiState.InProgress
-        viewModelScope.launch {
-            val s = settings.value
-            val result = githubBackupService.restore(s.githubPat, s.gistId)
-            _backupState.value = when (result) {
-                is GithubBackupService.RestoreResult.Success -> {
-                    val settingsMsg = if (result.settingsRestored) "settings, " else ""
-                    BackupUiState.Success(
-                        "Restored $settingsMsg${result.memoriesImported} memories, " +
-                            "${result.skillsImported} skills, ${result.cronsImported} cron jobs, " +
-                            "${result.notesImported} notes, and ${result.alarmsImported} alarms."
-                    )
-                }
-                is GithubBackupService.RestoreResult.Failure ->
-                    BackupUiState.Error(result.message)
-            }
-        }
-    }
-
-    fun clearGistId() = viewModelScope.launch {
-        settingsRepository.setGistId("")
-        settingsRepository.setLastBackupTimestamp(0L)
-        _backupState.value = BackupUiState.Idle
-    }
-
-    fun dismissBackupState() {
-        _backupState.value = BackupUiState.Idle
     }
 
     // --- Local On-Device Backup ---

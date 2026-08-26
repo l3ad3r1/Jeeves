@@ -43,6 +43,14 @@ android {
     }
 }
 
+kotlin {
+    compilerOptions {
+        // Carried over from Octo Jotter's build: its annotated constructor properties
+        // rely on the pre-2.2 default annotation target.
+        freeCompilerArgs.add("-Xannotation-default-target=param-property")
+    }
+}
+
 dependencies {
     // Jeeves-only synchronous settings and optional feature contracts.
     implementation(project(":core:jeeves-settings"))

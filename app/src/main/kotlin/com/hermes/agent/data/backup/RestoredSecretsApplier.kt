@@ -86,7 +86,6 @@ class RestoredSecretsApplier @Inject constructor(
 
         open(secrets.cloudApiKey) { settingsRepository.setCloudApiKey(it) }
         open(secrets.auxApiKey) { settingsRepository.setAuxApiKey(it) }
-        open(secrets.githubPat) { settingsRepository.setGithubPat(it) }
         open(secrets.apiServerKey) { settingsRepository.setApiServerKey(it) }
         open(secrets.sshPassword) { settingsRepository.setSshPassword(it) }
 

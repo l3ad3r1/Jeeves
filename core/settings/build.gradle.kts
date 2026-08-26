@@ -32,6 +32,14 @@ android {
     }
 }
 
+kotlin {
+    compilerOptions {
+        // Carried over from Octo Jotter's build: its annotated constructor properties
+        // rely on the pre-2.2 default annotation target.
+        freeCompilerArgs.add("-Xannotation-default-target=param-property")
+    }
+}
+
 dependencies {
     api(project(":core:domain"))
     implementation(libs.androidx.core.ktx)

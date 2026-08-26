@@ -175,7 +175,6 @@ class LocalBackupManager @Inject constructor(
         val secrets = BackupSecrets(
             cloudApiKey = seal(settings.cloudApiKey),
             auxApiKey = seal(settings.auxApiKey),
-            githubPat = seal(settings.githubPat),
             apiServerKey = seal(settings.apiServerKey),
             sshPassword = seal(settings.sshPassword),
             providerKeys = settings.cloudProviderProfiles
@@ -185,7 +184,7 @@ class LocalBackupManager @Inject constructor(
         )
 
         val carriesSomething = listOf(
-            secrets.cloudApiKey, secrets.auxApiKey, secrets.githubPat,
+            secrets.cloudApiKey, secrets.auxApiKey,
             secrets.apiServerKey, secrets.sshPassword,
         ).any { it.isNotEmpty() } || secrets.providerKeys.isNotEmpty()
 

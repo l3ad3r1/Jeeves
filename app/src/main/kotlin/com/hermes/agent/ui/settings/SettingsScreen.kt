@@ -18,6 +18,7 @@ import androidx.compose.material.icons.outlined.Build
 import androidx.compose.material.icons.outlined.History
 import androidx.compose.material.icons.outlined.Notifications
 import androidx.compose.material.icons.outlined.ColorLens
+import androidx.compose.material.icons.outlined.Face
 import androidx.compose.material.icons.outlined.Description
 import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material.icons.outlined.Extension
@@ -72,6 +73,13 @@ fun SettingsScreen(
                         title = "Appearance",
                         subtitle = "App theme and dark mode",
                         onClick = { onNavigate("settings_appearance") },
+                    )
+                    HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp))
+                    NavRow(
+                        icon = Icons.Outlined.Face,
+                        title = "Assistant face",
+                        subtitle = "Body shape, colour, and resting expression",
+                        onClick = { onNavigate("settings_bot_face") },
                     )
                     HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp))
                     NavRow(

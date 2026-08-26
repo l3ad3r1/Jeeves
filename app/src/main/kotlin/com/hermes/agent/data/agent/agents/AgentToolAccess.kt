@@ -36,7 +36,8 @@ internal object AgentToolAccess {
                 "common", "time", "web", "conversation_search", "calculator", "notification",
                 "notes", "device_alarm", "notes_and_reminders", "navigation", "phone", "contacts",
                 "media", "device_control", "skills", "user_memory", "scheduler", "shell", "termux",
-                "todo", "voice", "clarify", "delegate", "media_generation", "app_automation", "documents", "kanban"
+                "todo", "voice", "clarify", "delegate", "media_generation", "app_automation", "documents", "kanban",
+                "bookmarks", "mood",
             ),
             excludedCapabilities = setOf("calendar", "device_settings"),
         ),

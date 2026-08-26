@@ -24,6 +24,7 @@ import com.hermes.agent.data.local.dao.BookmarkDao
 import com.hermes.agent.data.local.dao.CalendarEventDao
 import com.hermes.agent.data.local.dao.MoodEntryDao
 import com.hermes.agent.data.local.dao.NoteDao
+import com.hermes.agent.data.local.dao.ScriptPluginDao
 import com.hermes.agent.data.local.dao.TodoTaskDao
 import com.hermes.agent.data.local.entity.ActivityLedgerEntity
 import com.hermes.agent.data.local.entity.AgentTaskEntity
@@ -45,6 +46,7 @@ import com.hermes.agent.data.local.entity.BookmarkEntity
 import com.hermes.agent.data.local.entity.CalendarEventEntity
 import com.hermes.agent.data.local.entity.MoodEntryEntity
 import com.hermes.agent.data.local.entity.NoteEntity
+import com.hermes.agent.data.local.entity.ScriptPluginEntity
 import com.hermes.agent.data.local.entity.TodoTaskEntity
 
 @Database(
@@ -70,8 +72,9 @@ import com.hermes.agent.data.local.entity.TodoTaskEntity
         CalendarEventEntity::class,
         BookmarkEntity::class,
         MoodEntryEntity::class,
+        ScriptPluginEntity::class,
     ],
-    version = 16,
+    version = 18,
     // Exported so the upgrade can be validated against what Room generates.
     // Without this there is no way to catch a migration that drifts from the
     // entities, and that failure only ever appears on a user's device.
@@ -98,6 +101,7 @@ abstract class HermesDatabase : RoomDatabase() {
     abstract fun calendarEventDao(): CalendarEventDao
     abstract fun bookmarkDao(): BookmarkDao
     abstract fun moodEntryDao(): MoodEntryDao
+    abstract fun scriptPluginDao(): ScriptPluginDao
 
     companion object {
         const val DATABASE_NAME = "hermes.db"
@@ -634,6 +638,61 @@ abstract class HermesDatabase : RoomDatabase() {
                     """.trimIndent()
                 )
             }
+        }
+
+        val MIGRATION_16_17 = object : Migration(16, 17) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                ensureSearchIndex(db)
+            }
+        }
+
+        /**
+         * Adds the installed-module table for script plugins. The manifest is
+         * stored as fetched, alongside the exact permissions the user approved
+         * for that snapshot.
+         */
+        val MIGRATION_17_18 = object : Migration(17, 18) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(
+                    """
+                    CREATE TABLE IF NOT EXISTS script_plugins (
+                        id TEXT NOT NULL PRIMARY KEY,
+                        name TEXT NOT NULL,
+                        version TEXT NOT NULL,
+                        author TEXT NOT NULL,
+                        description TEXT NOT NULL,
+                        manifestJson TEXT NOT NULL,
+                        grantedPermissions TEXT NOT NULL,
+                        enabled INTEGER NOT NULL,
+                        sourceUrl TEXT NOT NULL,
+                        installedAt INTEGER NOT NULL
+                    )
+                    """.trimIndent(),
+                )
+                db.execSQL("CREATE INDEX IF NOT EXISTS index_script_plugins_enabled ON script_plugins(enabled)")
+            }
+        }
+
+        val MIGRATION_16_18 = object : Migration(16, 18) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                MIGRATION_16_17.migrate(db)
+                MIGRATION_17_18.migrate(db)
+            }
+        }
+
+        /**
+         * The search index is not a Room entity, so nothing in Room's own
+         * machinery guarantees it exists: a database can arrive at the current
+         * version without one — most easily by restoring a backup taken from an
+         * install that never had it, which runs no migration at all. Checked on
+         * every open so that path self-heals rather than failing at the first
+         * search.
+         */
+        fun ensureSearchIndex(db: SupportSQLiteDatabase) {
+            val present = db.query(
+                "SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'conversation_fts'",
+            ).use { it.moveToFirst() }
+            if (!present) createSearchIndex(db)
         }
     }
 }

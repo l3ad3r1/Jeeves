@@ -2,7 +2,6 @@ package com.hermes.agent.ui.settings
 
 import android.content.Context
 import androidx.arch.core.executor.testing.InstantTaskExecutorRule
-import com.hermes.agent.data.backup.GithubBackupService
 import com.hermes.agent.data.export.SessionExporter
 import com.hermes.agent.data.llm.CloudModelCatalog
 import com.hermes.agent.data.llm.LocalLlmManager
@@ -79,7 +78,6 @@ class SettingsViewModelCloudModelsTest {
             keystore = mockk<KeystoreManager>(relaxed = true),
             otaUpdateChecker = mockk<OtaUpdateChecker>(relaxed = true),
             otaInstaller = mockk<OtaInstaller>(relaxed = true),
-            githubBackupService = mockk<GithubBackupService>(relaxed = true),
             sessionExporter = mockk<SessionExporter>(relaxed = true),
             localBackupManager = mockk<com.hermes.agent.data.backup.LocalBackupManager>(relaxed = true),
             restoredSecretsApplier = mockk<com.hermes.agent.data.backup.RestoredSecretsApplier>(relaxed = true),
