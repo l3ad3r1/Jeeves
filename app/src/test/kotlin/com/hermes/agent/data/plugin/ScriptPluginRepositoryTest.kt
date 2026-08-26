@@ -3,6 +3,7 @@
 import com.hermes.agent.data.local.dao.ScriptPluginDao
 import com.hermes.agent.data.local.entity.ScriptPluginEntity
 import com.hermes.agent.data.plugin.script.ScriptPluginEngine
+import com.hermes.agent.data.plugin.script.ScriptPluginHost
 import com.hermes.agent.data.plugin.script.ScriptPluginManifest
 import com.hermes.agent.data.plugin.script.ScriptToolSpec
 import com.hermes.agent.data.tool.ToolRegistryImpl
@@ -53,6 +54,14 @@ class ScriptPluginRepositoryTest {
         }
     }
 
+    /** No-op host: these tests only exercise install/enable/reload bookkeeping. */
+    private class FakeScriptPluginHost : ScriptPluginHost {
+        override fun log(pluginId: String, message: String) = Unit
+        override fun readData(pluginId: String, collection: String, query: String) = ""
+        override fun writeData(pluginId: String, collection: String, payload: String) = ""
+        override fun httpGet(pluginId: String, url: String) = ""
+    }
+
     private fun sampleManifest(id: String = "test-plugin", toolName: String = "test_tool") = ScriptPluginManifest(
         id = id,
         name = "Test Plugin",
@@ -76,7 +85,7 @@ class ScriptPluginRepositoryTest {
         val dao = FakeScriptPluginDao()
         val engine = ScriptPluginEngine()
         val registry = ToolRegistryImpl()
-        val repository = ScriptPluginRepository(dao, engine, registry)
+        val repository = ScriptPluginRepository(dao, engine, registry, FakeScriptPluginHost())
 
         val manifest = sampleManifest("my-plugin", "my_custom_tool")
         val result = repository.install(manifest, "https://example.com/manifest.json")
@@ -98,7 +107,7 @@ class ScriptPluginRepositoryTest {
         val dao = FakeScriptPluginDao()
         val engine = ScriptPluginEngine()
         val registry = ToolRegistryImpl()
-        val repository = ScriptPluginRepository(dao, engine, registry)
+        val repository = ScriptPluginRepository(dao, engine, registry, FakeScriptPluginHost())
 
         val manifest = sampleManifest("toggle-plugin", "toggle_tool")
         repository.install(manifest, "https://example.com/manifest.json")
@@ -116,7 +125,7 @@ class ScriptPluginRepositoryTest {
         val dao = FakeScriptPluginDao()
         val engine = ScriptPluginEngine()
         val registry = ToolRegistryImpl()
-        val repository = ScriptPluginRepository(dao, engine, registry)
+        val repository = ScriptPluginRepository(dao, engine, registry, FakeScriptPluginHost())
 
         val manifest = sampleManifest("del-plugin", "del_tool")
         repository.install(manifest, "https://example.com/manifest.json")
@@ -132,7 +141,7 @@ class ScriptPluginRepositoryTest {
         val dao = FakeScriptPluginDao()
         val engine = ScriptPluginEngine()
         val registry = ToolRegistryImpl()
-        val repository = ScriptPluginRepository(dao, engine, registry)
+        val repository = ScriptPluginRepository(dao, engine, registry, FakeScriptPluginHost())
 
         val manifest = sampleManifest("obs-plugin", "obs_tool")
         repository.install(manifest, "https://example.com/manifest.json")
