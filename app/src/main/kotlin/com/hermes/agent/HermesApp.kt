@@ -64,10 +64,6 @@ class HermesApp : Application(), Configuration.Provider {
         Provider<com.hermes.agent.data.security.EncryptedSettingsRepository>
 
     @Inject
-    lateinit var restoredSecretsProvider:
-        Provider<com.hermes.agent.data.backup.RestoredSecretsApplier>
-
-    @Inject
     lateinit var skillRepositoryProvider: Provider<SkillRepository>
 
     @Inject
@@ -101,12 +97,8 @@ class HermesApp : Application(), Configuration.Provider {
         // Idempotent and cheap, so it runs every start instead of needing a flag
         // handshake with the restore path.
         applicationScope.launch {
-            // Order matters: credentials staged by a restore are applied first,
-            // then the sweep clears anything still unreadable. Reversed, the
-            // sweep would run before the restore had a chance to supply the
-            // working values.
-            runCatching { restoredSecretsProvider.get().applyPending() }
-                .onFailure { Timber.tag("RestoreSecrets").w(it, "restore apply unavailable") }
+            // Nothing stages credentials for a later start any more: the backup
+            // restore applies them inline, so this is just the sweep.
             runCatching { encryptedSettingsProvider.get().clearUnreadableSecrets() }
                 .onFailure { Timber.tag("Settings").w(it, "secret sweep unavailable") }
 

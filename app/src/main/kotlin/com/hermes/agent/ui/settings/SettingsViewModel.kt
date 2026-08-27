@@ -9,7 +9,6 @@ import com.hermes.agent.data.export.ImportMode
 import com.hermes.agent.data.export.BackupSection
 import com.hermes.agent.data.security.CredentialVault
 import com.hermes.agent.data.export.JsonBackupManager
-import com.hermes.agent.data.backup.LocalBackupManager
 import com.hermes.agent.data.llm.CloudModelCatalog
 import com.hermes.agent.data.llm.CloudProviderRegistry
 import com.hermes.agent.data.security.KeystoreManager
@@ -108,10 +107,8 @@ class SettingsViewModel @Inject constructor(
     private val sessionExporter: SessionExporter,
     private val cloudModelCatalog: CloudModelCatalog,
     private val localLlmManager: com.hermes.agent.data.llm.LocalLlmManager,
-    private val localBackupManager: LocalBackupManager,
     private val jsonBackupManager: JsonBackupManager,
     private val credentialVault: CredentialVault,
-    private val restoredSecretsApplier: com.hermes.agent.data.backup.RestoredSecretsApplier,
     private val deviceAuthenticationService: DeviceAuthenticationService = DeviceAuthenticationService(),
 ) : ViewModel() {
 
@@ -302,33 +299,7 @@ class SettingsViewModel @Inject constructor(
      * Re-read after each attempt rather than observed, since it only changes in
      * response to actions on this screen.
      */
-    private val _pendingRestoreSecrets = MutableStateFlow(restoredSecretsApplier.hasPending())
-    val pendingRestoreSecrets: StateFlow<Boolean> = _pendingRestoreSecrets.asStateFlow()
 
-    private val _restoreSecretsState = MutableStateFlow<BackupUiState>(BackupUiState.Idle)
-    val restoreSecretsState: StateFlow<BackupUiState> = _restoreSecretsState.asStateFlow()
-
-    /** Unlock credentials staged by a restore, using the source device's passphrase. */
-    fun applyRestorePassphrase(passphrase: String) = viewModelScope.launch {
-        _restoreSecretsState.value = BackupUiState.InProgress
-        runCatching { restoredSecretsApplier.applyWith(passphrase.trim()) }
-            .onSuccess { outcome ->
-                _restoreSecretsState.value = when (outcome) {
-                    is com.hermes.agent.data.backup.RestoredSecretsApplier.Outcome.Applied ->
-                        BackupUiState.Success("Restored ${outcome.count} credential(s).")
-                    com.hermes.agent.data.backup.RestoredSecretsApplier.Outcome.NeedsPassphrase ->
-                        BackupUiState.Error("That password did not unlock the backup.")
-                    com.hermes.agent.data.backup.RestoredSecretsApplier.Outcome.Nothing ->
-                        BackupUiState.Error("No restored credentials are waiting.")
-                }
-                _pendingRestoreSecrets.value = restoredSecretsApplier.hasPending()
-            }
-            .onFailure { _restoreSecretsState.value = BackupUiState.Error(it.message ?: "Failed") }
-    }
-
-    fun dismissRestoreSecretsState() {
-        _restoreSecretsState.value = BackupUiState.Idle
-    }
 
     // ── Portable JSON export / import ──────────────────────────────────
     //
@@ -411,8 +382,6 @@ class SettingsViewModel @Inject constructor(
         }
     }
 
-    private val _localBackupState = MutableStateFlow<BackupUiState>(BackupUiState.Idle)
-    val localBackupState: StateFlow<BackupUiState> = _localBackupState.asStateFlow()
 
     private val _exportState = MutableStateFlow<ExportUiState>(ExportUiState.Idle)
     val exportState: StateFlow<ExportUiState> = _exportState.asStateFlow()
@@ -807,37 +776,7 @@ class SettingsViewModel @Inject constructor(
         _updateState.value = UpdateUiState.Idle
     }
 
-    // --- Local On-Device Backup ---
-
-    fun createLocalBackup() {
-        if (_localBackupState.value is BackupUiState.InProgress) return
-        _localBackupState.value = BackupUiState.InProgress
-        viewModelScope.launch {
-            val result = localBackupManager.exportToZip()
-            if (result.isSuccess) {
-                _localBackupState.value = BackupUiState.Success("Local backup saved to Jeeves/Backup")
-            } else {
-                _localBackupState.value = BackupUiState.Error(result.exceptionOrNull()?.message ?: "Failed to save backup")
-            }
-        }
-    }
-
-    fun restoreLocalBackup(uri: Uri) {
-        if (_localBackupState.value is BackupUiState.InProgress) return
-        _localBackupState.value = BackupUiState.InProgress
-        viewModelScope.launch {
-            val result = localBackupManager.restoreFromZip(uri)
-            if (result.isSuccess) {
-                _localBackupState.value = BackupUiState.Success("Backup restored. Restarting...")
-            } else {
-                _localBackupState.value = BackupUiState.Error(result.exceptionOrNull()?.message ?: "Failed to restore backup")
-            }
-        }
-    }
-
-    fun dismissLocalBackupState() {
-        _localBackupState.value = BackupUiState.Idle
-    }
+ 
 
     // --- Session export (for offline self-evolution) ---
     //

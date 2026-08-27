@@ -36,10 +36,11 @@ class OnboardingViewModelTest {
         coEvery { it.current() } returns UserSettings()
     }
 
-    /** Build a VM with the current 4-arg constructor; the rest are relaxed mocks. */
+    /** Build a VM with the current constructor; the rest are relaxed mocks. */
     private fun vm(settings: SettingsRepository = mockSettings()) =
         OnboardingViewModel(
             settings,
+            mockk(relaxed = true),
             mockk(relaxed = true),
             mockk(relaxed = true),
             mockk(relaxed = true),
