@@ -26,6 +26,11 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Switch
+import androidx.compose.material3.Checkbox
+import androidx.compose.material3.TextButton
+import androidx.compose.runtime.saveable.rememberSaveable
+import com.hermes.agent.data.export.BackupSection
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
@@ -52,9 +57,7 @@ fun AdvancedSettingsScreen(
     viewModel: SettingsViewModel = hiltViewModel(),
 ) {
     val settings by viewModel.settings.collectAsStateWithLifecycle()
-    val localBackupState by viewModel.localBackupState.collectAsStateWithLifecycle()
-    val pendingRestoreSecrets by viewModel.pendingRestoreSecrets.collectAsStateWithLifecycle()
-    val restoreSecretsState by viewModel.restoreSecretsState.collectAsStateWithLifecycle()
+    val jsonBackupState by viewModel.jsonBackupState.collectAsStateWithLifecycle()
 
     Scaffold(
         topBar = {
@@ -76,149 +79,76 @@ fun AdvancedSettingsScreen(
                 .padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
-            SectionHeader(text = "Local Backup & Restore")
-            LocalBackupSection(
-                state = localBackupState,
-                onBackup = viewModel::createLocalBackup,
-                onRestore = viewModel::restoreLocalBackup,
-                onDismiss = viewModel::dismissLocalBackupState,
-            )
-
-            BackupPasswordSection(
-                passphrase = settings.backupPassphrase,
-                pendingRestore = pendingRestoreSecrets,
-                state = restoreSecretsState,
-                onApply = viewModel::applyRestorePassphrase,
-                onDismiss = viewModel::dismissRestoreSecretsState,
+            SectionHeader(text = "Backup & Restore")
+            JsonBackupSection(
+                state = jsonBackupState,
+                onBackup = viewModel::exportJson,
+                onRestore = viewModel::importJson,
+                onDismiss = viewModel::dismissJsonBackupState,
             )
 
         }
     }
 }
 
+/**
+ * Portable JSON export/import, sitting alongside the whole-database ZIP above.
+ *
+ * The two are not interchangeable and the copy says so: the ZIP is an exact
+ * image that replaces everything and restarts the app, while this writes a
+ * readable file of the user's own content that merges into a live install.
+ */
+
+/**
+ * The single backup surface: pick what travels, optionally lock it with a
+ * password, write it out or read it back.
+ *
+ * Replaces the old whole-database ZIP, which could only take everything, could
+ * only be restored wholesale, and needed an app restart to apply.
+ */
 @Composable
-private fun BackupPasswordSection(
-    passphrase: String,
-    pendingRestore: Boolean,
+private fun JsonBackupSection(
     state: BackupUiState,
-    onApply: (String) -> Unit,
+    onBackup: (android.net.Uri, Set<BackupSection>, String?) -> Unit,
+    onRestore: (android.net.Uri, Boolean, String?) -> Unit,
     onDismiss: () -> Unit,
 ) {
-    // Nothing to show until a backup has been made (which mints the password)
-    // or a restore is waiting on one.
-    if (passphrase.isBlank() && !pendingRestore) return
+    // Credentials start unticked: a backup is something people put in cloud
+    // storage, so carrying keys has to be a deliberate act rather than the
+    // thing that happens if you do not read the screen.
+    var selected by remember { mutableStateOf(BackupSection.DEFAULT) }
+    var password by rememberSaveable { mutableStateOf("") }
+    var overwrite by remember { mutableStateOf(false) }
+    var showPassword by remember { mutableStateOf(false) }
 
-    val clipboard = androidx.compose.ui.platform.LocalClipboardManager.current
-    var revealed by remember { mutableStateOf(false) }
-    var entered by remember { mutableStateOf("") }
+    val keysSelected = BackupSection.CREDENTIALS in selected
+    // Enforced in the UI so the button explains itself, and again in encode()
+    // so no caller can bypass it.
+    val passwordRequired = keysSelected
+    val canBackUp = selected.isNotEmpty() && (!passwordRequired || password.isNotBlank())
 
-    Card(modifier = Modifier.fillMaxWidth()) {
-        Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                Icon(
-                    imageVector = Icons.Outlined.Key,
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.size(20.dp),
-                )
-                Text("Backup password", style = MaterialTheme.typography.bodyLarge)
-            }
+    val backupLauncher = androidx.activity.compose.rememberLauncherForActivityResult(
+        androidx.activity.result.contract.ActivityResultContracts.CreateDocument("application/json"),
+    ) { uri -> if (uri != null) onBackup(uri, selected, password.ifBlank { null }) }
 
-            if (pendingRestore) {
-                Text(
-                    "A restored backup is holding API keys from another device. " +
-                        "Enter that device's backup password to unlock them.",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-                OutlinedTextField(
-                    value = entered,
-                    onValueChange = { entered = it },
-                    label = { Text("Backup password from the old device") },
-                    singleLine = true,
-                    modifier = Modifier.fillMaxWidth(),
-                )
-                Button(
-                    onClick = { onApply(entered) },
-                    enabled = entered.isNotBlank() && state !is BackupUiState.InProgress,
-                    modifier = Modifier.fillMaxWidth(),
-                ) { Text("Unlock keys") }
-            }
-
-            if (passphrase.isNotBlank()) {
-                Text(
-                    "Your backups encrypt API keys with this password. This device " +
-                        "remembers it, so backup and restore here need nothing from you — " +
-                        "but restoring on a NEW device will ask for it. Save it somewhere safe.",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-                Text(
-                    if (revealed) passphrase else "•".repeat(passphrase.length.coerceAtMost(24)),
-                    style = MaterialTheme.typography.bodyMedium.copy(fontFamily = FontFamily.Monospace),
-                )
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    OutlinedButton(onClick = { revealed = !revealed }, modifier = Modifier.weight(1f)) {
-                        Text(if (revealed) "Hide" else "Show")
-                    }
-                    OutlinedButton(
-                        onClick = { clipboard.setText(androidx.compose.ui.text.AnnotatedString(passphrase)) },
-                        modifier = Modifier.weight(1f),
-                    ) { Text("Copy") }
-                }
-            }
-
-            when (state) {
-                is BackupUiState.InProgress -> Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                ) {
-                    CircularProgressIndicator(modifier = Modifier.size(18.dp), strokeWidth = 2.dp)
-                    Text("Unlocking…", style = MaterialTheme.typography.bodySmall)
-                }
-                is BackupUiState.Success -> {
-                    Text(state.message, color = MaterialTheme.colorScheme.primary, style = MaterialTheme.typography.bodySmall)
-                    OutlinedButton(onClick = onDismiss, modifier = Modifier.fillMaxWidth()) { Text("Done") }
-                }
-                is BackupUiState.Error -> {
-                    Text(state.message, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
-                    OutlinedButton(onClick = onDismiss, modifier = Modifier.fillMaxWidth()) { Text("Dismiss") }
-                }
-                is BackupUiState.Idle -> Unit
-            }
-        }
-    }
-}
-
-@Composable
-private fun LocalBackupSection(
-    state: BackupUiState,
-    onBackup: () -> Unit,
-    onRestore: (android.net.Uri) -> Unit,
-    onDismiss: () -> Unit,
-) {
     val restoreLauncher = androidx.activity.compose.rememberLauncherForActivityResult(
-        androidx.activity.result.contract.ActivityResultContracts.OpenDocument()
-    ) { uri ->
-        if (uri != null) {
-            onRestore(uri)
-        }
-    }
+        androidx.activity.result.contract.ActivityResultContracts.OpenDocument(),
+    ) { uri -> if (uri != null) onRestore(uri, overwrite, password.ifBlank { null }) }
 
     Card(modifier = Modifier.fillMaxWidth()) {
         Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 Icon(
-                    imageVector = Icons.Outlined.SaveAlt,
+                    imageVector = Icons.Outlined.Backup,
                     contentDescription = null,
                     tint = MaterialTheme.colorScheme.primary,
                     modifier = Modifier.size(20.dp),
                 )
-                Text("On-Device Backup", style = MaterialTheme.typography.bodyLarge)
+                Text("Backup & Restore", style = MaterialTheme.typography.bodyLarge)
             }
             Text(
-                "Creates a complete snapshot of all app data, chats, and settings. " +
-                "The backup is saved to your Internal Storage/Jeeves/Backup folder.",
+                "Choose what to include. Restoring merges into what is already " +
+                    "here and needs no restart.",
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
@@ -254,21 +184,114 @@ private fun LocalBackupSection(
             }
 
             if (state !is BackupUiState.InProgress && state !is BackupUiState.Success) {
+                BackupSection.entries.forEach { section ->
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable {
+                                selected = if (section in selected) selected - section else selected + section
+                            },
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(4.dp),
+                    ) {
+                        Checkbox(
+                            checked = section in selected,
+                            onCheckedChange = {
+                                selected = if (it) selected + section else selected - section
+                            },
+                        )
+                        Text(section.label, style = MaterialTheme.typography.bodyMedium)
+                        if (section == BackupSection.CREDENTIALS) {
+                            Text(
+                                " · needs a password",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        }
+                    }
+                }
+
+                OutlinedTextField(
+                    value = password,
+                    onValueChange = { password = it },
+                    label = {
+                        Text(if (passwordRequired) "Password (required)" else "Password (optional)")
+                    },
+                    singleLine = true,
+                    visualTransformation = if (showPassword) {
+                        androidx.compose.ui.text.input.VisualTransformation.None
+                    } else {
+                        androidx.compose.ui.text.input.PasswordVisualTransformation()
+                    },
+                    trailingIcon = {
+                        TextButton(onClick = { showPassword = !showPassword }) {
+                            Text(if (showPassword) "Hide" else "Show")
+                        }
+                    },
+                    supportingText = {
+                        Text(
+                            "Encrypts the whole file. You will need this same password " +
+                                "to restore it — it cannot be recovered.",
+                            style = MaterialTheme.typography.bodySmall,
+                        )
+                    },
+                    modifier = Modifier.fillMaxWidth(),
+                )
+
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    Switch(checked = overwrite, onCheckedChange = { overwrite = it })
+                    Text(
+                        if (overwrite) {
+                            "Restoring replaces items that already exist"
+                        } else {
+                            "Restoring keeps your existing items"
+                        },
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     FilledTonalButton(
-                        onClick = onBackup,
+                        onClick = { backupLauncher.launch(defaultBackupFileName(APP_LABEL)) },
+                        enabled = canBackUp,
                         modifier = Modifier.weight(1f),
                     ) {
-                        Text("Backup to Device")
+                        Text("Back up")
                     }
                     OutlinedButton(
-                        onClick = { restoreLauncher.launch(arrayOf("application/zip")) },
+                        // Some providers hand JSON back as octet-stream or
+                        // text/plain, so filtering on application/json alone
+                        // would grey out the very file we just wrote.
+                        onClick = {
+                            restoreLauncher.launch(
+                                arrayOf("application/json", "text/plain", "application/octet-stream"),
+                            )
+                        },
                         modifier = Modifier.weight(1f),
                     ) {
                         Text("Restore")
                     }
                 }
+                if (passwordRequired && password.isBlank()) {
+                    Text(
+                        "Set a password to include cloud API keys.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.error,
+                    )
+                }
             }
         }
     }
+}
+
+private const val APP_LABEL = "jeeves"
+
+private fun defaultBackupFileName(app: String): String {
+    val stamp = java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.US)
+        .format(java.util.Date())
+    return "${app}-backup-$stamp.json"
 }

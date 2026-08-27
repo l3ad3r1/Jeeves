@@ -4,6 +4,11 @@ import android.content.Context
 import android.net.Uri
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.hermes.agent.BuildConfig
+import com.hermes.agent.data.export.ImportMode
+import com.hermes.agent.data.export.BackupSection
+import com.hermes.agent.data.security.CredentialVault
+import com.hermes.agent.data.export.JsonBackupManager
 import com.hermes.agent.data.backup.LocalBackupManager
 import com.hermes.agent.data.llm.CloudModelCatalog
 import com.hermes.agent.data.llm.CloudProviderRegistry
@@ -104,6 +109,8 @@ class SettingsViewModel @Inject constructor(
     private val cloudModelCatalog: CloudModelCatalog,
     private val localLlmManager: com.hermes.agent.data.llm.LocalLlmManager,
     private val localBackupManager: LocalBackupManager,
+    private val jsonBackupManager: JsonBackupManager,
+    private val credentialVault: CredentialVault,
     private val restoredSecretsApplier: com.hermes.agent.data.backup.RestoredSecretsApplier,
     private val deviceAuthenticationService: DeviceAuthenticationService = DeviceAuthenticationService(),
 ) : ViewModel() {
@@ -321,6 +328,87 @@ class SettingsViewModel @Inject constructor(
 
     fun dismissRestoreSecretsState() {
         _restoreSecretsState.value = BackupUiState.Idle
+    }
+
+    // ── Portable JSON export / import ──────────────────────────────────
+    //
+    // Deliberately separate from the ZIP backup above rather than folded into
+    // it: that one is an exact binary image that replaces everything and
+    // restarts the app, while this one merges into a live install. Sharing a
+    // single progress state would let a running export make the restore button
+    // look busy, and the two have genuinely different failure messages.
+
+    private val _jsonBackupState = MutableStateFlow<BackupUiState>(BackupUiState.Idle)
+    val jsonBackupState: StateFlow<BackupUiState> = _jsonBackupState.asStateFlow()
+
+    fun dismissJsonBackupState() {
+        _jsonBackupState.value = BackupUiState.Idle
+    }
+
+    /** Writes the export to a location the user picked through the file picker. */
+    fun exportJson(uri: Uri, sections: Set<BackupSection>, password: String?) {
+        if (_jsonBackupState.value is BackupUiState.InProgress) return
+        _jsonBackupState.value = BackupUiState.InProgress
+        viewModelScope.launch {
+            _jsonBackupState.value = runCatching {
+                val backup = jsonBackupManager
+                    .export(APP_ID, BuildConfig.VERSION_CODE, sections)
+                    .copy(
+                        credentials = if (BackupSection.CREDENTIALS in sections) {
+                            credentialVault.collect()
+                        } else {
+                            null
+                        },
+                    )
+                // encode() refuses credentials without a password, so the guard
+                // holds even if a screen ever forgets to enforce it.
+                val text = jsonBackupManager.encode(backup, password)
+                appContext.contentResolver.openOutputStream(uri)?.use { out ->
+                    out.write(text.toByteArray(Charsets.UTF_8))
+                } ?: error("Could not open the file for writing.")
+                Triple(backup.totalItems, backup.credentials != null, !password.isNullOrBlank())
+            }.fold(
+                onSuccess = { (items, keys, encrypted) ->
+                    BackupUiState.Success(
+                        buildString {
+                            append("Backed up $items item(s)")
+                            if (keys) append(", including cloud API keys")
+                            append(if (encrypted) ", encrypted." else ".")
+                        },
+                    )
+                },
+                onFailure = { BackupUiState.Error(it.message ?: "Backup failed.") },
+            )
+        }
+    }
+
+    fun importJson(uri: Uri, overwrite: Boolean, password: String?) {
+        if (_jsonBackupState.value is BackupUiState.InProgress) return
+        _jsonBackupState.value = BackupUiState.InProgress
+        viewModelScope.launch {
+            _jsonBackupState.value = runCatching {
+                val text = appContext.contentResolver.openInputStream(uri)?.use { input ->
+                    input.readBytes().toString(Charsets.UTF_8)
+                } ?: error("Could not open the file for reading.")
+                // Decoded before anything is written, so a wrong password or a
+                // corrupt file cannot leave the database half-updated.
+                val backup = jsonBackupManager.decode(text, password)
+                val report = jsonBackupManager.import(
+                    backup,
+                    if (overwrite) ImportMode.OVERWRITE_EXISTING else ImportMode.SKIP_EXISTING,
+                )
+                val keys = backup.credentials?.let { credentialVault.apply(it) } ?: 0
+                report to keys
+            }.fold(
+                onSuccess = { (r, keys) ->
+                    BackupUiState.Success(
+                        "Added ${r.added}, replaced ${r.replaced}, skipped ${r.skipped}." +
+                            if (keys > 0) " Restored $keys credential(s)." else "",
+                    )
+                },
+                onFailure = { BackupUiState.Error(it.message ?: "Restore failed.") },
+            )
+        }
     }
 
     private val _localBackupState = MutableStateFlow<BackupUiState>(BackupUiState.Idle)
@@ -783,3 +871,6 @@ class SettingsViewModel @Inject constructor(
         _exportState.value = ExportUiState.Idle
     }
 }
+
+/** Recorded in exported files for provenance. */
+private const val APP_ID = "jeeves"
