@@ -34,8 +34,18 @@ object JeevesSettings {
     const val THEME_DARK = "dark"
 
     const val KEY_THEME_MODE = "theme_mode"
+    const val KEY_THEME_STYLE = "theme_style"
     const val KEY_FONT_FAMILY = "font_family"
     const val KEY_FONT_SCALE_PERCENT = "font_scale_percent"
+
+    // Colour style — a second axis from dark/light, resolved in :core:theme's
+    // ThemeStyle. Kept as plain strings here, matching the font keys, so this
+    // module never depends on Compose.
+    const val THEME_STYLE_CLASSIC = "classic"
+    const val THEME_STYLE_MYBRAIN = "mybrain"
+    const val THEME_STYLE_MATERIAL_YOU = "material_you"
+    val THEME_STYLES: Set<String> =
+        setOf(THEME_STYLE_CLASSIC, THEME_STYLE_MYBRAIN, THEME_STYLE_MATERIAL_YOU)
 
     const val FONT_GEIST = "geist"
     const val FONT_SYSTEM = "system"
@@ -103,6 +113,23 @@ object JeevesSettings {
 
     /** True only if a theme was explicitly chosen — used by the one-time DataStore migration. */
     fun hasThemeMode(context: Context): Boolean = prefs(context).contains(KEY_THEME_MODE)
+
+    fun themeStyle(context: Context): String =
+        prefs(context).getString(KEY_THEME_STYLE, THEME_STYLE_CLASSIC)
+            ?.takeIf { it in THEME_STYLES }
+            ?: THEME_STYLE_CLASSIC
+
+    fun setThemeStyle(context: Context, style: String) =
+        prefs(context).edit().putString(
+            KEY_THEME_STYLE,
+            style.takeIf { it in THEME_STYLES } ?: THEME_STYLE_CLASSIC,
+        ).apply()
+
+    fun themeStyleFlow(context: Context): Flow<String> = prefFlow(context) { p ->
+        p.getString(KEY_THEME_STYLE, THEME_STYLE_CLASSIC)
+            ?.takeIf { it in THEME_STYLES }
+            ?: THEME_STYLE_CLASSIC
+    }
 
     fun fontFamily(context: Context): String =
         prefs(context).getString(KEY_FONT_FAMILY, FONT_GEIST)

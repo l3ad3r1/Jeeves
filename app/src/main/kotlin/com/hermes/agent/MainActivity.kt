@@ -63,6 +63,8 @@ class MainActivity : ComponentActivity() {
         setContent {
             val themeMode by JeevesSettings.themeModeFlow(this)
                 .collectAsState(initial = JeevesSettings.themeMode(this))
+            val themeStyle by JeevesSettings.themeStyleFlow(this)
+                .collectAsState(initial = JeevesSettings.themeStyle(this))
             val fontFamily by JeevesSettings.fontFamilyFlow(this)
                 .collectAsState(initial = JeevesSettings.fontFamily(this))
             val fontScalePercent by JeevesSettings.fontScalePercentFlow(this)
@@ -70,6 +72,7 @@ class MainActivity : ComponentActivity() {
 
             HermesTheme(
                 darkTheme = themeMode != JeevesSettings.THEME_LIGHT,
+                themeStyle = com.hermes.agent.ui.theme.alt.ThemeStyle.fromStorageKey(themeStyle),
                 fontFamilyName = fontFamily,
                 fontScalePercent = fontScalePercent,
             ) {

@@ -15,6 +15,8 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.unit.dp
 import androidx.core.view.WindowCompat
+import com.hermes.agent.ui.theme.alt.ThemeStyle
+import com.hermes.agent.ui.theme.alt.resolveAltColorScheme
 import com.jeeves.core.theme.jeevesColorScheme
 import com.jeeves.core.theme.jeevesTypography
 
@@ -31,11 +33,14 @@ enum class AppTheme {
 fun HermesTheme(
     appTheme: AppTheme? = null,
     darkTheme: Boolean = isSystemInDarkTheme(),
+    themeStyle: ThemeStyle = ThemeStyle.DEFAULT,
     fontFamilyName: String = "geist",
     fontScalePercent: Int = 100,
     content: @Composable () -> Unit,
 ) {
-    val colorScheme = jeevesColorScheme(darkTheme)
+    // null means "the style has nothing to add" (classic, or Material You
+    // requested below API 31) — Jeeves' own monochrome scheme applies as before.
+    val colorScheme = resolveAltColorScheme(themeStyle, darkTheme) ?: jeevesColorScheme(darkTheme)
     val view = LocalView.current
     if (!view.isInEditMode) {
         SideEffect {

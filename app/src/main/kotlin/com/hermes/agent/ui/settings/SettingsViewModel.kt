@@ -120,6 +120,11 @@ class SettingsViewModel @Inject constructor(
 
     fun setThemeMode(mode: String) = JeevesSettings.setThemeMode(appContext, mode)
 
+    val themeStyle: StateFlow<String> = JeevesSettings.themeStyleFlow(appContext)
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), JeevesSettings.THEME_STYLE_CLASSIC)
+
+    fun setThemeStyle(style: String) = JeevesSettings.setThemeStyle(appContext, style)
+
     val fontFamily: StateFlow<String> = JeevesSettings.fontFamilyFlow(appContext)
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), JeevesSettings.FONT_GEIST)
 
