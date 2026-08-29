@@ -42,10 +42,10 @@ object JeevesSettings {
     // ThemeStyle. Kept as plain strings here, matching the font keys, so this
     // module never depends on Compose.
     const val THEME_STYLE_CLASSIC = "classic"
-    const val THEME_STYLE_MYBRAIN = "mybrain"
+    const val THEME_STYLE_CORTEX = "cortex"
     const val THEME_STYLE_MATERIAL_YOU = "material_you"
     val THEME_STYLES: Set<String> =
-        setOf(THEME_STYLE_CLASSIC, THEME_STYLE_MYBRAIN, THEME_STYLE_MATERIAL_YOU)
+        setOf(THEME_STYLE_CLASSIC, THEME_STYLE_CORTEX, THEME_STYLE_MATERIAL_YOU)
 
     const val FONT_GEIST = "geist"
     const val FONT_SYSTEM = "system"

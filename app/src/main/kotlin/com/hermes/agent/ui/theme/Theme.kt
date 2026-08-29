@@ -17,6 +17,7 @@ import androidx.compose.ui.unit.dp
 import androidx.core.view.WindowCompat
 import com.hermes.agent.ui.theme.alt.ThemeStyle
 import com.hermes.agent.ui.theme.alt.resolveAltColorScheme
+import com.hermes.agent.ui.theme.alt.resolveAltShapes
 import com.jeeves.core.theme.jeevesColorScheme
 import com.jeeves.core.theme.jeevesTypography
 
@@ -62,7 +63,7 @@ fun HermesTheme(
     MaterialTheme(
         colorScheme = colorScheme,
         typography = typography,
-        shapes = HermesShapes,
+        shapes = resolveAltShapes(themeStyle) ?: HermesShapes,
     ) {
         HermesHighContrastWrapper(darkTheme = darkTheme, content = content)
     }

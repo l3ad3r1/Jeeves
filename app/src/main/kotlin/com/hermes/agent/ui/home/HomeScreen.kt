@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -40,10 +41,18 @@ import com.hermes.agent.ui.bloub.HermesBot
 import com.hermes.agent.ui.components.HermesDiamond
 import com.jeeves.core.theme.GeistMono
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.Chat
+import androidx.compose.material.icons.filled.CalendarMonth
+import androidx.compose.material.icons.filled.EditNote
+import androidx.compose.material.icons.filled.Forum
 import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material3.Icon
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
+import com.hermes.agent.ui.theme.alt.SpaceTile
+import com.hermes.agent.ui.theme.alt.ThemeStyle
+import com.hermes.agent.ui.theme.alt.tileAccent
+import com.jeeves.core.settings.JeevesSettings
 
 /**
  * Home dashboard — the app's landing surface: greeting, the active cloud model,
@@ -62,6 +71,9 @@ fun HomeScreen(
     val presence by viewModel.presence.collectAsStateWithLifecycle()
     val scheme = MaterialTheme.colorScheme
     val context = LocalContext.current
+    val themeStyleKey by JeevesSettings.themeStyleFlow(context)
+        .collectAsStateWithLifecycle(initialValue = JeevesSettings.THEME_STYLE_CLASSIC)
+    val themeStyle = ThemeStyle.fromStorageKey(themeStyleKey)
 
     Column(
         modifier = Modifier
@@ -119,12 +131,18 @@ fun HomeScreen(
             }
         }
 
-        // Active-model card
+        // Active-model card. Cortex/Material You get a two-accent gradient
+        // (a splash of colour) instead of the flat monochrome surface blend.
+        val modelCardGradient = if (themeStyle != ThemeStyle.CLASSIC) {
+            Brush.linearGradient(listOf(tileAccent(themeStyle, scheme, 1), tileAccent(themeStyle, scheme, 4)))
+        } else {
+            Brush.linearGradient(listOf(scheme.surfaceVariant, scheme.surfaceContainerHigh))
+        }
         Column(
             modifier = Modifier
                 .fillMaxWidth()
                 .clip(MaterialTheme.shapes.large)
-                .background(Brush.linearGradient(listOf(scheme.surfaceVariant, scheme.surfaceContainerHigh)))
+                .background(modelCardGradient)
                 .padding(18.dp),
         ) {
             Text("Active model", color = Color.White.copy(alpha = 0.85f), style = MaterialTheme.typography.labelSmall)
@@ -147,12 +165,18 @@ fun HomeScreen(
             QuickAction(
                 title = "New chat",
                 subtitle = "Ask or delegate",
+                icon = Icons.AutoMirrored.Filled.Chat,
+                accent = tileAccent(themeStyle, scheme, 2),
+                themeStyle = themeStyle,
                 modifier = Modifier.weight(1f),
                 onClick = { viewModel.createNewConversation(onNewChat) },
             )
             QuickAction(
                 title = "Messaging",
                 subtitle = "Link a platform",
+                icon = Icons.Filled.Forum,
+                accent = tileAccent(themeStyle, scheme, 1),
+                themeStyle = themeStyle,
                 modifier = Modifier.weight(1f),
                 onClick = onOpenConnections,
             )
@@ -165,10 +189,13 @@ fun HomeScreen(
             SectionLabel("Apps")
             Spacer(Modifier.height(11.dp))
             Row(horizontalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.fillMaxWidth()) {
-                for (entry in viewModel.appEntries) {
+                viewModel.appEntries.forEachIndexed { index, entry ->
                     QuickAction(
                         title = entry.label,
                         subtitle = entry.subtitle,
+                        icon = iconForRoute(entry.route),
+                        accent = tileAccent(themeStyle, scheme, index),
+                        themeStyle = themeStyle,
                         modifier = Modifier.weight(1f),
                         onClick = {
                             entry.targetActivityClassName?.let { className ->
@@ -196,20 +223,47 @@ fun HomeScreen(
             EmptyHint("No conversations yet — start a new chat.")
         } else {
             Column(verticalArrangement = Arrangement.spacedBy(9.dp)) {
-                threads.forEach { thread -> ThreadRow(thread, onClick = { onNewChat(thread.id) }) }
+                threads.forEachIndexed { index, thread ->
+                    ThreadRow(thread, themeStyle, index, onClick = { onNewChat(thread.id) })
+                }
             }
         }
     }
 }
 
 
+/**
+ * Maps an [AgentFeature][com.hermes.agent.domain.agent.AgentFeature] nav-entry
+ * route to an icon for the Cortex/Material You tile grid — new modules just
+ * fall back to a generic icon rather than requiring a mapping update.
+ */
+private fun iconForRoute(route: String) = when (route) {
+    "butler_alarms" -> Icons.Filled.CalendarMonth
+    "jotter_notes" -> Icons.Filled.EditNote
+    else -> Icons.Filled.EditNote
+}
+
 @Composable
 private fun QuickAction(
     title: String,
     subtitle: String,
     modifier: Modifier = Modifier,
+    icon: androidx.compose.ui.graphics.vector.ImageVector? = null,
+    accent: Color? = null,
+    themeStyle: ThemeStyle = ThemeStyle.CLASSIC,
     onClick: () -> Unit,
 ) {
+    if (themeStyle != ThemeStyle.CLASSIC && icon != null && accent != null) {
+        SpaceTile(
+            title = title,
+            subtitle = subtitle,
+            icon = icon,
+            accent = accent,
+            modifier = modifier.aspectRatio(1f),
+            onClick = onClick,
+        )
+        return
+    }
     val scheme = MaterialTheme.colorScheme
     Column(
         modifier = modifier
@@ -269,8 +323,11 @@ private fun SectionHeader(title: String, action: String, onAction: () -> Unit) {
 }
 
 @Composable
-private fun ThreadRow(thread: Conversation, onClick: () -> Unit) {
+private fun ThreadRow(thread: Conversation, themeStyle: ThemeStyle, index: Int, onClick: () -> Unit) {
     val scheme = MaterialTheme.colorScheme
+    // A different accent per row under Cortex/Material You — a splash of
+    // colour down the thread list rather than one repeated primary dot.
+    val dotColor = if (themeStyle != ThemeStyle.CLASSIC) tileAccent(themeStyle, scheme, index) else scheme.primary
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -285,7 +342,7 @@ private fun ThreadRow(thread: Conversation, onClick: () -> Unit) {
             modifier = Modifier
                 .size(9.dp)
                 .clip(RoundedCornerShape(percent = 50))
-                .background(scheme.primary),
+                .background(dotColor),
         )
         Spacer(Modifier.size(12.dp))
         Column(Modifier.weight(1f)) {
