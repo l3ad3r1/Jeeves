@@ -4,8 +4,21 @@ import android.content.Context
 import android.media.*
 import android.os.Build
 import android.util.Log
+import com.sassybutler.alarm.voice.VoiceOutputEvent
+import com.sassybutler.alarm.voice.VoiceOutputManager
 import kotlinx.coroutines.*
+import kotlinx.coroutines.flow.collect
 import java.util.concurrent.atomic.AtomicBoolean
+
+/**
+ * Audit note: previously, if the ONNX TTS model failed to produce PCM
+ * (missing/corrupt assets, OOM, unsupported device), the alarm's spoken
+ * briefing silently dropped — the alarm tone still rang via
+ * [startFallbackRingtone] but no voice line played, and nothing told the
+ * user why. [VoiceOutputManager] (Android's built-in [android.speech.tts.TextToSpeech])
+ * is now used as a platform-voice fallback whenever ONNX synthesis returns
+ * null, so a briefing is spoken either way.
+ */
 
 /**
  * AudioEngine — Orchestrates the full alarm audio pipeline.
@@ -24,6 +37,13 @@ class AudioEngine(private val context: Context) {
 
     private val scope      = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private val ttsEngine  = TtsEngine(context)
+    private val voiceOutputManager = VoiceOutputManager(context)
+
+    init {
+        // Kick off platform-TTS init eagerly (async) so it's warm by the
+        // time ONNX synthesis might fail and the fallback path is needed.
+        voiceOutputManager.initialize()
+    }
 
     // Volatile: written by playback coroutines (IO), read by stopAll() from
     // the main thread — stale reads mean stopping an already-released track.
@@ -182,14 +202,31 @@ class AudioEngine(private val context: Context) {
         synthesizeAndPlay(line)
     }
 
-    private fun synthesizeAndPlay(text: String) {
+    private suspend fun synthesizeAndPlay(text: String) {
         val pcm = try {
             ttsEngine.synthesize(text, VoiceCatalog.selected(context))
         } catch (e: Exception) {
             Log.e(TAG, "TTS failed", e)
             null
         }
-        if (pcm != null) playPcmBuffer(pcm)
+        if (pcm != null) {
+            playPcmBuffer(pcm)
+        } else {
+            Log.w(TAG, "ONNX TTS returned no audio — falling back to platform TextToSpeech")
+            speakViaPlatformFallback(text)
+        }
+    }
+
+    /** Last-resort voice when ONNX synthesis fails: Android's built-in TTS engine. */
+    private suspend fun speakViaPlatformFallback(text: String) {
+        if (isStopped.get()) return
+        runCatching {
+            voiceOutputManager.speak(text).collect { event ->
+                if (event is com.sassybutler.alarm.voice.VoiceOutputEvent.Error) {
+                    Log.e(TAG, "Platform TTS fallback also failed: ${event.message}")
+                }
+            }
+        }.onFailure { Log.e(TAG, "Platform TTS fallback threw", it) }
     }
 
     /** Immediately halt all audio (MediaPlayer + AudioTrack + fallback). */
@@ -228,6 +265,7 @@ class AudioEngine(private val context: Context) {
         scope.cancel()
         stopAll()
         ttsEngine.close()
+        voiceOutputManager.shutdown()
     }
 
     // ─── Private: AudioTrack PCM playback ───────────────────────────────

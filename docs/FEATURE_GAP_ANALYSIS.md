@@ -1,5 +1,14 @@
 # Feature Gap Analysis: Hermes Agent → Android App
 
+> **Inherited from Hermes.** This document was copied verbatim from the Hermes
+> Agent repository and still describes that app by name. The engine half of it
+> is accurate for Jeeves too — both products build the same `:core:*` modules
+> out of [`agent-core`](https://github.com/l3ad3r1/agent-core). The app half is
+> not: Jeeves adds `:feature:jotter` and `:feature:butler`, and deliberately
+> omits the privileged shell, Tasker and Telegram integrations. Where the two
+> disagree, `docs/SUPER_APP_ROADMAP.md` and `docs/ARCHITECTURE.md` in this repo
+> are the Jeeves-specific record.
+
 **Created:** 2026-07-07  
 **Source:** NousResearch/hermes-agent (main branch)  
 **Target:** l3ad3r1/Hermes-Agent-Android (v0.7.29)

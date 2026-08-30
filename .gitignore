@@ -55,3 +55,7 @@ temp_release_notes.md
 # Completed agent task/report artifacts belong in canonical docs, not repo roots.
 /ANTIGRAVITY-*.md
 /gradle/gradle-daemon-jvm.properties
+
+# CI checks the shared engine out here (settings.gradle.kts resolves it);
+# locally it lives at ../agent-core. Never commit a nested copy.
+/agent-core/

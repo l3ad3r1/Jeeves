@@ -1,5 +1,14 @@
 # Getting Hermes Agent Running on Your Phone
 
+> **Inherited from Hermes.** This document was copied verbatim from the Hermes
+> Agent repository and still describes that app by name. The engine half of it
+> is accurate for Jeeves too — both products build the same `:core:*` modules
+> out of [`agent-core`](https://github.com/l3ad3r1/agent-core). The app half is
+> not: Jeeves adds `:feature:jotter` and `:feature:butler`, and deliberately
+> omits the privileged shell, Tasker and Telegram integrations. Where the two
+> disagree, `docs/SUPER_APP_ROADMAP.md` and `docs/ARCHITECTURE.md` in this repo
+> are the Jeeves-specific record.
+
 This guide walks you through installing the Hermes Agent Android app on a
 physical phone or emulator. Total time: **~30–45 minutes** for a first-time
 setup; **~5 minutes** once Android Studio is configured.

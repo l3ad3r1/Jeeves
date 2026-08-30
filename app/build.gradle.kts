@@ -47,8 +47,8 @@ android {
         targetSdk = 36       // Android 16 — matches Octo Jotter and Sassy Butler
         // Single source of truth in gradle.properties; :feature:jotter reads the same
         // property for its BuildConfig.VERSION_NAME.
-        versionCode = (project.findProperty("jeeves.versionCode") as String?)?.toInt() ?: 60
-        versionName = project.findProperty("jeeves.versionName") as String? ?: "0.9.0"
+        versionCode = (project.findProperty("jeeves.versionCode") as String?)?.toInt() ?: 61
+        versionName = project.findProperty("jeeves.versionName") as String? ?: "0.16.3"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         // MigrationTestHelper loads the exported schemas from assets.
@@ -235,6 +235,8 @@ dependencies {
     // --- AndroidX core ---
     implementation(libs.androidx.core.ktx)
     implementation("androidx.core:core-splashscreen:1.0.1")
+    // Custom Tabs — hands the OAuth sign-in to the browser and back (ui/oauth).
+    implementation(libs.androidx.browser)
     implementation(libs.androidx.lifecycle.runtime.ktx)
     implementation(libs.androidx.lifecycle.viewmodel.ktx)
     implementation(libs.androidx.lifecycle.viewmodel.compose)

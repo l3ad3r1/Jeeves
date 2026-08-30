@@ -259,5 +259,25 @@
                 android:name="com.hermes.agent.data.performance.MemoryMonitorInitializer"
                 android:value="androidx.startup" />
         </provider>
+
+        <!-- OAuth deep-link callback handler.
+             The scheme is `jeeves`, not `hermes`: Jeeves has its own
+             applicationId so both apps can be installed side by side, and a
+             shared scheme would let either app intercept the other's sign-in. -->
+        <activity
+            android:name=".ui.oauth.OAuthCallbackActivity"
+            android:exported="true"
+            android:launchMode="singleTask"
+            android:theme="@android:style/Theme.Translucent.NoTitleBar">
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data
+                    android:scheme="jeeves"
+                    android:host="oauth"
+                    android:pathPrefix="/callback" />
+            </intent-filter>
+        </activity>
     </application>
 </manifest>

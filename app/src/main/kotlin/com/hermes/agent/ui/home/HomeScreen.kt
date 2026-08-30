@@ -29,6 +29,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -45,12 +46,11 @@ import androidx.compose.material.icons.automirrored.filled.Chat
 import androidx.compose.material.icons.filled.CalendarMonth
 import androidx.compose.material.icons.filled.EditNote
 import androidx.compose.material.icons.filled.Forum
-import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material3.Icon
-import androidx.compose.ui.semantics.contentDescription
-import androidx.compose.ui.semantics.semantics
+import com.hermes.agent.ui.theme.alt.OutlinedSpaceTile
 import com.hermes.agent.ui.theme.alt.SpaceTile
 import com.hermes.agent.ui.theme.alt.ThemeStyle
+import com.hermes.agent.ui.theme.alt.contrastInkAcross
 import com.hermes.agent.ui.theme.alt.tileAccent
 import com.jeeves.core.settings.JeevesSettings
 
@@ -63,7 +63,6 @@ fun HomeScreen(
     onOpenConversations: () -> Unit,
     onNewChat: (conversationId: String) -> Unit,
     onOpenConnections: () -> Unit,
-    onOpenSettings: () -> Unit,
     viewModel: HomeViewModel = hiltViewModel(),
 ) {
     val threads by viewModel.recentThreads.collectAsStateWithLifecycle()
@@ -74,6 +73,9 @@ fun HomeScreen(
     val themeStyleKey by JeevesSettings.themeStyleFlow(context)
         .collectAsStateWithLifecycle(initialValue = JeevesSettings.THEME_STYLE_CLASSIC)
     val themeStyle = ThemeStyle.fromStorageKey(themeStyleKey)
+    val themeAccentArgb by JeevesSettings.themeAccentColorFlow(context)
+        .collectAsStateWithLifecycle(initialValue = JeevesSettings.themeAccentColor(context))
+    val accentSeed = themeAccentArgb?.let { Color(it) }
 
     Column(
         modifier = Modifier
@@ -103,6 +105,8 @@ fun HomeScreen(
                 ),
             )
             Spacer(Modifier.size(8.dp))
+            // Settings lives in the bottom navigation, so the header keeps the
+            // full width for the status line rather than repeating that route.
             Column(Modifier.weight(1f)) {
                 Text(presence.greeting, style = MaterialTheme.typography.bodyMedium, color = scheme.onSurfaceVariant)
                 Text(
@@ -112,32 +116,30 @@ fun HomeScreen(
                     color = scheme.onBackground,
                 )
             }
-            Box(
-                modifier = Modifier
-                    .size(48.dp)
-                    .clip(RoundedCornerShape(percent = 50))
-                    .background(scheme.surface)
-                    .border(1.dp, scheme.outline.copy(alpha = 0.4f), RoundedCornerShape(percent = 50))
-                    .clickable(onClick = onOpenSettings)
-                    .semantics { contentDescription = "Open settings" },
-                contentAlignment = Alignment.Center,
-            ) {
-                Icon(
-                    imageVector = Icons.Outlined.Settings,
-                    contentDescription = null,
-                    tint = scheme.onBackground,
-                    modifier = Modifier.size(22.dp),
-                )
-            }
         }
 
-        // Active-model card. Cortex/Material You get a two-accent gradient
-        // (a splash of colour) instead of the flat monochrome surface blend.
-        val modelCardGradient = if (themeStyle != ThemeStyle.CLASSIC) {
-            Brush.linearGradient(listOf(tileAccent(themeStyle, scheme, 1), tileAccent(themeStyle, scheme, 4)))
-        } else {
-            Brush.linearGradient(listOf(scheme.surfaceVariant, scheme.surfaceContainerHigh))
+        // Active-model card. Cortex sweeps two of its accents for a splash of
+        // colour; Material You fills flat with one wallpaper accent, matching
+        // its tiles; Classic keeps the monochrome surface blend.
+        val modelCardStops = when (themeStyle) {
+            ThemeStyle.MATERIAL_YOU -> {
+                val fill = tileAccent(themeStyle, scheme, 1, accentSeed)
+                listOf(fill, fill)
+            }
+            ThemeStyle.CORTEX -> listOf(
+                tileAccent(themeStyle, scheme, 1, accentSeed),
+                tileAccent(themeStyle, scheme, 4, accentSeed),
+            )
+            ThemeStyle.CLASSIC -> listOf(scheme.surfaceVariant, scheme.surfaceContainerHigh)
         }
+        val modelCardGradient = Brush.linearGradient(modelCardStops)
+        // The label sits on whichever gradient won, and those grounds span
+        // Cortex's deep ember, a wallpaper-derived Material You sweep and
+        // Classic's near-white light surface. A hardcoded white reads on the
+        // first and disappears on the last, so the ink is chosen from the stops
+        // the card actually drew — on the worst of them, since the text has to
+        // survive both ends of the gradient rather than its average.
+        val modelCardInk = contrastInkAcross(modelCardStops)
         Column(
             modifier = Modifier
                 .fillMaxWidth()
@@ -145,12 +147,12 @@ fun HomeScreen(
                 .background(modelCardGradient)
                 .padding(18.dp),
         ) {
-            Text("Active model", color = Color.White.copy(alpha = 0.85f), style = MaterialTheme.typography.labelSmall)
+            Text("Active model", color = modelCardInk.copy(alpha = 0.85f), style = MaterialTheme.typography.labelSmall)
             Spacer(Modifier.height(4.dp))
             Text(
                 model.ifBlank { "not configured" },
                 fontFamily = GeistMono,
-                color = Color.White,
+                color = modelCardInk,
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.Bold,
                 maxLines = 1,
@@ -166,7 +168,7 @@ fun HomeScreen(
                 title = "New chat",
                 subtitle = "Ask or delegate",
                 icon = Icons.AutoMirrored.Filled.Chat,
-                accent = tileAccent(themeStyle, scheme, 2),
+                accent = tileAccent(themeStyle, scheme, 2, accentSeed),
                 themeStyle = themeStyle,
                 modifier = Modifier.weight(1f),
                 onClick = { viewModel.createNewConversation(onNewChat) },
@@ -175,7 +177,7 @@ fun HomeScreen(
                 title = "Messaging",
                 subtitle = "Link a platform",
                 icon = Icons.Filled.Forum,
-                accent = tileAccent(themeStyle, scheme, 1),
+                accent = tileAccent(themeStyle, scheme, 1, accentSeed),
                 themeStyle = themeStyle,
                 modifier = Modifier.weight(1f),
                 onClick = onOpenConnections,
@@ -194,7 +196,7 @@ fun HomeScreen(
                         title = entry.label,
                         subtitle = entry.subtitle,
                         icon = iconForRoute(entry.route),
-                        accent = tileAccent(themeStyle, scheme, index),
+                        accent = tileAccent(themeStyle, scheme, index, accentSeed),
                         themeStyle = themeStyle,
                         modifier = Modifier.weight(1f),
                         onClick = {
@@ -224,7 +226,7 @@ fun HomeScreen(
         } else {
             Column(verticalArrangement = Arrangement.spacedBy(9.dp)) {
                 threads.forEachIndexed { index, thread ->
-                    ThreadRow(thread, themeStyle, index, onClick = { onNewChat(thread.id) })
+                    ThreadRow(thread, themeStyle, index, accentSeed, onClick = { onNewChat(thread.id) })
                 }
             }
         }
@@ -247,47 +249,38 @@ private fun iconForRoute(route: String) = when (route) {
 private fun QuickAction(
     title: String,
     subtitle: String,
+    icon: ImageVector,
+    accent: Color,
+    themeStyle: ThemeStyle,
     modifier: Modifier = Modifier,
-    icon: androidx.compose.ui.graphics.vector.ImageVector? = null,
-    accent: Color? = null,
-    themeStyle: ThemeStyle = ThemeStyle.CLASSIC,
     onClick: () -> Unit,
 ) {
-    if (themeStyle != ThemeStyle.CLASSIC && icon != null && accent != null) {
+    // Both variants are the same tile: same squircle, same 1:1 footprint, same
+    // title/subtitle above a large icon. Classic drops the fill and the accent
+    // for a hairline outline and monochrome contents; the coloured styles keep
+    // the accent glow and the tinted icon.
+    if (themeStyle == ThemeStyle.CLASSIC) {
+        OutlinedSpaceTile(
+            title = title,
+            subtitle = subtitle,
+            icon = icon,
+            modifier = modifier.aspectRatio(1f),
+            onClick = onClick,
+        )
+    } else {
         SpaceTile(
             title = title,
             subtitle = subtitle,
             icon = icon,
             accent = accent,
             modifier = modifier.aspectRatio(1f),
+            // Material You fills the card with the wallpaper accent outright;
+            // Cortex keeps the softer glow its fixed palette was tuned for.
+            solid = themeStyle == ThemeStyle.MATERIAL_YOU,
             onClick = onClick,
         )
-        return
-    }
-    val scheme = MaterialTheme.colorScheme
-    Column(
-        modifier = modifier
-            .clip(MaterialTheme.shapes.medium)
-            .background(scheme.surface)
-            .border(1.dp, scheme.outline.copy(alpha = 0.25f), MaterialTheme.shapes.medium)
-            .clickable(onClick = onClick)
-            .padding(14.dp),
-    ) {
-        Box(
-            modifier = Modifier
-                .size(32.dp)
-                .clip(RoundedCornerShape(9.dp))
-                .background(scheme.primary.copy(alpha = 0.15f)),
-            contentAlignment = Alignment.Center,
-        ) {
-            HermesDiamond(tileSize = 16.dp, glyphSize = 7.dp, cornerRadius = 4.dp, glow = false)
-        }
-        Spacer(Modifier.height(10.dp))
-        Text(title, fontWeight = FontWeight.SemiBold, fontSize = 14.sp, color = scheme.onSurface)
-        Text(subtitle, fontSize = 11.5.sp, color = scheme.onSurfaceVariant)
     }
 }
-
 /** Section heading without a trailing action link (cf. [SectionHeader]). */
 @Composable
 private fun SectionLabel(title: String) {
@@ -323,11 +316,21 @@ private fun SectionHeader(title: String, action: String, onAction: () -> Unit) {
 }
 
 @Composable
-private fun ThreadRow(thread: Conversation, themeStyle: ThemeStyle, index: Int, onClick: () -> Unit) {
+private fun ThreadRow(
+    thread: Conversation,
+    themeStyle: ThemeStyle,
+    index: Int,
+    accentSeed: Color?,
+    onClick: () -> Unit,
+) {
     val scheme = MaterialTheme.colorScheme
     // A different accent per row under Cortex/Material You — a splash of
     // colour down the thread list rather than one repeated primary dot.
-    val dotColor = if (themeStyle != ThemeStyle.CLASSIC) tileAccent(themeStyle, scheme, index) else scheme.primary
+    val dotColor = if (themeStyle != ThemeStyle.CLASSIC) {
+        tileAccent(themeStyle, scheme, index, accentSeed)
+    } else {
+        scheme.primary
+    }
     Row(
         modifier = Modifier
             .fillMaxWidth()

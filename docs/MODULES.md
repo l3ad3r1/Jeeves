@@ -1,5 +1,24 @@
 # Module Reference
 
+> **Where the code lives.** The packages below under `com.hermes.agent.data.*`,
+> `com.hermes.agent.domain.*` and `com.hermes.agent.ui.theme.*` are split across
+> two repositories: the shared engine modules (`:core:util`, `:core:domain`,
+> `:core:theme`, `:core:plugin`, `:core:settings`, `:core:persistence`,
+> `:core:memory`, `:core:llm`, `:core:tools`) live in
+> [`agent-core`](https://github.com/l3ad3r1/agent-core) and are mapped into this
+> build by `settings.gradle.kts`. Kotlin package names are identical on both
+> sides, so an import does not tell you which repository a file is in — search
+> both. Anything not in a `:core:*` module is in `app/`.
+
+> **Inherited from Hermes.** This document was copied verbatim from the Hermes
+> Agent repository and still describes that app by name. The engine half of it
+> is accurate for Jeeves too — both products build the same `:core:*` modules
+> out of [`agent-core`](https://github.com/l3ad3r1/agent-core). The app half is
+> not: Jeeves adds `:feature:jotter` and `:feature:butler`, and deliberately
+> omits the privileged shell, Tasker and Telegram integrations. Where the two
+> disagree, `docs/SUPER_APP_ROADMAP.md` and `docs/ARCHITECTURE.md` in this repo
+> are the Jeeves-specific record.
+
 Per-package documentation for the Hermes Agent Android app. Each entry
 below lists the package's responsibility, its public API, and its
 dependencies on other packages.

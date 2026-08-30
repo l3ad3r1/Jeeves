@@ -150,6 +150,7 @@ fun ProvidersSettingsScreen(
                         onModelChange = { viewModel.setProviderModel(profile.id, it) },
                         onRefreshModels = { viewModel.refreshProviderModels(profile.id) },
                         onRemove = { viewModel.removeProvider(profile.id) },
+                        onStartOAuth = { ctx -> viewModel.startOAuthFlow(profile.id, ctx) },
                     )
                 }
             }
@@ -324,7 +325,9 @@ private fun ProviderCredentialCard(
     onModelChange: (String) -> Unit,
     onRefreshModels: () -> Unit,
     onRemove: () -> Unit,
+    onStartOAuth: (android.content.Context) -> Unit = {},
 ) {
+    val context = androidx.compose.ui.platform.LocalContext.current
     var apiKey by remember(profile.apiKey) { mutableStateOf(profile.apiKey) }
     var baseUrl by remember(profile.baseUrl) { mutableStateOf(profile.baseUrl) }
 
@@ -362,6 +365,23 @@ private fun ProviderCredentialCard(
                         imageVector = Icons.Outlined.Delete,
                         contentDescription = "Remove provider",
                         tint = MaterialTheme.colorScheme.error,
+                    )
+                }
+            }
+
+            // The two providers agent-core's OAuthManager knows how to talk to.
+            // Everything else is key-paste only.
+            if (profile.id == "openrouter" || profile.id == "nous") {
+                OutlinedButton(
+                    onClick = { onStartOAuth(context) },
+                    modifier = Modifier.fillMaxWidth(),
+                ) {
+                    Text(
+                        if (apiKey.isNotBlank()) {
+                            "Re-authenticate with ${profile.name}"
+                        } else {
+                            "Sign in with ${profile.name}"
+                        },
                     )
                 }
             }

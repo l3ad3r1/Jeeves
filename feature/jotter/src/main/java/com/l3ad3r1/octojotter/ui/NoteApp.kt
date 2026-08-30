@@ -98,8 +98,11 @@ import androidx.compose.material.icons.filled.Image
 import androidx.compose.material.icons.filled.ExpandLess
 import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material.icons.filled.Link
+import androidx.compose.foundation.layout.RowScope
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Badge
+import androidx.compose.material3.LocalContentColor
+import androidx.compose.material3.contentColorFor
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.foundation.isSystemInDarkTheme
@@ -1221,9 +1224,8 @@ fun NotesListScreen(
                                                     fontWeight = FontWeight.Bold,
                                                     color = MaterialTheme.colorScheme.onSecondaryContainer
                                                 )
-                                                Badge(
+                                                SquareBadge(
                                                     containerColor = MaterialTheme.colorScheme.primary,
-                                                    contentColor = MaterialTheme.colorScheme.onPrimary
                                                 ) {
                                                     Text("${row.node.noteCount}")
                                                 }
@@ -1730,7 +1732,7 @@ private fun TaskBoardColumn(
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold
                 )
-                Badge { Text("${tasks.size}") }
+                SquareBadge { Text("${tasks.size}") }
             }
             Spacer(modifier = Modifier.height(8.dp))
             if (tasks.isEmpty()) {
@@ -1815,6 +1817,28 @@ private fun TaskBoardCard(
                     }
                 }
             }
+        }
+    }
+}
+
+/**
+ * Square-with-rounded-corners stand-in for Material3's [androidx.compose.material3.Badge],
+ * which is hardcoded to a pill shape.
+ */
+@Composable
+fun SquareBadge(
+    containerColor: Color = MaterialTheme.colorScheme.error,
+    content: @Composable RowScope.() -> Unit,
+) {
+    Row(
+        modifier = Modifier
+            .clip(MaterialTheme.shapes.extraSmall)
+            .background(containerColor)
+            .padding(horizontal = 6.dp, vertical = 2.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        CompositionLocalProvider(LocalContentColor provides contentColorFor(containerColor)) {
+            content()
         }
     }
 }
@@ -2118,9 +2142,8 @@ fun EditorScreen(
                                 fontWeight = FontWeight.Bold,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
-                            Badge(
+                            SquareBadge(
                                 containerColor = MaterialTheme.colorScheme.primary,
-                                contentColor = MaterialTheme.colorScheme.onPrimary
                             ) {
                                 Text("${backlinksList.size}")
                             }

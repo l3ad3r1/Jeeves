@@ -109,6 +109,8 @@ class SettingsViewModel @Inject constructor(
     private val localLlmManager: com.hermes.agent.data.llm.LocalLlmManager,
     private val jsonBackupManager: JsonBackupManager,
     private val credentialVault: CredentialVault,
+    private val oauthManager: com.hermes.agent.data.oauth.OAuthManager,
+    private val oauthCallbackReceiver: com.hermes.agent.data.oauth.OAuthCallbackReceiver,
     private val deviceAuthenticationService: DeviceAuthenticationService = DeviceAuthenticationService(),
 ) : ViewModel() {
 
@@ -124,6 +126,12 @@ class SettingsViewModel @Inject constructor(
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), JeevesSettings.THEME_STYLE_CLASSIC)
 
     fun setThemeStyle(style: String) = JeevesSettings.setThemeStyle(appContext, style)
+
+    val themeAccentColor: StateFlow<Int?> = JeevesSettings.themeAccentColorFlow(appContext)
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), JeevesSettings.themeAccentColor(appContext))
+
+    /** Null clears the override and returns to that style's own default colour. */
+    fun setThemeAccentColor(argb: Int?) = JeevesSettings.setThemeAccentColor(appContext, argb)
 
     val fontFamily: StateFlow<String> = JeevesSettings.fontFamilyFlow(appContext)
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), JeevesSettings.FONT_GEIST)
@@ -248,6 +256,21 @@ class SettingsViewModel @Inject constructor(
             }
         }
         scheduleModelDiscovery(delayMillis = 0L)
+        viewModelScope.launch {
+            oauthCallbackReceiver.events.collect { event ->
+                when (event) {
+                    is com.hermes.agent.data.oauth.OAuthCallbackEvent.Success ->
+                        handleOAuthSuccess(event.session, event.code)
+                    is com.hermes.agent.data.oauth.OAuthCallbackEvent.Error -> {
+                        timber.log.Timber.w("OAuth failed: %s", event.error)
+                        setProviderDiscovery(
+                            event.session?.providerId ?: "",
+                            ModelDiscoveryUiState.Error(event.error),
+                        )
+                    }
+                }
+            }
+        }
     }
 
     /** Re-evaluate whether the selected model exists in the current folder. */
@@ -541,6 +564,55 @@ class SettingsViewModel @Inject constructor(
         _providerModelDiscovery.value = _providerModelDiscovery.value - providerId
     }
 
+    /**
+     * Hands sign-in to the browser and waits for the `jeeves://oauth/callback`
+     * deep link. Custom Tabs keeps the user in context and, unlike a WebView,
+     * lets them see the real URL bar of the page they are typing a password
+     * into; a plain browser Intent is the fallback when no Custom Tabs provider
+     * is installed.
+     */
+    fun startOAuthFlow(providerId: String, context: Context) {
+        viewModelScope.launch {
+            try {
+                val (authUrl, session) = oauthManager.buildAuthorizationUrl(providerId, OAUTH_CALLBACK_URI)
+                oauthCallbackReceiver.registerPendingSession(session)
+                setProviderDiscovery(providerId, ModelDiscoveryUiState.Loading)
+                val customTabs = androidx.browser.customtabs.CustomTabsIntent.Builder()
+                    .setShowTitle(true)
+                    .build()
+                try {
+                    customTabs.launchUrl(context, Uri.parse(authUrl))
+                } catch (t: Throwable) {
+                    context.startActivity(
+                        android.content.Intent(android.content.Intent.ACTION_VIEW, Uri.parse(authUrl)).apply {
+                            addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)
+                        },
+                    )
+                }
+            } catch (t: Throwable) {
+                setProviderDiscovery(providerId, ModelDiscoveryUiState.Error(t.message ?: "Failed to start sign in"))
+            }
+        }
+    }
+
+    private suspend fun handleOAuthSuccess(
+        session: com.hermes.agent.domain.oauth.OAuthSession,
+        code: String,
+    ) {
+        setProviderDiscovery(session.providerId, ModelDiscoveryUiState.Loading)
+        oauthManager.exchangeCodeForApiKey(session, code)
+            .onSuccess { exchange ->
+                setProviderApiKey(exchange.providerId, exchange.apiKey)
+                refreshProviderModels(exchange.providerId, debounceMillis = 0L)
+            }
+            .onFailure { t ->
+                setProviderDiscovery(
+                    session.providerId,
+                    ModelDiscoveryUiState.Error(t.message ?: "Key exchange failed"),
+                )
+            }
+    }
+
     fun setProviderApiKey(providerId: String, key: String) = viewModelScope.launch {
         updateProvider(providerId) { it.copy(apiKey = key, enabled = key.isNotBlank()) }
         if (key.isNotBlank()) settingsRepository.setCloudEnabled(true)
@@ -688,6 +760,11 @@ class SettingsViewModel @Inject constructor(
         isModelDownloaded.value = localLlmManager.isModelDownloaded()
     }
 
+    /** Hard off switch for the on-device fallback (see [HybridLlmRouter]). */
+    fun setLocalLlmEnabled(enabled: Boolean) = viewModelScope.launch {
+        settingsRepository.setLocalLlmEnabled(enabled)
+    }
+
     // --- Local API server ---
 
     /** Persist the enabled flag; auto-generate a bearer key on first enable
@@ -736,6 +813,14 @@ class SettingsViewModel @Inject constructor(
 
     private companion object {
         const val MODEL_DISCOVERY_DEBOUNCE_MS = 600L
+
+        /**
+         * Jeeves' own callback, registered in AndroidManifest.xml. It must not
+         * be the `hermes://` scheme agent-core defaults to: both apps can be
+         * installed at once, and sharing the scheme would let either one
+         * intercept the other's authorization code.
+         */
+        const val OAUTH_CALLBACK_URI = "jeeves://oauth/callback"
     }
 
     // --- OTA update ---

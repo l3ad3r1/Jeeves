@@ -7,8 +7,26 @@
 | JDK                      | 17                   | Required by AGP 8.x. Use `java -version` to check. |
 | Android SDK              | Platform 34 + build-tools 34.0.0 | Android Studio Hedgehog (or newer) bundles both. |
 | Android Studio (optional)| Hedgehog 2023.1+     | Recommended IDE; also works pure CLI.              |
-| Gradle                   | 8.9 (auto via wrapper) | Don't use a system Gradle; the wrapper pins the version. |
-| Kotlin                   | 2.0.21               | Bundled via the Kotlin Gradle plugin.              |
+| Gradle                   | 9.6.1 (auto via wrapper) | Don't use a system Gradle; the wrapper pins the version. |
+| Kotlin                   | 2.2.10               | Bundled via AGP 9's built-in Kotlin support.       |
+
+> **Check out the shared engine too.** The `:core:*` Gradle projects are not in
+> this repository — they live in
+> [`l3ad3r1/agent-core`](https://github.com/l3ad3r1/agent-core) and are mapped
+> in by `settings.gradle.kts`. Without it, Gradle fails during settings
+> evaluation before it compiles a line. Clone it beside this checkout:
+>
+> ```bash
+> git clone https://github.com/l3ad3r1/agent-core.git ../agent-core
+> ```
+>
+> Any other location works via `-PagentCoreDir=<path>` or the
+> `AGENT_CORE_DIR` environment variable. `agent-core.ref` records the engine
+> commit CI builds against — bump it in the same commit as any app change that
+> needs a newer engine.
+>
+> `:core:jeeves-settings` and `:core:jeeves-theme` are Jeeves-only and do live
+> in this repository, under `core/`.
 
 Minimum runtime device: **Android 10 (API 29)**. The app installs and runs on
 any Android 10+ device for development.
@@ -17,7 +35,7 @@ any Android 10+ device for development.
 
 ## 1. Open in Android Studio (recommended)
 
-1. `File → Open…` and select the `hermes-agent-android/` directory.
+1. `File → Open…` and select the `jeeves/` directory.
 2. When prompted, accept the suggested Gradle sync.
 3. Wait for indexing and Gradle sync to complete (first run downloads
    dependencies; expect 2–5 minutes on a fresh machine).

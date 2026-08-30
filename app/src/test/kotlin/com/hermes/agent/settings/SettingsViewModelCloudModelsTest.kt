@@ -83,6 +83,8 @@ class SettingsViewModelCloudModelsTest {
             credentialVault = mockk<com.hermes.agent.data.security.CredentialVault>(relaxed = true),
             cloudModelCatalog = catalog,
             localLlmManager = localManager,
+            oauthManager = mockk<com.hermes.agent.data.oauth.OAuthManager>(relaxed = true),
+            oauthCallbackReceiver = com.hermes.agent.data.oauth.OAuthCallbackReceiver(),
         )
         advanceUntilIdle()
 

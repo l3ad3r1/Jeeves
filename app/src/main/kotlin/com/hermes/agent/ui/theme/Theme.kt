@@ -35,13 +35,15 @@ fun HermesTheme(
     appTheme: AppTheme? = null,
     darkTheme: Boolean = isSystemInDarkTheme(),
     themeStyle: ThemeStyle = ThemeStyle.DEFAULT,
+    themeAccentColor: Int? = null,
     fontFamilyName: String = "geist",
     fontScalePercent: Int = 100,
     content: @Composable () -> Unit,
 ) {
     // null means "the style has nothing to add" (classic, or Material You
     // requested below API 31) — Jeeves' own monochrome scheme applies as before.
-    val colorScheme = resolveAltColorScheme(themeStyle, darkTheme) ?: jeevesColorScheme(darkTheme)
+    val colorScheme = resolveAltColorScheme(themeStyle, darkTheme, themeAccentColor?.let { Color(it) })
+        ?: jeevesColorScheme(darkTheme)
     val view = LocalView.current
     if (!view.isInEditMode) {
         SideEffect {

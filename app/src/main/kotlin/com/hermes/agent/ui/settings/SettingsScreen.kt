@@ -28,6 +28,7 @@ import androidx.compose.material.icons.outlined.Schedule
 import androidx.compose.material.icons.outlined.Science
 import androidx.compose.material.icons.outlined.SettingsEthernet
 import androidx.compose.material.icons.outlined.Stars
+import androidx.compose.material.icons.outlined.Widgets
 import androidx.compose.material3.Card
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
@@ -108,6 +109,13 @@ fun SettingsScreen(
                         title = "Modules",
                         subtitle = "Download verified modules from the shared repository",
                         onClick = { onNavigate("settings_modules") },
+                    )
+                    HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp))
+                    NavRow(
+                        icon = Icons.Outlined.Widgets,
+                        title = "Plugins",
+                        subtitle = "Manage installed script and community plugins",
+                        onClick = { onNavigate("plugins") },
                     )
                     HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp))
                     NavRow(
