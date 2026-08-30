@@ -804,6 +804,10 @@ class SettingsViewModel @Inject constructor(
         settingsRepository.setHomeAssistantToken(token)
     }
 
+    fun setFilesRootUri(uri: String) = viewModelScope.launch {
+        settingsRepository.setFilesRootUri(uri)
+    }
+
     fun testHomeAssistantConnection(onResult: (Boolean, String) -> Unit) = viewModelScope.launch(kotlinx.coroutines.Dispatchers.IO) {
         val current = settingsRepository.current()
         val url = current.homeAssistantUrl.trim().removeSuffix("/")

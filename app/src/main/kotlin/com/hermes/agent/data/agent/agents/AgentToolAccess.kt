@@ -31,22 +31,23 @@ internal object AgentToolAccess {
 
     private val GRANTS: Map<AgentRole, RoleGrant> = mapOf(
         AgentRole.CONVERSATIONAL to RoleGrant(
-            categories = setOf("information", "memory", "productivity", "communication", "creative", "device", "system", "automation", "vision"),
+            categories = setOf("information", "memory", "productivity", "communication", "creative", "device", "system", "automation", "vision", "files"),
             capabilities = setOf(
                 "common", "time", "web", "conversation_search", "calculator", "notification",
                 "notes", "device_alarm", "notes_and_reminders", "navigation", "phone", "contacts",
                 "media", "device_control", "skills", "user_memory", "scheduler", "shell", "termux",
                 "todo", "voice", "clarify", "delegate", "media_generation", "app_automation", "documents", "kanban",
-                "bookmarks", "mood", "home_assistant", "vision",
+                "bookmarks", "mood", "home_assistant", "vision", "files",
             ),
             excludedCapabilities = setOf("calendar", "device_settings"),
         ),
         AgentRole.PRODUCTIVITY to RoleGrant(
+            categories = setOf("files"),
             capabilities = setOf(
                 "common", "time", "web", "conversation_search", "calculator", "calendar", "notes",
                 "skills", "user_memory", "scheduler", "todo", "clarify", "delegate", "notification",
                 "phone", "contacts", "navigation", "documents", "notes_and_reminders", "kanban",
-                "bookmarks", "mood", "vision",
+                "bookmarks", "mood", "vision", "files",
             ),
         ),
         AgentRole.RESEARCH to RoleGrant(
