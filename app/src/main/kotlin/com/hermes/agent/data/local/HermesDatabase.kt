@@ -74,7 +74,7 @@ import com.hermes.agent.data.local.entity.TodoTaskEntity
         MoodEntryEntity::class,
         ScriptPluginEntity::class,
     ],
-    version = 18,
+    version = 19,
     // Exported so the upgrade can be validated against what Room generates.
     // Without this there is no way to catch a migration that drifts from the
     // entities, and that failure only ever appears on a user's device.
@@ -677,6 +677,16 @@ abstract class HermesDatabase : RoomDatabase() {
             override fun migrate(db: SupportSQLiteDatabase) {
                 MIGRATION_16_17.migrate(db)
                 MIGRATION_17_18.migrate(db)
+            }
+        }
+
+        /**
+         * Adds multimodal attachment columns to messages (Phase 2: Vision).
+         */
+        val MIGRATION_18_19 = object : Migration(18, 19) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE messages ADD COLUMN attachment_uri TEXT DEFAULT NULL")
+                db.execSQL("ALTER TABLE messages ADD COLUMN attachment_mime_type TEXT DEFAULT NULL")
             }
         }
 
