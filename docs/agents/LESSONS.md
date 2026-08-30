@@ -252,3 +252,89 @@ and keep later tool rounds on the provider that accepted the failover.
 **Check:** Route with cloud and local available; simulate cloud `IOException` for plain
 completion, tool completion, and a stream before its first token. Each must return local
 output. Simulate HTTP failure and partial stream output; neither may restart locally.
+
+## L-026 — Contrast is a number: assert it in a test, not in review
+**Origin:** v0.16.3 theme audit — Cortex's cyan `#28B0DF` shipped at 2.51:1 against the
+white drawn on top of it, the tile purple at 2.93:1, the orange at 2.57:1. L-011 already
+said to check the pair, and all three shipped anyway.
+**Defect:** "Check the contrast" is a review instruction, so it depends on somebody
+choosing to compute a ratio. Nobody did, through several releases.
+**Rule:** Any colour a component draws text or an icon on gets a unit test asserting its
+WCAG ratio against every ground it can land on, in both modes. A rule that only lives in
+a review checklist is not enforced.
+**Check:** Diff touches a colour constant or a `ColorScheme` → name the test that pins
+its ratio, and the measured number.
+
+## L-027 — Generating N values does not mean getting N distinct values
+**Origin:** v0.16.3 — the Material You tile palette handed out
+`primary.compositeOver(tertiary)` as its fifth accent. Compositing an *opaque* colour
+over anything returns that colour, so tile 5 was pixel-identical to tile 1, and
+`secondary` is `primary` at reduced chroma so it read as a washed-out copy of it.
+**Defect:** A formula that looked like it produced variety produced duplicates, and
+nothing asserted otherwise.
+**Rule:** When a generator is supposed to yield N distinct values, assert
+`set(values).size == N`. Derived-colour helpers especially: identity is a common
+degenerate case (alpha 1.0, zero saturation, zero rotation).
+**Check:** Any palette/series/spread generator → a distinctness test over its full range.
+
+## L-028 — Semantic roles are not decoration
+**Origin:** v0.16.3 — `colorScheme.error` was used as one of five home-tile accents, so a
+working tile was painted in the colour that means "something has gone wrong".
+**Defect:** A role carrying meaning was spent on aesthetics, and it is fixed rather than
+wallpaper-derived, so it also broke the palette it sat in.
+**Rule:** `error`, and any other role whose name states a condition, is reserved for that
+condition. Decoration draws from accent roles or a derived palette.
+**Check:** `grep -rn 'colorScheme\.error' --include=*.kt` → every hit is on an error path.
+
+## L-029 — A partially built scheme silently inherits the framework's defaults
+**Origin:** v0.16.3 — `darkColorScheme()`/`lightColorScheme()` fill every role the caller
+does not name with Material's own baseline. Neither the Cortex schemes nor
+`accentColorScheme` set any `*Container` role, and the theme picker draws its selected row
+in `primaryContainer` — so an ember theme rendered a *purple* chip inside its own colour
+settings, and had done so since the picker landed.
+**Defect:** The gap was invisible because the defaults are valid colours; nothing looked
+wrong enough in code review to notice the palette was not the one configured.
+**Rule:** When constructing from a builder with defaults, either set every field you
+actually render, or assert none is left at a default value.
+**Check:** A test asserting no rendered role equals a known baseline constant, and that
+each derived role's hue tracks its source.
+
+## L-030 — A CI verification step that has never run is not a check
+**Origin:** v0.9.6 / v0.16.3 — the release workflow's signer check grepped
+`signer #1 certificate SHA-256`; apksigner has emitted `V2 Signer: certificate SHA-256
+digest` since build-tools 35. The fingerprint came out empty and the job aborted, so no
+release could have shipped through CI even with every signing secret set — and it would
+have blamed a signer mismatch for what was a parsing failure.
+**Defect:** A guard written from a remembered output format, never executed against a
+real artifact. It could only ever fail, and its failure message pointed at the wrong
+cause.
+**Rule:** Before trusting a CI verification step, run its exact command locally against a
+real artifact and read the output. Parse on the stable part of a tool's output, never on
+a full label, and make the step fail loudly on *empty* input rather than comparing empty
+to expected.
+**Check:** New or edited verification step → paste the local run's output in the commit
+message. Pipelines hide exit codes: call the verifying command on its own line too.
+
+## L-031 — Model what the renderer paints, not what the API returns
+**Origin:** v0.16.3 — a gradient's text colour was chosen by sampling with Compose's
+`lerp`, which interpolates in Oklab, while `Brush.linearGradient` paints in sRGB. The
+sRGB sweep passes through a washed-out middle that the Oklab model never showed, and
+that middle is where the label is hardest to read.
+**Defect:** The check and the renderer disagreed about the pixels, so the check was
+confidently measuring something nobody would ever see.
+**Rule:** When a check reasons about rendered output, reproduce the renderer's own
+interpolation and colour space — and confirm the model against a real capture before
+trusting it.
+**Check:** State predicted vs. measured values in the commit message. (Here: predicted
+`(119, 99, 158)`, device capture measured `(121, 99, 160)`.)
+
+## L-032 — Resolve which file the build actually reads before calling config missing
+**Origin:** 2026-08-30 release session — release signing was reported as unconfigured, and
+a CI-secrets workaround proposed, after grepping `local.properties`. The build reads
+`hermes.local.properties`; all four signing keys were present the whole time.
+**Defect:** A blocker was declared, and work planned around it, from a grep of the wrong
+file. The wrong claim cost more than the check would have.
+**Rule:** Before reporting configuration absent, read the build script line that names
+the file and grep *that* path. State the path you checked.
+**Check:** Any "X is not configured" claim quotes the `rootProject.file(...)` /
+`getProperty(...)` line it is based on.
