@@ -37,7 +37,7 @@ internal object AgentToolAccess {
                 "notes", "device_alarm", "notes_and_reminders", "navigation", "phone", "contacts",
                 "media", "device_control", "skills", "user_memory", "scheduler", "shell", "termux",
                 "todo", "voice", "clarify", "delegate", "media_generation", "app_automation", "documents", "kanban",
-                "bookmarks", "mood",
+                "bookmarks", "mood", "home_assistant",
             ),
             excludedCapabilities = setOf("calendar", "device_settings"),
         ),
@@ -60,7 +60,7 @@ internal object AgentToolAccess {
             capabilities = setOf(
                 "common", "device_settings", "time", "user_memory", "shell", "termux", "voice",
                 "app_automation", "device_alarm", "navigation", "media", "device_control",
-                "phone", "contacts"
+                "phone", "contacts", "home_assistant",
             ),
         ),
         AgentRole.CREATIVE to RoleGrant(
