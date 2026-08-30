@@ -47,7 +47,7 @@ android {
         targetSdk = 36       // Android 16 — matches Octo Jotter and Sassy Butler
         // Single source of truth in gradle.properties; :feature:jotter reads the same
         // property for its BuildConfig.VERSION_NAME.
-        versionCode = (project.findProperty("jeeves.versionCode") as String?)?.toInt() ?: 61
+        versionCode = (project.findProperty("jeeves.versionCode") as String?)?.toInt() ?: 89
         versionName = project.findProperty("jeeves.versionName") as String? ?: "0.16.3"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
