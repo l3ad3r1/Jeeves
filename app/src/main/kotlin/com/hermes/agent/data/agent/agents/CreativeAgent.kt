@@ -33,6 +33,9 @@ class CreativeAgent @Inject constructor() : Agent {
             "- generate_image: create an image from a text prompt and return its URL — use this " +
             "whenever the user asks you to draw, illustrate, design, or imagine a picture\n" +
             "- clarify: ask the user a short question when a creative brief is ambiguous\n" +
+            "- vision_analyze: describe an image or pull text out of it, given a path, URI or URL (image_path, optional prompt)\n" +
+            "- skills_hub: search, inspect and install curated skills from the hub (action='search'|'inspect'|'install')\n" +
+            "- usage_insights: token consumption, estimated spend and tool-call counts (window='today'|'7d'|'30d'|'all')\n" +
             "- web_search / web_fetch: gather reference material\n\n" +
             "Default to longer, more textured responses (3–6 paragraphs for prose). " +
             "Honor style requests precisely. When rewriting a user's draft, preserve their " +
