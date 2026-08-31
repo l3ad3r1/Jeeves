@@ -79,7 +79,7 @@ import com.hermes.agent.data.local.entity.McpToolEntity
         McpServerEntity::class,
         McpToolEntity::class,
     ],
-    version = 20,
+    version = 21,
     // Exported so the upgrade can be validated against what Room generates.
     // Without this there is no way to catch a migration that drifts from the
     // entities, and that failure only ever appears on a user's device.
@@ -728,6 +728,18 @@ abstract class HermesDatabase : RoomDatabase() {
                     )
                     """.trimIndent()
                 )
+            }
+        }
+
+        /**
+         * Adds provenance and lint status columns to skills (Phase 6: Skills Hub).
+         */
+        val MIGRATION_20_21 = object : Migration(20, 21) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE skills ADD COLUMN sourceUrl TEXT DEFAULT NULL")
+                db.execSQL("ALTER TABLE skills ADD COLUMN pinnedCommit TEXT DEFAULT NULL")
+                db.execSQL("ALTER TABLE skills ADD COLUMN installedAt INTEGER DEFAULT NULL")
+                db.execSQL("ALTER TABLE skills ADD COLUMN lintStatus TEXT DEFAULT NULL")
             }
         }
 
