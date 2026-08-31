@@ -19,6 +19,7 @@ import com.hermes.agent.domain.agent.AgentFeature
 import com.jeeves.core.settings.JeevesSettings
 import com.hermes.agent.domain.repository.ExecutionPlanRepository
 import com.hermes.agent.domain.repository.SkillRepository
+import com.hermes.agent.data.mcp.McpManager
 import com.hermes.agent.data.plugin.ScriptPluginRepository
 import dagger.hilt.android.HiltAndroidApp
 import kotlinx.coroutines.CoroutineScope
@@ -70,6 +71,9 @@ class HermesApp : Application(), Configuration.Provider {
     lateinit var scriptPluginRepositoryProvider: Provider<ScriptPluginRepository>
 
     @Inject
+    lateinit var mcpManagerProvider: Provider<McpManager>
+
+    @Inject
     lateinit var features: Set<@JvmSuppressWildcards AgentFeature>
 
     private val applicationScope = CoroutineScope(Dispatchers.Default)
@@ -108,6 +112,15 @@ class HermesApp : Application(), Configuration.Provider {
             runCatching { encryptedSettingsProvider.get().purgeRetiredGistCredentials() }
                 .onFailure { Timber.tag("Settings").w(it, "retired-credential purge failed") }
         }
+        // MCP tools are cached in Room after their first sync, but nothing loads
+        // them back into the ToolRegistry on a cold start, so a configured server
+        // would go quiet until the user opened Settings again. Same failure mode
+        // the skills and modules seeding above exists to prevent.
+        applicationScope.launch {
+            runCatching { mcpManagerProvider.get().loadAndRegisterCachedTools() }
+                .onFailure { Timber.tag("Mcp").w(it, "cached MCP tool registration failed") }
+        }
+
         applicationScope.launch {
             runCatching { executionPlanRepositoryProvider.get().reconcileInterruptedSteps() }
                 .onSuccess { count ->
