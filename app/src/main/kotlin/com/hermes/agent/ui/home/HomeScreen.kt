@@ -8,7 +8,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.aspectRatio
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -259,28 +259,40 @@ private fun QuickAction(
     // title/subtitle above a large icon. Classic drops the fill and the accent
     // for a hairline outline and monochrome contents; the coloured styles keep
     // the accent glow and the tinted icon.
-    if (themeStyle == ThemeStyle.CLASSIC) {
-        OutlinedSpaceTile(
-            title = title,
-            subtitle = subtitle,
-            icon = icon,
-            modifier = modifier.aspectRatio(1f),
-            onClick = onClick,
-        )
-    } else {
-        SpaceTile(
-            title = title,
-            subtitle = subtitle,
-            icon = icon,
-            accent = accent,
-            modifier = modifier.aspectRatio(1f),
-            // Material You fills the card with the wallpaper accent outright;
-            // Cortex keeps the softer glow its fixed palette was tuned for.
-            solid = themeStyle == ThemeStyle.MATERIAL_YOU,
-            onClick = onClick,
-        )
+    // A tile was square at any width. Two columns land near 180dp on a phone, so
+    // that read well - but the same weight(1f) resolves to about 530dp on a
+    // 1100dp-wide tablet, and a 530dp-tall tile ate three quarters of a landscape
+    // screen. Stay square while that is a sensible size and stop growing after
+    // that: the tile still fills its column, it just no longer gets taller with it.
+    BoxWithConstraints(modifier) {
+        val side = minOf(maxWidth, MAX_TILE_SIDE)
+        val tileModifier = Modifier.fillMaxWidth().height(side)
+        if (themeStyle == ThemeStyle.CLASSIC) {
+            OutlinedSpaceTile(
+                title = title,
+                subtitle = subtitle,
+                icon = icon,
+                modifier = tileModifier,
+                onClick = onClick,
+            )
+        } else {
+            SpaceTile(
+                title = title,
+                subtitle = subtitle,
+                icon = icon,
+                accent = accent,
+                modifier = tileModifier,
+                // Material You fills the card with the wallpaper accent outright;
+                // Cortex keeps the softer glow its fixed palette was tuned for.
+                solid = themeStyle == ThemeStyle.MATERIAL_YOU,
+                onClick = onClick,
+            )
+        }
     }
 }
+
+/** Widest a superpower tile gets before it stops growing with its column. */
+private val MAX_TILE_SIDE = 150.dp
 /** Section heading without a trailing action link (cf. [SectionHeader]). */
 @Composable
 private fun SectionLabel(title: String) {
