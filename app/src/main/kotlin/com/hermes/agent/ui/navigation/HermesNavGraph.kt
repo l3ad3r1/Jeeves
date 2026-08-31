@@ -22,6 +22,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.hermes.agent.ui.usage.UsageInsightsScreen
 import com.hermes.agent.ui.theme.alt.ThemeStyle
 import com.hermes.agent.ui.theme.alt.tileAccent
 import com.jeeves.core.settings.JeevesSettings
@@ -245,6 +246,7 @@ fun HermesNavGraph(
             composable("settings_connections") { ConnectionsSettingsScreen(onBack = { navController.popBackStack() }) }
             composable("settings_advanced") { AdvancedSettingsScreen(onBack = { navController.popBackStack() }) }
             composable("settings_modules") { ModulesSettingsScreen(onBack = { navController.popBackStack() }) }
+            composable("usage_insights") { UsageInsightsScreen(onBack = { navController.popBackStack() }) }
             composable("settings_proactive") { ProactiveSettingsScreen(onBack = { navController.popBackStack() }) }
             composable("settings_about") { AboutSettingsScreen(onBack = { navController.popBackStack() }) }
             
