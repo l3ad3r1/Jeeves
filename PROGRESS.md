@@ -9,6 +9,24 @@ The base is the Hermes Agent app (`com.hermes.agent` namespace), imported here a
 repo. All three apps are merged and shipping (`:app` + `:feature:jotter` + `:feature:butler`).
 **Published:** GitHub remote `l3ad3r1/jeeves`, releases v0.9.0 through v0.9.4 live.
 
+## RELEASED: v0.16.7 (2026-08-31) — MCP registry + wiring fixes
+- GitHub release **v0.16.7** marked **Latest** (versionCode 93). APK verified as a readable
+  archive before and after upload: 513 entries, 17 `lib/arm64-v8a/*.so` (9 `libggml*`),
+  signer SHA-256 `99255c31…`.
+- **MCP server registry UI** — `Settings → Connections → MCP servers`. Nothing could register
+  a server before, so `mcp_servers` was empty on every install and no MCP tool ever loaded.
+- **Credential pool on the chat path** — `CloudProviderFactory` built every profile-backed
+  provider without the pool, so rotation and the 429 cooldown never ran on ordinary turns.
+- **Checkpoint restore** — new confirmation-gated `file_checkpoint` tool (`list`/`restore`),
+  refusing a checkpoint whose target now sits outside the current workspace root.
+- **Prompt coverage** — five granted-but-unprompted tools (`communication`, `contact_lookup`,
+  `device_control`, `media_control`, `navigation`) and the ported tools across Productivity,
+  Research, Creative and DeviceControl are now described in exactly the roles that hold them.
+  Jeeves keeps its alarm tool and prompt; only Hermes dropped that grant.
+- agent-core pinned at `afd5cf7`. All suites green. Not device-verified.
+
+---
+
 ## Build env
 - JAVA_HOME = `C:\Program Files\Android\Android Studio\jbr` (JBR 21.0.10)
 - ANDROID_HOME = `C:\Users\renja\AppData\Local\Android\Sdk`
