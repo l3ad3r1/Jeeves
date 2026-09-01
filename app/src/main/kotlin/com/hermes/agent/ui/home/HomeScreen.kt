@@ -33,6 +33,7 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -163,6 +164,11 @@ fun HomeScreen(
         Spacer(Modifier.height(16.dp))
 
         // Quick actions
+        // Two tiles stretched to half of an 1100dp tablet became 527dp-wide
+        // letterboxes. Lay them out on the same column grid the tiles are sized
+        // for, and pad the row so they keep that width instead of filling it.
+        BoxWithConstraints(Modifier.fillMaxWidth()) {
+        val tileColumns = tileColumnsFor(maxWidth)
         Row(horizontalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.fillMaxWidth()) {
             QuickAction(
                 title = "New chat",
@@ -182,6 +188,8 @@ fun HomeScreen(
                 modifier = Modifier.weight(1f),
                 onClick = onOpenConnections,
             )
+            repeat(tileColumns - 2) { Spacer(Modifier.weight(1f)) }
+        }
         }
 
         Spacer(Modifier.height(20.dp))
@@ -190,6 +198,8 @@ fun HomeScreen(
         if (viewModel.appEntries.isNotEmpty()) {
             SectionLabel("Apps")
             Spacer(Modifier.height(11.dp))
+            BoxWithConstraints(Modifier.fillMaxWidth()) {
+            val appColumns = tileColumnsFor(maxWidth)
             Row(horizontalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.fillMaxWidth()) {
                 viewModel.appEntries.forEachIndexed { index, entry ->
                     QuickAction(
@@ -212,6 +222,10 @@ fun HomeScreen(
                         },
                     )
                 }
+                repeat((appColumns - viewModel.appEntries.size).coerceAtLeast(0)) {
+                    Spacer(Modifier.weight(1f))
+                }
+            }
             }
             Spacer(Modifier.height(20.dp))
         }
@@ -289,6 +303,16 @@ private fun QuickAction(
             )
         }
     }
+}
+
+/**
+ * Columns a tile row should use at this width. Two is right on a phone; a tablet
+ * fits more, and stretching two tiles across it is what made them look huge.
+ */
+private fun tileColumnsFor(maxWidth: Dp): Int = when {
+    maxWidth < 500.dp -> 2
+    maxWidth < 840.dp -> 3
+    else -> 4
 }
 
 /** Widest a superpower tile gets before it stops growing with its column. */
