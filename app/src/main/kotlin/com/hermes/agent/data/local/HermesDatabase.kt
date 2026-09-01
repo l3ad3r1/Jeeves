@@ -47,10 +47,12 @@ import com.hermes.agent.data.local.entity.BookmarkEntity
 import com.hermes.agent.data.local.entity.CalendarEventEntity
 import com.hermes.agent.data.local.entity.MoodEntryEntity
 import com.hermes.agent.data.local.entity.NoteEntity
+import com.hermes.agent.data.local.dao.PresenceLogDao
 import com.hermes.agent.data.local.entity.ScriptPluginEntity
 import com.hermes.agent.data.local.entity.TodoTaskEntity
 import com.hermes.agent.data.local.entity.McpServerEntity
 import com.hermes.agent.data.local.entity.McpToolEntity
+import com.hermes.agent.data.local.entity.PresenceLogEntity
 
 @Database(
     entities = [
@@ -78,8 +80,9 @@ import com.hermes.agent.data.local.entity.McpToolEntity
         ScriptPluginEntity::class,
         McpServerEntity::class,
         McpToolEntity::class,
+        PresenceLogEntity::class,
     ],
-    version = 21,
+    version = 22,
     // Exported so the upgrade can be validated against what Room generates.
     // Without this there is no way to catch a migration that drifts from the
     // entities, and that failure only ever appears on a user's device.
@@ -108,6 +111,7 @@ abstract class HermesDatabase : RoomDatabase() {
     abstract fun moodEntryDao(): MoodEntryDao
     abstract fun scriptPluginDao(): ScriptPluginDao
     abstract fun mcpDao(): McpDao
+    abstract fun presenceLogDao(): PresenceLogDao
 
     companion object {
         const val DATABASE_NAME = "hermes.db"
@@ -740,6 +744,32 @@ abstract class HermesDatabase : RoomDatabase() {
                 db.execSQL("ALTER TABLE skills ADD COLUMN pinnedCommit TEXT DEFAULT NULL")
                 db.execSQL("ALTER TABLE skills ADD COLUMN installedAt INTEGER DEFAULT NULL")
                 db.execSQL("ALTER TABLE skills ADD COLUMN lintStatus TEXT DEFAULT NULL")
+            }
+        }
+
+        /**
+         * Adds presence logs and ambient context snapshots (Phase 5: Presence).
+         */
+        val MIGRATION_21_22 = object : Migration(21, 22) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(
+                    """
+                    CREATE TABLE IF NOT EXISTS presence_logs (
+                        id TEXT NOT NULL PRIMARY KEY,
+                        timestamp INTEGER NOT NULL,
+                        latitude REAL,
+                        longitude REAL,
+                        locationName TEXT,
+                        batteryLevel INTEGER NOT NULL,
+                        isCharging INTEGER NOT NULL,
+                        networkType TEXT NOT NULL DEFAULT 'UNKNOWN',
+                        activity TEXT NOT NULL DEFAULT 'UNKNOWN',
+                        screenOn INTEGER NOT NULL DEFAULT 0,
+                        contextSummary TEXT NOT NULL DEFAULT ''
+                    )
+                    """.trimIndent(),
+                )
+                db.execSQL("CREATE INDEX IF NOT EXISTS index_presence_logs_timestamp ON presence_logs(timestamp)")
             }
         }
 
