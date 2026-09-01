@@ -52,8 +52,10 @@ logcat*.txt
 devicegate/
 temp_release_notes.md
 
-# Completed agent task/report artifacts belong in canonical docs, not repo roots.
-/ANTIGRAVITY-*.md
+# Local-only working material: agent handoff/handover .md files. Point-in-time
+# notes for one agent handing off to another, not project documentation.
+# Superseded /ANTIGRAVITY-*.md, which only matched at repo root.
+/local/
 /gradle/gradle-daemon-jvm.properties
 
 # CI checks the shared engine out here (settings.gradle.kts resolves it);
