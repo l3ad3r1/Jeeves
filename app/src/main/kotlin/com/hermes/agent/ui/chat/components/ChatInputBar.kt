@@ -160,82 +160,82 @@ fun ChatInputBar(
                         }
                     }
                 }
-            }
 
-            BasicTextField(
-                value = text,
-                onValueChange = { text = it },
-                modifier = Modifier
-                    .weight(1f)
-                    .heightIn(min = 48.dp, max = 144.dp)
-                    .padding(horizontal = 8.dp, vertical = 13.dp),
-                textStyle = MaterialTheme.typography.bodyLarge.copy(
-                    color = MaterialTheme.colorScheme.onSurface,
-                ),
-                cursorBrush = SolidColor(MaterialTheme.colorScheme.primary),
-                keyboardOptions = KeyboardOptions(
-                    capitalization = KeyboardCapitalization.Sentences,
-                    imeAction = ImeAction.Send,
-                ),
-                keyboardActions = KeyboardActions(onSend = { submit() }),
-                maxLines = 6,
-                decorationBox = { innerTextField ->
-                    Box(contentAlignment = Alignment.CenterStart) {
-                        if (text.isEmpty()) {
-                            Text(
-                                text = stringResource(R.string.chat_placeholder),
-                                style = MaterialTheme.typography.bodyLarge,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            )
+                BasicTextField(
+                    value = text,
+                    onValueChange = { text = it },
+                    modifier = Modifier
+                        .weight(1f)
+                        .heightIn(min = 48.dp, max = 144.dp)
+                        .padding(horizontal = 8.dp, vertical = 13.dp),
+                    textStyle = MaterialTheme.typography.bodyLarge.copy(
+                        color = MaterialTheme.colorScheme.onSurface,
+                    ),
+                    cursorBrush = SolidColor(MaterialTheme.colorScheme.primary),
+                    keyboardOptions = KeyboardOptions(
+                        capitalization = KeyboardCapitalization.Sentences,
+                        imeAction = ImeAction.Send,
+                    ),
+                    keyboardActions = KeyboardActions(onSend = { submit() }),
+                    maxLines = 6,
+                    decorationBox = { innerTextField ->
+                        Box(contentAlignment = Alignment.CenterStart) {
+                            if (text.isEmpty()) {
+                                Text(
+                                    text = stringResource(R.string.chat_placeholder),
+                                    style = MaterialTheme.typography.bodyLarge,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                )
+                            }
+                            innerTextField()
                         }
-                        innerTextField()
-                    }
-                },
-            )
-
-            IconButton(
-                onClick = onMicToggle,
-                modifier = Modifier.size(44.dp),
-            ) {
-                Icon(
-                    imageVector = Icons.Outlined.Mic,
-                    contentDescription = stringResource(R.string.a11y_voice_input),
-                    tint = if (isListening) {
-                        MaterialTheme.colorScheme.error
-                    } else MaterialTheme.colorScheme.onSurface,
+                    },
                 )
-            }
 
-            val actionColor = if (isSending) {
-                Color(0xFFE5484D) // red stop while Jeeves is replying
-            } else MaterialTheme.colorScheme.primary
-            Surface(
-                onClick = when {
-                    isSending -> onCancel
-                    text.isNotBlank() -> ::submit
-                    else -> onMicToggle
-                },
-                modifier = Modifier.size(48.dp),
-                shape = RoundedCornerShape(24.dp),
-                color = actionColor,
-                contentColor = if (isSending) {
-                    Color.White
-                } else MaterialTheme.colorScheme.onPrimary,
-            ) {
-                Box(contentAlignment = Alignment.Center) {
+                IconButton(
+                    onClick = onMicToggle,
+                    modifier = Modifier.size(44.dp),
+                ) {
                     Icon(
-                        imageVector = when {
-                            isSending -> Icons.Outlined.Stop
-                            text.isNotBlank() -> Icons.Outlined.ArrowUpward
-                            else -> Icons.Outlined.GraphicEq
-                        },
-                        contentDescription = when {
-                            isSending -> stringResource(R.string.a11y_stop_generating)
-                            text.isNotBlank() -> stringResource(R.string.a11y_send_button)
-                            else -> stringResource(R.string.a11y_voice_input)
-                        },
-                        modifier = Modifier.size(25.dp),
+                        imageVector = Icons.Outlined.Mic,
+                        contentDescription = stringResource(R.string.a11y_voice_input),
+                        tint = if (isListening) {
+                            MaterialTheme.colorScheme.error
+                        } else MaterialTheme.colorScheme.onSurface,
                     )
+                }
+
+                val actionColor = if (isSending) {
+                    Color(0xFFE5484D) // red stop while Jeeves is replying
+                } else MaterialTheme.colorScheme.primary
+                Surface(
+                    onClick = when {
+                        isSending -> onCancel
+                        text.isNotBlank() -> ::submit
+                        else -> onMicToggle
+                    },
+                    modifier = Modifier.size(48.dp),
+                    shape = RoundedCornerShape(24.dp),
+                    color = actionColor,
+                    contentColor = if (isSending) {
+                        Color.White
+                    } else MaterialTheme.colorScheme.onPrimary,
+                ) {
+                    Box(contentAlignment = Alignment.Center) {
+                        Icon(
+                            imageVector = when {
+                                isSending -> Icons.Outlined.Stop
+                                text.isNotBlank() -> Icons.Outlined.ArrowUpward
+                                else -> Icons.Outlined.GraphicEq
+                            },
+                            contentDescription = when {
+                                isSending -> stringResource(R.string.a11y_stop_generating)
+                                text.isNotBlank() -> stringResource(R.string.a11y_send_button)
+                                else -> stringResource(R.string.a11y_voice_input)
+                            },
+                            modifier = Modifier.size(25.dp),
+                        )
+                    }
                 }
             }
         }
