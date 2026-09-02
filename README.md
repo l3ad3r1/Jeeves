@@ -1,65 +1,115 @@
-# Jeeves: Your AI Assistant & Butler
+# Jeeves — AI Assistant & Butler
 
-**Jeeves** is a highly capable, autonomous AI assistant tailored for Android, acting as both a proactive productivity suite and a conversational interface. Powered by advanced Cloud LLM connections, Jeeves can organize your life, automate tasks, and converse intelligently.
+**Jeeves** is a private Android super-app: a proactive productivity suite and a
+conversational agent in one APK. It merges the Hermes agent engine with a
+morning-alarm butler and a Markdown notebook, routes each turn to the best
+available model (cloud-first, on-device GGUF fallback), and keeps every secret
+in the Android Keystore.
 
-## Features
+> **Status — v0.17.3 (2026-09-03).** Signed release APKs are attached to each
+> [GitHub release](https://github.com/l3ad3r1/Jeeves/releases). Jeeves shares its
+> engine with the public **Hermes** app through the
+> [`agent-core`](https://github.com/l3ad3r1/agent-core) library (pinned per build
+> in `agent-core.ref`); it keeps its own `com.jeeves.app` identity, branding, and
+> release signing so it installs alongside a standalone Hermes.
 
-### 🎙 Sassy Butler
-Wake up on your own terms. Jeeves acts as an intelligent alarm clock ("Sassy Butler") that greets you with daily updates, customizable honorifics (Sir, Madam, Boss), and dynamic sass levels based on how many times you snooze. 
+---
 
-### 📝 Jotter
-Capture ideas on the fly. Jotter allows you to store quick notes, to-dos, and long-form documents which Jeeves can instantly retrieve and incorporate into his context when answering questions or organizing your schedule.
+## What's in the app
 
-### 🔌 Powerful Integrations
-- **Cloud LLMs:** Connect directly to OpenAI, Anthropic, or custom inference endpoints to power Jeeves' brain.
-- **Local API Server:** Run a local API endpoint right from your phone so that other applications and scripts on your network can interface with Jeeves.
-- **Remote Shell & Docker:** Let Jeeves execute commands via SSH on remote servers to manage deployments, fix servers, or check container statuses right from chat.
-- **Messaging App Hooks:** Jeeves can be configured to plug into Telegram, Discord, and WhatsApp, extending his reach beyond your phone.
+### Agent core (shared with Hermes)
+- **Model routing** — `HybridLlmRouter` ranks configured cloud providers by
+  quality/cost/latency, fails over in order, then falls back to an on-device
+  Llama 3.2 1B (or any `.gguf` you supply) via a pinned `llama.cpp` submodule.
+- **Multi-agent orchestration** — five roles (Conversational, Productivity,
+  Research, Device control, Creative), plan-then-execute with a per-step
+  tool-call loop; deterministic phone commands skip the LLM.
+- **~50 tools** behind two gates (per-role grants + a runtime allow/confirm/deny
+  policy): calendar, alarms, communication, media, navigation, device settings,
+  camera, Home Assistant, web search/fetch, file read/write/patch, shell + Termux
+  (biometric-gated), accessibility screen automation, Kanban, memory, skills,
+  delegation.
+- **Memory & RAG** — sliding-window + long-term semantic store (vector + BM25),
+  daily fact consolidation while charging, document indexing.
+- **Plugins** — in-app JavaScript plugins (`ScriptPluginEngine`, Room-backed),
+  first-party native plugins, and SHA-256-pinned community modules over HTTPS.
+- **Gateways** — Telegram, Discord, Signal, WhatsApp, webhooks, and a local API
+  server other apps on your network can call.
+- **Proactivity** — background heartbeat runs standing orders on a schedule,
+  ambient presence beacon (labelled places only, coordinate discarded), digest
+  and nudges with quiet hours.
+- **Home Assistant** — read/control with a per-category approval model, plus an
+  embedded dashboard (token-seeded WebView + optional Home-screen tile).
+- **Security** — provider keys/tokens AES-256-GCM under a non-exportable Keystore
+  key, TLS enforced, OAuth `state` verified, plugin sandbox with an
+  uncatchable instruction deadline, in-app security-audit panel.
 
-### 🧠 Agentic Memory & Learning
-Jeeves dynamically extracts facts, preferences, and workflows from your conversations. Over time, he creates new **Skills** (reusable logic blocks) and remembers your preferences to provide deeply personalized assistance.
+### Jeeves features
+- **Sassy Butler** — an intelligent alarm clock: daily briefing on wake, honorifics
+  (Sir / Madam / Boss), sass that scales with your snoozes, weather + calendar.
+- **Jotter** — Markdown notes, to-dos, and long-form documents that Jeeves pulls
+  into context automatically.
+- **Self-improvement** — Jeeves reflects on how its skills and agents performed on
+  your device and proposes changes; every change is approved by you and version-
+  tracked for rollback.
+- **Local backups** — memory, skills and config to an encrypted archive on your
+  device; credentials live in a passphrase-protected `secrets.json` inside it.
 
-### Shared modules
+## Removed / not present
 
-Jeeves uses the same verified module repository contract as the public Hermes app. To
-download a module, open **Settings → Features → Modules**, enter the public catalog URL,
-load the catalog, and choose **Download**. HTTPS, catalog schema, artifact size, and
-SHA-256 are checked before the APK is saved privately. The installer and approval flow
-then remain gated by the host's security policy.
+- **Wake word** — removed entirely in v0.17.x (engine + foreground service gone).
+  Hands-free use is the manually-opened Talk mode.
+- **Samsung Knox** — stub, deleted.
+- The older Gist backup and offline session-export paths are retired.
 
-Starter catalog URL: `https://raw.githubusercontent.com/l3ad3r1/hermes-jeeves-modules/main/catalog-v1.json`
+---
 
-Module authors can publish through the [Hermes/Jeeves Modules repository](https://github.com/l3ad3r1/hermes-jeeves-modules);
-its README explains the manifest, service, signing, catalog, and release steps.
+## Getting started
 
-## Getting Started
+1. Install the latest APK from [Releases](https://github.com/l3ad3r1/Jeeves/releases).
+2. Grant permissions as prompted — Jeeves asks only when a feature needs one, and
+   **Settings → Device & security → About, permissions & security** shows every
+   permission as a live toggle.
+3. **Settings → Assistant → Providers** — add your LLM provider and API key
+   (entered in-app, encrypted).
+4. Set your morning alarm from **Sassy Butler** on the Home screen.
 
-1. Download the latest APK from the [Jeeves Releases](https://github.com/l3ad3r1/Jeeves/releases) tab.
-2. Grant the necessary permissions (Jeeves will lazily ask for permissions only when he needs them for a specific feature).
-3. Navigate to **Settings -> Configuration -> Assistant** to set up your LLM provider and API keys.
-4. Set your morning alarm via the **Sassy Butler** feature on the Home screen.
+## Building from source
 
-## Advanced Usage
-
-- **CRON Scheduling**: Instruct Jeeves to perform background tasks (e.g., summarizing news, checking a server) using standard 5-field CRON expressions.
-- **Self-Improvement**: Jeeves reflects on how its skills and agents actually performed on your
-  device and proposes improvements. Every change is gated, needs your approval, and is version
-  history you can roll back. (The older offline session-export path is retired.)
-- **Local Backups**: Back up your memory, skills, and configuration to an encrypted archive on
-  your own device. Credentials travel in a passphrase-protected `secrets.json` inside the archive,
-  never in plaintext. (The older GitHub Gist backup is retired.)
-
-## Building from Source
-
-Ensure you have Android Studio and the Android SDK installed.
 ```bash
-# Clone the repository
-git clone https://github.com/your-username/jeeves.git
+git submodule update --init            # pinned llama.cpp
+./gradlew :app:assembleDebug           # debug APK
 
-# Build the release APK
-./gradlew assembleRelease
+# Release build needs the Vulkan + MinGW toolchain on PATH
+# (JAVA_HOME=JBR, ANDROID_HOME, VULKAN_SDK, mingw64/bin) or the
+# vulkan-shaders-gen host tool fails.
+./gradlew :app:assembleRelease
 ```
 
-The current release line is **v0.16.1**. Hermes and Jeeves share the module contracts
-from the `agent-core` checkout, while the private Jeeves product keeps its own app
-permissions, branding, and release signing.
+| Toolchain | |
+|---|---|
+| Gradle / AGP / Kotlin / KSP | 9.6.1 / 9.1.1 / 2.2.10 / 2.3.5 |
+| JDK | 21 (JetBrains Runtime) |
+| minSdk / targetSdk | 29 / 36 |
+| Native | `llama.cpp` submodule, arm64-v8a |
+
+The code namespace stays `com.hermes.agent`; only the `applicationId` is
+`com.jeeves.app`.
+
+## Advanced usage
+
+- **CRON routines** — schedule background agent tasks with 5-field CRON expressions
+  (Settings → Connections & automation → CRON routines).
+- **Delegate** — one-shot background agent tasks via WorkManager, results on Home.
+- **A/B benchmark** — compare two models on one prompt with live TTFT / tok-s.
+
+See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) and
+[docs/BUGS.md](docs/BUGS.md) for the design and known issues.
+
+## Attribution
+
+Shares the `agent-core` engine with [Hermes](https://github.com/l3ad3r1/Hermes-Agent-Android),
+conceptually aligned with [NousResearch/hermes-agent](https://github.com/NousResearch/hermes-agent)
+(no source taken). Butler alarm lineage: `l3ad3r1/Sassy-Butler-Alarm`; Jotter
+lineage: `l3ad3r1/Octo-Jotter`. Direction: **l3ad3r1**. Build/test assistance:
+**OpenAI Codex** and **Claude**.
