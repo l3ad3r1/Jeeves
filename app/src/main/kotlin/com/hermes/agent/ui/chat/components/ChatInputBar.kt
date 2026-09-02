@@ -321,32 +321,39 @@ fun ChatInputBar(
 
                     Spacer(Modifier.size(4.dp))
 
-                    val actionColor = if (isSending) {
-                        Color(0xFFE5484D) // red stop while Jeeves is replying
-                    } else MaterialTheme.colorScheme.primary
+                    // One shape — a keyboard-return glyph — regardless of
+                    // whether there is text; only the colour shifts.
+                    val hasText = text.isNotBlank()
+                    val actionColor = when {
+                        isSending -> Color(0xFFE5484D) // red stop while Jeeves is replying
+                        hasText -> MaterialTheme.colorScheme.primary
+                        else -> MaterialTheme.colorScheme.surfaceVariant
+                    }
                     Surface(
                         onClick = when {
                             isSending -> onCancel
-                            text.isNotBlank() -> ::submit
+                            hasText -> ::submit
                             else -> onMicToggle
                         },
                         modifier = Modifier.size(44.dp),
                         shape = RoundedCornerShape(22.dp),
                         color = actionColor,
-                        contentColor = if (isSending) {
-                            Color.White
-                        } else MaterialTheme.colorScheme.onPrimary,
+                        contentColor = when {
+                            isSending -> Color.White
+                            hasText -> MaterialTheme.colorScheme.onPrimary
+                            else -> MaterialTheme.colorScheme.onSurfaceVariant
+                        },
                     ) {
                         Box(contentAlignment = Alignment.Center) {
                             Icon(
-                                imageVector = when {
-                                    isSending -> Icons.Outlined.Stop
-                                    text.isNotBlank() -> Icons.AutoMirrored.Outlined.KeyboardReturn
-                                    else -> Icons.Outlined.GraphicEq
+                                imageVector = if (isSending) {
+                                    Icons.Outlined.Stop
+                                } else {
+                                    Icons.AutoMirrored.Outlined.KeyboardReturn
                                 },
                                 contentDescription = when {
                                     isSending -> stringResource(R.string.a11y_stop_generating)
-                                    text.isNotBlank() -> stringResource(R.string.a11y_send_button)
+                                    hasText -> stringResource(R.string.a11y_send_button)
                                     else -> stringResource(R.string.a11y_voice_input)
                                 },
                                 modifier = Modifier.size(23.dp),
