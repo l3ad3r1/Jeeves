@@ -85,6 +85,9 @@ class SettingsViewModelCloudModelsTest {
             localLlmManager = localManager,
             oauthManager = mockk<com.hermes.agent.data.oauth.OAuthManager>(relaxed = true),
             oauthCallbackReceiver = com.hermes.agent.data.oauth.OAuthCallbackReceiver(),
+            heartbeatScheduler = mockk<com.hermes.agent.work.HeartbeatScheduler>(relaxed = true),
+            presenceBeaconScheduler = mockk<com.hermes.agent.work.PresenceBeaconScheduler>(relaxed = true),
+            presenceManager = mockk<com.hermes.agent.data.presence.PresenceManager>(relaxed = true),
         )
         advanceUntilIdle()
 

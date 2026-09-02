@@ -74,6 +74,15 @@ class HermesApp : Application(), Configuration.Provider {
     lateinit var mcpManagerProvider: Provider<McpManager>
 
     @Inject
+    lateinit var settingsRepositoryProvider: Provider<com.hermes.agent.domain.settings.SettingsRepository>
+
+    @Inject
+    lateinit var heartbeatSchedulerProvider: Provider<com.hermes.agent.work.HeartbeatScheduler>
+
+    @Inject
+    lateinit var presenceBeaconSchedulerProvider: Provider<com.hermes.agent.work.PresenceBeaconScheduler>
+
+    @Inject
     lateinit var features: Set<@JvmSuppressWildcards AgentFeature>
 
     private val applicationScope = CoroutineScope(Dispatchers.Default)
@@ -105,6 +114,8 @@ class HermesApp : Application(), Configuration.Provider {
             // restore applies them inline, so this is just the sweep.
             runCatching { encryptedSettingsProvider.get().clearUnreadableSecrets() }
                 .onFailure { Timber.tag("Settings").w(it, "secret sweep unavailable") }
+
+            scheduleAmbientWorkers()
 
             // The Gist backup is gone, but an install that used it still holds
             // the GitHub token it was given. Deleting the feature does not
@@ -235,4 +246,22 @@ class HermesApp : Application(), Configuration.Provider {
             request,
         )
     }
+    /**
+     * Bring the heartbeat and presence beacon in line with their settings on every
+     * cold start. WorkManager survives reboots, but a periodic worker that is never
+     * enqueued in the first place never runs at all — which is exactly what left
+     * both features dead until now. Both default to off, so on a fresh install this
+     * cancels nothing and schedules nothing.
+     */
+    private fun scheduleAmbientWorkers() {
+        applicationScope.launch {
+            runCatching {
+                val settings = settingsRepositoryProvider.get().current()
+                heartbeatSchedulerProvider.get()
+                    .updateSchedule(settings.heartbeatEnabled, settings.heartbeatIntervalMinutes)
+                presenceBeaconSchedulerProvider.get().updateSchedule(settings.presenceEnabled)
+            }.onFailure { Timber.tag("HermesApp").w(it, "ambient worker scheduling failed") }
+        }
+    }
+
 }

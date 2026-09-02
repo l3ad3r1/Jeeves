@@ -15,6 +15,7 @@ import com.hermes.agent.domain.agent.OrchestratorEvent
 import com.hermes.agent.domain.agent.ExecutionOrigin
 import com.hermes.agent.domain.agent.RoutingResult
 import com.hermes.agent.domain.model.AgentRole
+import com.hermes.agent.domain.model.StandingInstructions
 import com.hermes.agent.domain.model.ExecutionPlan
 import com.hermes.agent.domain.model.ExecutionStep
 import com.hermes.agent.domain.ledger.ActivityLedger
@@ -100,6 +101,7 @@ class OrchestratorImpl @Inject constructor(
     private val ragPipeline: com.hermes.agent.domain.rag.RagPipeline,
     private val executionPlanRepository: ExecutionPlanRepository,
     private val activityLedger: ActivityLedger,
+    private val settingsRepository: com.hermes.agent.domain.settings.SettingsRepository,
 ) : Orchestrator {
 
     // Supervisor scope for fire-and-forget post-turn learning tasks.
@@ -316,6 +318,14 @@ class OrchestratorImpl @Inject constructor(
                 }
             } else ""
 
+            // Standing instructions: user-authored guidance that applies to every
+            // turn (OpenClaw docs/automation/index.md). Screened on the way in —
+            // it shares a context window with tool output, so it must not be able
+            // to forge a role or a tool call. Context only: it grants nothing.
+            val standingBlock = StandingInstructions.promptBlock(
+                runCatching { settingsRepository.current().standingInstructions }.getOrDefault(""),
+            )
+
             val toolInstruction = if (tools.isNotEmpty()) ToolCallPrompt.INSTRUCTION else ""
 
             // Appended to the base prompt, never substituted for it: the base
@@ -330,7 +340,7 @@ class OrchestratorImpl @Inject constructor(
                 add(
                     LlmMessage(
                         role = "system",
-                        content = agent.systemPrompt + supplementalBlock + memoryBlock +
+                        content = agent.systemPrompt + standingBlock + supplementalBlock + memoryBlock +
                             skillBlock + previousContext + toolInstruction + deferredBlock,
                     ),
                 )
