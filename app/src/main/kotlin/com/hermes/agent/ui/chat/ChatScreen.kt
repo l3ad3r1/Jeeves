@@ -183,6 +183,8 @@ fun ChatScreen(
                             onSendWithAttachment = { text, uri, mime ->
                                 viewModel.sendMessage(text, uri, mime)
                             },
+                            reasoningEffort = uiState.reasoningEffort,
+                            onReasoningEffortChange = viewModel::setReasoningEffort,
                         )
                     }
                 }

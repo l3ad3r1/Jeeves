@@ -55,11 +55,14 @@ fun ChatInputBar(
     modifier: Modifier = Modifier,
     prefillText: String = "",
     onSendWithAttachment: ((String, String?, String?) -> Unit)? = null,
+    reasoningEffort: String = "medium",
+    onReasoningEffortChange: ((String) -> Unit)? = null,
 ) {
     val context = androidx.compose.ui.platform.LocalContext.current
     var text by remember(prefillText) { mutableStateOf(prefillText) }
     var attachedImageUri by remember { mutableStateOf<android.net.Uri?>(null) }
     var quickActionsOpen by remember { mutableStateOf(false) }
+    var effortMenuOpen by remember { mutableStateOf(false) }
 
     val imagePickerLauncher = androidx.activity.compose.rememberLauncherForActivityResult(
         contract = androidx.activity.result.contract.ActivityResultContracts.GetContent(),
