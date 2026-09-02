@@ -10,6 +10,7 @@ import com.hermes.agent.data.voice.VoiceInputManager
 import com.hermes.agent.data.voice.VoiceOutputEvent
 import com.hermes.agent.data.voice.VoiceOutputManager
 import com.hermes.agent.domain.settings.SettingsRepository
+import com.hermes.agent.domain.settings.UserSettings
 import com.hermes.agent.domain.agent.ExecutionOrigin
 import com.hermes.agent.domain.agent.OrchestratorEvent
 import com.hermes.agent.domain.repository.ChatRepository
@@ -113,7 +114,11 @@ class ChatViewModel @Inject constructor(
             // resets), so it's merged in from its own store here.
             state.copy(todos = todos.map { TodoItem(it.id, it.content, it.status) })
         }.combine(settingsRepository.observe()) { state, settings ->
-            state.copy(showToolCalls = settings.showToolCalls, reasoningEffort = settings.reasoningEffort)
+            state.copy(
+                showToolCalls = settings.showToolCalls,
+                reasoningEffort = settings.reasoningEffort,
+                activeModel = state.activeModel.ifBlank { settings.displayModelName() },
+            )
         }.stateIn(
             scope = viewModelScope,
             started = SharingStarted.WhileSubscribed(5_000),
@@ -143,8 +148,19 @@ class ChatViewModel @Inject constructor(
         )
         _inputPrefill.value = ""
 
+        // Name a fresh conversation after its opening message.
+        val isFirstTurn = uiState.value.messages.isEmpty()
+        val titleIsDefault = uiState.value.title.isBlank() || uiState.value.title == "New conversation"
+
         sendJob = viewModelScope.launch {
             try {
+                if (isFirstTurn && titleIsDefault && trimmed.isNotEmpty()) {
+                    val firstLine = trimmed.lineSequence().firstOrNull { it.isNotBlank() }?.trim().orEmpty()
+                    val autoTitle = if (firstLine.length > 60) firstLine.take(59).trimEnd() + "…" else firstLine
+                    if (autoTitle.isNotEmpty()) {
+                        runCatching { conversationRepository.renameConversation(conversationId, autoTitle) }
+                    }
+                }
                 chatRepository.sendMessageOrchestrated(
                     conversationId = conversationId,
                     content = trimmed,
@@ -396,6 +412,13 @@ private fun com.hermes.agent.domain.model.ExecutionPlan.toSummary(): PlanSummary
         ?: summaries.indexOfFirst { it.status == StepStatus.PENDING }.takeIf { it >= 0 }
         ?: summaries.lastIndex.coerceAtLeast(0)
     return PlanSummary(summaries, currentIndex)
+}
+
+/** Best-effort label for the model the router will most likely use this turn. */
+private fun UserSettings.displayModelName(): String {
+    cloudProviderProfiles.firstOrNull { it.enabled && it.apiKey.isNotBlank() }?.let { return it.model }
+    if (cloudEnabled && cloudApiKey.isNotBlank()) return cloudModel
+    return "On-device"
 }
 
 private data class ChatEphemeralState(
