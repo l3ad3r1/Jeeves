@@ -8,7 +8,8 @@ import android.widget.Toast
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -40,7 +41,7 @@ import com.jeeves.core.theme.GeistMono
  * Settings → Logs. Shows the captured app log and lets the user copy or share
  * it (to paste into a bug report), refresh, or clear it.
  */
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
 fun LogScreen(
     onBack: () -> Unit,
@@ -72,19 +73,15 @@ fun LogScreen(
                 .padding(12.dp),
             verticalArrangement = Arrangement.spacedBy(10.dp),
         ) {
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
-                Button(onClick = { copyToClipboard(context, logs) }, modifier = Modifier.weight(1f)) {
-                    Text("Copy")
-                }
-                OutlinedButton(onClick = { shareLogs(context, logs) }, modifier = Modifier.weight(1f)) {
-                    Text("Share")
-                }
-                OutlinedButton(onClick = viewModel::refresh, modifier = Modifier.weight(1f)) {
-                    Text("Refresh")
-                }
-                OutlinedButton(onClick = viewModel::clear, modifier = Modifier.weight(1f)) {
-                    Text("Clear")
-                }
+            FlowRow(
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+                modifier = Modifier.fillMaxWidth(),
+            ) {
+                Button(onClick = { copyToClipboard(context, logs) }) { Text("Copy") }
+                OutlinedButton(onClick = { shareLogs(context, logs) }) { Text("Share") }
+                OutlinedButton(onClick = viewModel::refresh) { Text("Refresh") }
+                OutlinedButton(onClick = viewModel::clear) { Text("Clear") }
             }
             Text(
                 text = logs,

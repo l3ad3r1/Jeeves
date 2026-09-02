@@ -49,22 +49,20 @@ fun ExperimentScreen(viewModel: ExperimentViewModel = hiltViewModel()) {
                 maxLines = 6,
             )
 
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                OutlinedTextField(
-                    value = state.modelA,
-                    onValueChange = viewModel::setModelA,
-                    label = { Text("Model A") },
-                    singleLine = true,
-                    modifier = Modifier.weight(1f),
-                )
-                OutlinedTextField(
-                    value = state.modelB,
-                    onValueChange = viewModel::setModelB,
-                    label = { Text("Model B") },
-                    singleLine = true,
-                    modifier = Modifier.weight(1f),
-                )
-            }
+            OutlinedTextField(
+                value = state.modelA,
+                onValueChange = viewModel::setModelA,
+                label = { Text("Model A") },
+                singleLine = true,
+                modifier = Modifier.fillMaxWidth(),
+            )
+            OutlinedTextField(
+                value = state.modelB,
+                onValueChange = viewModel::setModelB,
+                label = { Text("Model B") },
+                singleLine = true,
+                modifier = Modifier.fillMaxWidth(),
+            )
 
             Button(
                 onClick = viewModel::run,

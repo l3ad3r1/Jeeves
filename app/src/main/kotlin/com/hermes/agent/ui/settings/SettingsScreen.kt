@@ -31,7 +31,6 @@ import androidx.compose.material.icons.outlined.Schedule
 import androidx.compose.material.icons.outlined.Science
 import androidx.compose.material.icons.outlined.SettingsEthernet
 import androidx.compose.material.icons.outlined.Stars
-import androidx.compose.material.icons.outlined.Tune
 import androidx.compose.material.icons.outlined.Widgets
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Scaffold
@@ -65,8 +64,7 @@ fun SettingsScreen(
             SettingsGroup(
                 "Assistant & appearance",
                 listOf(
-                    NavItem(Icons.Outlined.AccountCircle, "Assistant", "Providers, local model, reasoning effort, voice", nav("settings_assistant")),
-                    NavItem(Icons.Outlined.Tune, "Providers", "Cloud API keys, models, and automatic fallback", nav("settings_providers")),
+                    NavItem(Icons.Outlined.AccountCircle, "Assistant", "Providers, local model, voice, standing instructions", nav("settings_assistant")),
                     NavItem(Icons.Outlined.ColorLens, "Appearance", "Theme, dark mode, and accent colour", nav("settings_appearance")),
                     NavItem(Icons.Outlined.Face, "Assistant face", "Body shape, colour, and resting expression", nav("settings_bot_face")),
                     NavItem(Icons.Outlined.Alarm, "Daybook", "Wake-ups, weather & calendar", nav("settings_alarms")),
