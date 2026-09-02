@@ -54,14 +54,6 @@ in the Android Keystore.
   tracked for rollback.
 - **Local backups** — memory, skills and config to an encrypted archive on your
   device; credentials live in a passphrase-protected `secrets.json` inside it.
-
-## Removed / not present
-
-- **Wake word** — removed entirely in v0.17.x (engine + foreground service gone).
-  Hands-free use is the manually-opened Talk mode.
-- **Samsung Knox** — stub, deleted.
-- The older Gist backup and offline session-export paths are retired.
-
 ---
 
 ## Getting started
