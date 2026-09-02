@@ -21,6 +21,10 @@
             <category android:name="android.intent.category.LAUNCHER" />
         </intent>
         <package android:name="com.termux" />
+        <!-- Lets SpeechRecognizer resolve an on-device recognition service (Android 11+). -->
+        <intent>
+            <action android:name="android.speech.RecognitionService" />
+        </intent>
     </queries>
 
     <uses-permission android:name="android.permission.INTERNET" />

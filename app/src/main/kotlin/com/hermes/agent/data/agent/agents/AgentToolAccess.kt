@@ -31,14 +31,15 @@ internal object AgentToolAccess {
 
     private val GRANTS: Map<AgentRole, RoleGrant> = mapOf(
         AgentRole.CONVERSATIONAL to RoleGrant(
-            categories = setOf("information", "memory", "productivity", "communication", "creative", "device", "system", "automation", "vision", "files", "mcp"),
+            categories = setOf("information", "memory", "productivity", "communication", "creative", "vision", "files", "mcp"),
             capabilities = setOf(
                 "common", "time", "web", "conversation_search", "calculator", "notification",
                 "notes", "device_alarm", "notes_and_reminders", "navigation", "phone", "contacts",
                 "media", "device_control", "skills", "user_memory", "scheduler", "shell", "termux",
                 "todo", "voice", "clarify", "delegate", "media_generation", "app_automation", "documents", "kanban",
                 "bookmarks", "mood", "home_assistant", "vision", "files", "mcp", "tool_search",
-                "skills_hub", "usage_insights",
+                "skills_hub", "usage_insights", "camera", "notifications_read", "notifications_post",
+                "standing_orders", "presence",
             ),
             excludedCapabilities = setOf("calendar", "device_settings"),
         ),
@@ -49,7 +50,9 @@ internal object AgentToolAccess {
                 "skills", "user_memory", "scheduler", "todo", "clarify", "delegate", "notification",
                 "phone", "contacts", "navigation", "documents", "notes_and_reminders", "kanban",
                 "bookmarks", "mood", "vision", "files", "mcp", "tool_search", "skills_hub", "usage_insights",
+                "notifications_read", "notifications_post", "presence",
             ),
+            excludedCapabilities = setOf("camera", "standing_orders"),
         ),
         AgentRole.RESEARCH to RoleGrant(
             capabilities = setOf(
@@ -57,14 +60,16 @@ internal object AgentToolAccess {
                 "calculator", "delegate", "bookmarks", "vision", "mcp", "tool_search",
                 "skills_hub", "usage_insights",
             ),
+            excludedCapabilities = setOf("camera", "standing_orders", "notifications_read", "notifications_post"),
         ),
         AgentRole.DEVICE_CONTROL to RoleGrant(
-            categories = setOf("automation", "system", "vision"),
+            categories = setOf("vision"),
             capabilities = setOf(
                 "common", "device_settings", "time", "user_memory", "shell", "termux", "voice",
                 "app_automation", "device_alarm", "navigation", "media", "device_control",
-                "phone", "contacts", "home_assistant", "vision",
+                "phone", "contacts", "home_assistant", "vision", "camera",
             ),
+            excludedCapabilities = setOf("standing_orders", "notifications_read", "notifications_post"),
         ),
         AgentRole.CREATIVE to RoleGrant(
             capabilities = setOf(
@@ -72,6 +77,7 @@ internal object AgentToolAccess {
                 "media_generation", "web", "voice", "creative", "bookmarks", "vision",
                 "skills_hub", "usage_insights",
             ),
+            excludedCapabilities = setOf("camera", "standing_orders", "notifications_read", "notifications_post"),
         ),
     )
 

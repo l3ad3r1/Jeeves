@@ -9,7 +9,27 @@ The base is the Hermes Agent app (`com.hermes.agent` namespace), imported here a
 repo. All three apps are merged and shipping (`:app` + `:feature:jotter` + `:feature:butler`).
 **Published:** GitHub remote `l3ad3r1/jeeves`, releases v0.9.0 through v0.9.4 live.
 
-## RELEASED: v0.17.1 (2026-09-02) — Release Group E: OpenClaw Notifications, Presence & Heartbeat Automation
+## v0.17.2 (2026-09-02) — OpenClaw port remediation (first shipped build of the OpenClaw work)
+
+v0.17.0 and v0.17.1 were built but **never released to GitHub** — an audit of the
+Hermes-side port found unmet security constraints. v0.17.2 mirrors the Hermes v0.11.2
+remediation (see `Hermes-Agent-Android/docs/ANTIGRAVITY-OPENCLAW-REMEDIATION.md`):
+
+- **B1** `NotificationContentScreen` between `NotificationGateway` and `read_notifications`
+  — drops injection-pattern notifications, truncates 120/500, excludes own package.
+- **B2** `requiresConfirmation = true` on `take_photo` / `post_notification` /
+  `standing_orders`; `take_photo` + `camera_capture` in `NEVER_AUTONOMOUS`.
+- **B3** `latitude` / `longitude` dropped from `presence_logs`; entity + DAO moved to
+  `core:persistence`; `MIGRATION_22_23` + schema `23.json` + migration test, this app's DB.
+- **B4** capability isolation in `AgentToolAccess.kt` (`camera`, `notifications_read`,
+  `notifications_post`, `presence`, `standing_orders`) with an `AgentToolAccessTest` guard.
+- **S1** `WakeWordService` does real keyword spotting via `SpeechRecognizer`
+  (on-device / offline-preferred) matching trigger phrases — replacing the audio-energy
+  threshold. Stub `.kws` assets removed; manifest declares the `RecognitionService` query.
+- **S2** `PresenceTool` returns a compact coordinate-free `{ place, motion, power, idle_minutes }`.
+- Unit suites green: agent-core core modules + Jeeves `:app`.
+
+## BUILT, NOT RELEASED: v0.17.1 (2026-09-02) — Release Group E: OpenClaw Notifications, Presence & Heartbeat Automation
 - Bumped to `v0.17.1` (versionCode 97). Release APK built and signed with SHA-256 `99255c31…`.
 - **Phase 4: Notifications Capability**
   - Added `NotificationGateway`, `post_notification` tool, and `read_notifications` tool in `core:tools`.
@@ -21,7 +41,7 @@ repo. All three apps are merged and shipping (`:app` + `:feature:jotter` + `:fea
   - Added `StandingOrder` domain model, `StandingOrdersTool` (`standing_orders`), and prompt mentions.
   - Added `HeartbeatWorker` and `HeartbeatScheduler` for background proactive evaluation.
 
-## RELEASED: v0.17.0 (2026-09-02) — Release Group D: OpenClaw Wake Word, Talk Mode & Camera
+## BUILT, NOT RELEASED: v0.17.0 (2026-09-02) — Release Group D: OpenClaw Wake Word, Talk Mode & Camera
 - Bumped to `v0.17.0` (versionCode 96). Release APK built and signed with SHA-256 `99255c31…`.
 - **Phase 1: Wake Word ("Hey Jeeves" & "Hey Hermes")**
   - Ported Porcupine/Sherpa wake word detector with `WakeWordSettings`, `WakeWordService`, `WakeWordBootReceiver`, and keyword acoustic model assets.

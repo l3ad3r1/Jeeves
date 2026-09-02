@@ -20,7 +20,7 @@ class WakeWordServiceTest {
 
     @Test
     fun wakeWordMatchingAndRouting_resolvesTargetAgent() {
-        val triggers = listOf("Hey Jeeves", "Take Note")
+        val triggers = listOf("Hey Jeeves", "Hey Hermes", "Take Note")
         val rules = mapOf("take note" to "productivity")
 
         val matched = WakeWordConfig.matchTrigger("hey jeeves what time is it", triggers)
@@ -45,5 +45,26 @@ class WakeWordServiceTest {
         val normalized = WakeWordConfig.normalizeTriggers(triggers)
         assertEquals(32, normalized.size)
         assertEquals("hey jeeves", normalized[0])
+    }
+
+    @Test
+    fun `evaluate matches a trigger phrase inside a transcript hypothesis and routes it`() {
+        val triggers = listOf("Hey Jeeves", "Take Note")
+        val rules = mapOf("take note" to "productivity")
+
+        // The recogniser returns several ranked hypotheses; the second one carries the trigger.
+        val hypotheses = listOf("hey cleaves", "hey jeeves what's the weather", "he cheaves")
+        val match = WakeWordService.evaluate(hypotheses, triggers, rules)
+        assertEquals("Hey Jeeves" to "conversational", match)
+
+        val routed = WakeWordService.evaluate(listOf("please take note of this"), triggers, rules)
+        assertEquals("Take Note" to "productivity", routed)
+    }
+
+    @Test
+    fun `evaluate returns null when no hypothesis contains a trigger`() {
+        val triggers = listOf("Hey Jeeves")
+        assertNull(WakeWordService.evaluate(listOf("start listening now", "what time is it"), triggers, emptyMap()))
+        assertNull(WakeWordService.evaluate(emptyList(), triggers, emptyMap()))
     }
 }
