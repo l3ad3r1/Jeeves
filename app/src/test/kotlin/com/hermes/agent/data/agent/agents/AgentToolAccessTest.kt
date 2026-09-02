@@ -197,21 +197,14 @@ class AgentToolAccessTest {
         assertTrue("Conversational agent must reach runtime plugin tool 'weather_get'", convTools.contains("weather_get"))
     }
 
-    /**
-     * Step 3 of the tool-wiring rule: registering and granting a tool is not enough — the
-     * persona prompt must name it, or the model has no idea when to reach for it.
-     */
+    /** ConversationalAgent and ProductivityAgent must reach the cross-feature tools. */
     @Test
-    fun `agents that are granted the cross-feature tools also advertise them in the prompt`() {
+    fun `agents are granted the cross-feature tools`() {
         val registry = sampleRegistry()
         for (agent in listOf(ConversationalAgent(), ProductivityAgent())) {
             val granted = agent.availableTools(registry).map { it.name }
             for (tool in listOf("create_note", "set_alarm")) {
                 assertTrue("${agent.role} is not granted '$tool'", granted.contains(tool))
-                assertTrue(
-                    "${agent.role} grants '$tool' but never mentions it in its system prompt",
-                    agent.systemPrompt.contains(tool),
-                )
             }
         }
     }
@@ -267,27 +260,9 @@ class AgentToolAccessTest {
         assertFalse("presence NOT in CREATIVE", creative.contains("presence"))
     }
 
-    @Test
-    fun `each new tool name appears in prompt of every role granted it`() {
-        val convPrompt = ConversationalAgent().systemPrompt
-        val prodPrompt = ProductivityAgent().systemPrompt
-        val devPrompt = DeviceControlAgent().systemPrompt
-
-        // Conversational
-        assertTrue("take_photo in conv prompt", convPrompt.contains("take_photo"))
-        assertTrue("read_notifications in conv prompt", convPrompt.contains("read_notifications"))
-        assertTrue("post_notification in conv prompt", convPrompt.contains("post_notification"))
-        assertTrue("standing_orders in conv prompt", convPrompt.contains("standing_orders"))
-        assertTrue("presence in conv prompt", convPrompt.contains("presence"))
-
-        // Productivity
-        assertTrue("read_notifications in prod prompt", prodPrompt.contains("read_notifications"))
-        assertTrue("post_notification in prod prompt", prodPrompt.contains("post_notification"))
-        assertTrue("presence in prod prompt", prodPrompt.contains("presence"))
-        assertFalse("standing_orders not in prod prompt", prodPrompt.contains("standing_orders"))
-
-        // Device Control
-        assertTrue("take_photo in dev prompt", devPrompt.contains("take_photo"))
-    }
+    // Removed `each new tool name appears in prompt of every role granted it`:
+    // agent prompts no longer re-list tools (they arrive as a function schema per
+    // turn), and `openclaw tool grants are strictly scoped` above already covers
+    // "which role reaches which tool" against the registry — the real contract.
 }
 
