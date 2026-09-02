@@ -813,6 +813,14 @@ class SettingsViewModel @Inject constructor(
         settingsRepository.setHomeAssistantToken(token)
     }
 
+    fun setHomeAssistantDashboardPath(path: String) = viewModelScope.launch {
+        settingsRepository.setHomeAssistantDashboardPath(path)
+    }
+
+    fun setHomeAssistantDashboardEnabled(enabled: Boolean) = viewModelScope.launch {
+        settingsRepository.setHomeAssistantDashboardEnabled(enabled)
+    }
+
     fun setFilesRootUri(uri: String) = viewModelScope.launch {
         settingsRepository.setFilesRootUri(uri)
     }

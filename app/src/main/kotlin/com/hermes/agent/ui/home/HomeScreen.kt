@@ -45,6 +45,7 @@ import com.jeeves.core.theme.GeistMono
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Chat
 import androidx.compose.material.icons.filled.CalendarMonth
+import androidx.compose.material.icons.filled.Dashboard
 import androidx.compose.material.icons.filled.EditNote
 import androidx.compose.material.icons.filled.Forum
 import androidx.compose.material3.Icon
@@ -64,8 +65,10 @@ fun HomeScreen(
     onOpenConversations: () -> Unit,
     onNewChat: (conversationId: String) -> Unit,
     onOpenConnections: () -> Unit,
+    onOpenHaDashboard: () -> Unit = {},
     viewModel: HomeViewModel = hiltViewModel(),
 ) {
+    val showHa by viewModel.showHaDashboard.collectAsStateWithLifecycle()
     val threads by viewModel.recentThreads.collectAsStateWithLifecycle()
     val model by viewModel.modelName.collectAsStateWithLifecycle()
     val presence by viewModel.presence.collectAsStateWithLifecycle()
@@ -188,7 +191,18 @@ fun HomeScreen(
                 modifier = Modifier.weight(1f),
                 onClick = onOpenConnections,
             )
-            repeat(tileColumns - 2) { Spacer(Modifier.weight(1f)) }
+            if (showHa) {
+                QuickAction(
+                    title = "Home Assistant",
+                    subtitle = "Smart-home dashboard",
+                    icon = Icons.Filled.Dashboard,
+                    accent = tileAccent(themeStyle, scheme, 3, accentSeed),
+                    themeStyle = themeStyle,
+                    modifier = Modifier.weight(1f),
+                    onClick = onOpenHaDashboard,
+                )
+            }
+            repeat(tileColumns - (if (showHa) 3 else 2)) { Spacer(Modifier.weight(1f)) }
         }
         }
 

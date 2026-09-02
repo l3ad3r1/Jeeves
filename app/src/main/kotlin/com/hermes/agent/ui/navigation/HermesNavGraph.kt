@@ -183,7 +183,11 @@ fun HermesNavGraph(
                     onOpenConversations = { navController.navigate(TopLevelDestination.CONVERSATIONS.route) },
                     onNewChat = { navController.navigate(TopLevelDestination.chatRoute(it)) },
                     onOpenConnections = { navController.navigate(TopLevelDestination.CONNECT.route) },
+                    onOpenHaDashboard = { navController.navigate("ha_dashboard") },
                 )
+            }
+            composable("ha_dashboard") {
+                com.hermes.agent.ui.dashboard.HaDashboardScreen(onBack = { navController.popBackStack() })
             }
             composable(TopLevelDestination.CONVERSATIONS.route) {
                 SessionBrowserScreen(
