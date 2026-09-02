@@ -336,14 +336,16 @@ class OrchestratorImpl @Inject constructor(
                 ?.let { "\n\n## Learned operating notes\n${it.content.trim()}" }
                 ?: ""
 
+            // Two system messages so provider prompt caching (OpenAI/Gemini/DeepSeek
+            // do it automatically on a stable prefix) can hit the big stable chunk —
+            // tool schema + persona + standing/learned notes + tool-call format —
+            // every turn. Per-turn recall (memory, skill match, prior-agent context)
+            // goes in a second system block that the cache skips.
+            val stableSystem = agent.systemPrompt + standingBlock + supplementalBlock + toolInstruction
+            val turnContext = memoryBlock + skillBlock + previousContext + deferredBlock
             val llmMessages = buildList {
-                add(
-                    LlmMessage(
-                        role = "system",
-                        content = agent.systemPrompt + standingBlock + supplementalBlock + memoryBlock +
-                            skillBlock + previousContext + toolInstruction + deferredBlock,
-                    ),
-                )
+                add(LlmMessage(role = "system", content = stableSystem))
+                if (turnContext.isNotBlank()) add(LlmMessage(role = "system", content = turnContext))
                 addAll(recentMessages)
                 if (recentMessages.none { it.role == "user" && it.content == userMessage }) {
                     add(LlmMessage(role = "user", content = userMessage))
