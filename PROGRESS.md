@@ -9,7 +9,29 @@ The base is the Hermes Agent app (`com.hermes.agent` namespace), imported here a
 repo. All three apps are merged and shipping (`:app` + `:feature:jotter` + `:feature:butler`).
 **Published:** GitHub remote `l3ad3r1/jeeves`, releases v0.9.0 through v0.9.4 live.
 
-## v0.17.2 (2026-09-02) — OpenClaw port remediation (first shipped build of the OpenClaw work)
+## BLOCKER (2026-09-02) — functional audit: 3 of 6 OpenClaw phases are not wired
+
+A second audit, run after the v0.11.2 security remediation, found that **passing unit
+tests were masking missing runtime wiring**. Each affected phase has a complete class,
+a green test, and no caller. `docs/FEATURE_GAP_ANALYSIS.md` has the per-phase detail.
+**Do not release v0.17.2 / v0.11.2 until these are closed.**
+
+| Phase | Verdict |
+|---|---|
+| 1 Wake word | **PARTIAL** — detection is real after v0.17.2, but `ACTION_WAKE_WORD_TRIGGERED` has no consumer. `MainActivity` never handles the intent, so a match starts no voice turn. |
+| 2 Talk mode | **NOT WIRED** — nothing navigates to route `"talk"`. `startListeningTurn()` starts no recogniser and `onUserSpoke()` has zero callers, so the loop never leaves LISTENING. Barge-in is a UI button; `VoiceActivityDetector` is dead code used only by its own test. |
+| 3 Camera | **WORKING** — real Camera2 capture, confirmation-gated. |
+| 4 Notifications | **WORKING** — `NotificationMonitorService` populates the gateway; screening is real. Gap: the designed second in-app opt-in ("let the agent read my notifications") does not exist; the OS listener permission is the only gate. |
+| 5 Presence | **NOT WIRED** — nothing writes `locationName` / `activity` (no geofences, no Activity Recognition) and the only caller of `captureSnapshot()` is the heartbeat, which never runs. `presence` returns constants: `place="unknown"`, `motion="UNKNOWN"`, `idle_minutes=0`. |
+| 6 Heartbeat + standing orders | **NOT WIRED** — `HeartbeatScheduler` has no callers, so the worker is never enqueued. Standing orders are persisted and tool-editable but **never injected into any system prompt**. |
+
+Also missing: settings UI for heartbeat, standing orders and presence (only the wake-word
+toggle exists).
+
+The Block B device pass (`Hermes-Agent-Android/docs/ANTIGRAVITY-OPENCLAW-PORT-HANDOFF.md`) would have caught
+every one of these. It remains the gate before any OpenClaw release.
+
+## v0.17.2 (2026-09-02) — OpenClaw port remediation (security only; see the blocker above)
 
 v0.17.0 and v0.17.1 were built but **never released to GitHub** — an audit of the
 Hermes-side port found unmet security constraints. v0.17.2 mirrors the Hermes v0.11.2
