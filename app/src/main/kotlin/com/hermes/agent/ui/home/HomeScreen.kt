@@ -48,6 +48,7 @@ import androidx.compose.material.icons.filled.CalendarMonth
 import androidx.compose.material.icons.filled.Dashboard
 import androidx.compose.material.icons.filled.EditNote
 import androidx.compose.material.icons.filled.Forum
+import androidx.compose.material.icons.filled.Markunread
 import androidx.compose.material3.Icon
 import com.hermes.agent.ui.theme.alt.OutlinedSpaceTile
 import com.hermes.agent.ui.theme.alt.SpaceTile
@@ -66,6 +67,7 @@ fun HomeScreen(
     onNewChat: (conversationId: String) -> Unit,
     onOpenConnections: () -> Unit,
     onOpenHaDashboard: () -> Unit = {},
+    onOpenPostOffice: () -> Unit = {},
     viewModel: HomeViewModel = hiltViewModel(),
 ) {
     val showHa by viewModel.showHaDashboard.collectAsStateWithLifecycle()
@@ -191,6 +193,15 @@ fun HomeScreen(
                 modifier = Modifier.weight(1f),
                 onClick = onOpenConnections,
             )
+            QuickAction(
+                title = "Post Office",
+                subtitle = "Cross-agent mail",
+                icon = Icons.Filled.Markunread,
+                accent = tileAccent(themeStyle, scheme, 0, accentSeed),
+                themeStyle = themeStyle,
+                modifier = Modifier.weight(1f),
+                onClick = onOpenPostOffice,
+            )
             if (showHa) {
                 QuickAction(
                     title = "Home Assistant",
@@ -202,7 +213,7 @@ fun HomeScreen(
                     onClick = onOpenHaDashboard,
                 )
             }
-            repeat(tileColumns - (if (showHa) 3 else 2)) { Spacer(Modifier.weight(1f)) }
+            repeat((tileColumns - (if (showHa) 4 else 3)).coerceAtLeast(0)) { Spacer(Modifier.weight(1f)) }
         }
         }
 
