@@ -1,5 +1,7 @@
 package com.hermes.agent.ui.chat.components
 
+import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
@@ -12,6 +14,7 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.ui.draw.clip
 import androidx.compose.foundation.text.BasicTextField
@@ -70,6 +73,7 @@ internal fun shortModelName(raw: String): String =
  * beneath it — attachments and microphone on the left, the shortened model name
  * and a reasoning-effort button (with a slider inside) on the right, then send.
  */
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun ChatInputBar(
     isSending: Boolean,
@@ -79,6 +83,7 @@ fun ChatInputBar(
     onMicToggle: () -> Unit,
     onVoiceChatToggle: () -> Unit,
     modifier: Modifier = Modifier,
+    voiceChatActive: Boolean = false,
     prefillText: String = "",
     onSendWithAttachment: ((String, String?, String?) -> Unit)? = null,
     reasoningEffort: String = "medium",
@@ -227,14 +232,29 @@ fun ChatInputBar(
                         }
                     }
 
-                    IconButton(
-                        onClick = onMicToggle,
-                        modifier = Modifier.size(40.dp),
+                    // Tap runs the hands-free session: Jeeves listens, answers
+                    // aloud, then listens again with nothing touched. Long-press
+                    // is plain dictation — one utterance typed into the field —
+                    // which is the only way to speak a message without also being
+                    // answered out loud.
+                    Box(
+                        modifier = Modifier
+                            .size(40.dp)
+                            .clip(CircleShape)
+                            .combinedClickable(
+                                onClick = onVoiceChatToggle,
+                                onLongClick = onMicToggle,
+                            ),
+                        contentAlignment = Alignment.Center,
                     ) {
                         Icon(
                             imageVector = Icons.Outlined.Mic,
-                            contentDescription = stringResource(R.string.a11y_voice_input),
-                            tint = if (isListening) {
+                            contentDescription = if (voiceChatActive) {
+                                stringResource(R.string.a11y_end_voice_chat)
+                            } else {
+                                stringResource(R.string.a11y_start_voice_chat)
+                            },
+                            tint = if (isListening || voiceChatActive) {
                                 MaterialTheme.colorScheme.error
                             } else MaterialTheme.colorScheme.onSurface,
                         )
@@ -344,10 +364,13 @@ fun ChatInputBar(
                                 } else {
                                     Icons.AutoMirrored.Outlined.KeyboardReturn
                                 },
-                                contentDescription = when {
-                                    isSending -> stringResource(R.string.a11y_stop_generating)
-                                    hasText -> stringResource(R.string.a11y_send_button)
-                                    else -> stringResource(R.string.a11y_voice_input)
+                                contentDescription = if (isSending) {
+                                    stringResource(R.string.a11y_stop_generating)
+                                } else {
+                                    // Always "send" now, including when inert:
+                                    // it used to announce itself as voice input,
+                                    // which is no longer what it does.
+                                    stringResource(R.string.a11y_send_button)
                                 },
                                 modifier = Modifier.size(23.dp),
                             )
