@@ -318,11 +318,15 @@ fun ChatInputBar(
                         hasText -> MaterialTheme.colorScheme.primary
                         else -> MaterialTheme.colorScheme.surfaceVariant
                     }
+                    // With nothing to send this does nothing. It used to start
+                    // voice capture, so a stray tap on what reads as Enter began
+                    // listening with no way to tell that from a mis-tap. Voice
+                    // input stays on the microphone, where it is labelled.
                     Surface(
                         onClick = when {
                             isSending -> onCancel
                             hasText -> ::submit
-                            else -> onMicToggle
+                            else -> ({})
                         },
                         modifier = Modifier.size(44.dp),
                         shape = RoundedCornerShape(22.dp),
