@@ -9,6 +9,58 @@ The base is the Hermes Agent app (`com.hermes.agent` namespace), imported here a
 repo. All three apps are merged and shipping (`:app` + `:feature:jotter` + `:feature:butler`).
 **Published:** GitHub remote `l3ad3r1/jeeves`, releases v0.9.0 through v0.9.4 live.
 
+## v1.0.2 (2026-09-07) — hands-free voice chat, and prefill stops being re-done
+
+**Hands-free voice chat.** Jeeves had the parts but not the loop: the voice
+managers were injected, dictation worked, and replies were read aloud
+sentence-by-sentence as they streamed — but `onVoiceChatToggle` was passed into
+the composer and wired to `{}` in `ChatScreen`, so voice chat had no entry point
+and nothing behind it.
+
+The loop now matches Hermes: listen, send, speak, listen. The recogniser only
+restarts once the speech engine reports the utterance finished, so it does not
+record Jeeves' own voice, and `MAX_EMPTY_VOICE_TURNS` stops a session that hears
+nothing rather than respinning the recogniser as fast as it can fail. In voice
+chat a final transcript is *sent* rather than parked in the input bar for a tap
+that will never come, and recogniser errors take the turn again instead of
+burying the chat in snackbars — silence timing out is routine in a hands-free
+loop.
+
+Streaming sentence-by-sentence speech is suppressed while voice chat is on.
+Typed turns keep it unchanged; the hands-free path speaks the whole reply once at
+`ReplyComplete`, which is also what gives the loop the single `Done` it needs to
+know when to take the microphone back. The microphone runs the session on tap and
+keeps dictation on long-press; the round send button, which announced itself as
+"Voice input" while doing nothing with an empty field, reads as send now.
+
+**On-device prefill.** The same engine work that landed in Hermes v1.0.2. On a
+long thread a chat turn's prefill went from 1531 tokens / ~24 s every turn to 899
+tokens / ~9-15 s, and warm turns decode nothing at all:
+
+- the system block is no longer re-prefilled every turn — the longest matching
+  token prefix is reused, tracked against a mirror of what is resident
+- per-turn recall (memory, RAG, skill match) moved after the conversation
+  history, so it stops invalidating it
+- the history window drops entries in quanta, so its front holds still instead of
+  moving every turn and taking the reusable prefix with it
+- the conversation brief is maintained incrementally — uncovered turns ride along
+  verbatim and are folded in by summarising brief + tail only
+- background inference runs on its own KV lane, so it no longer evicts the
+  conversation's prefix. `n_seq_max = 2` with `kv_unified = false` splits the
+  context already allocated, so there is no extra KV memory
+- `n_ubatch` restored to `n_batch`; the 64 cap was an Adreno Vulkan workaround
+  and Vulkan is compiled out
+- `n_gpu_layers` follows the backends that actually registered instead of a
+  hardcoded 0
+
+Because Jeeves shares `agent-core`, its Kotlin calls JNI entry points that now
+take a lane — `ai_chat.cpp` had to move in step or it would be an
+`UnsatisfiedLinkError` on first inference. The two apps' `ai_chat.cpp` are
+byte-identical; keep them that way.
+
+**Not enabled:** OpenCL offload for Adreno is wired behind an `OPENCL_SDK` env
+var, off by default, never built or run — see `docs/BUILD.md` 4a.
+
 ## v0.17.3 (2026-09-02) — the OpenClaw phases are now actually wired
 
 The 2026-09-02 functional audit found three phases were dead code: a complete

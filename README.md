@@ -6,7 +6,7 @@ morning-alarm butler and a Markdown notebook, routes each turn to the best
 available model (cloud-first, on-device GGUF fallback), and keeps every secret
 in the Android Keystore.
 
-> **Status — v0.17.3 (2026-09-03).** Signed release APKs are attached to each
+> **Status — v1.0.2 (2026-09-07).** Signed release APKs are attached to each
 > [GitHub release](https://github.com/l3ad3r1/Jeeves/releases). Jeeves shares its
 > engine with the public **Hermes** app through the
 > [`agent-core`](https://github.com/l3ad3r1/agent-core) library (pinned per build
@@ -21,6 +21,13 @@ in the Android Keystore.
 - **Model routing** — `HybridLlmRouter` ranks configured cloud providers by
   quality/cost/latency, fails over in order, then falls back to an on-device
   Llama 3.2 1B (or any `.gguf` you supply) via a pinned `llama.cpp` submodule.
+- **On-device prefill** — each turn reuses the longest token prefix already in
+  the KV cache instead of re-prefilling the system block, and background work
+  (the conversation brief) runs on a second KV lane so it cannot evict the
+  conversation's cached prefix.
+- **Hands-free voice** — the composer microphone runs a voice session on tap:
+  Jeeves listens, answers aloud, then listens again. Long-press is plain
+  dictation, for speaking a message without being answered out loud.
 - **Multi-agent orchestration** — five roles (Conversational, Productivity,
   Research, Device control, Creative), plan-then-execute with a per-step
   tool-call loop; deterministic phone commands skip the LLM.
