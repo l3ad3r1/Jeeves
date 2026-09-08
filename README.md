@@ -1,6 +1,6 @@
 # Jeeves — AI Assistant & Butler
 
-**Jeeves** is a private Android super-app: a proactive productivity suite and a
+**Jeeves** is an Android super-app: a proactive productivity suite and a
 conversational agent in one APK. It merges the Hermes agent engine with a
 morning-alarm butler and a Markdown notebook, routes each turn to the best
 available model (cloud-first, on-device GGUF fallback), and keeps every secret
@@ -12,6 +12,30 @@ in the Android Keystore.
 > [`agent-core`](https://github.com/l3ad3r1/agent-core) library (pinned per build
 > in `agent-core.ref`); it keeps its own `com.jeeves.app` identity, branding, and
 > release signing so it installs alongside a standalone Hermes.
+
+---
+
+## Direction
+
+Jeeves and [Hermes](https://github.com/l3ad3r1/Hermes-Agent-Android) are two
+products on one engine. Hermes is the focused agent; Jeeves is the everything-app
+— the same agent plus a notebook and a morning-alarm butler, for people who would
+rather have one icon than three.
+
+Current priorities:
+
+1. **On-device inference that is pleasant to use.** The last two releases were
+   almost entirely this — KV prefix reuse, a separate KV lane for background work,
+   and one model slot per role so a tool call stops evicting the chat model.
+2. **Retrieval that survives a restart** — real MiniLM embeddings are wired, but
+   the model is not downloaded and the index is in-memory (see
+   [docs/BUGS.md](docs/BUGS.md)).
+3. **Deeper merge.** Jotter and Butler still feel like guests. Notes that the
+   agent can actually reason over, and alarms it can set conversationally, are
+   where this app earns its shape.
+
+Engine work belongs in [`agent-core`](https://github.com/l3ad3r1/agent-core) and
+lands in both apps; see [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ---
 

@@ -3,7 +3,7 @@
 Jeeves shares the `agent-core` engine with the public Hermes app, so most engine
 issues apply to both. This file is the Jeeves-side summary.
 
-Last reviewed: **2026-09-03 (v0.17.3)**.
+Last reviewed: **2026-09-08 (v1.0.3)**.
 
 ## Open
 
@@ -24,9 +24,14 @@ Last reviewed: **2026-09-03 (v0.17.3)**.
 
 - The on-device model is a final fallback, not selected ahead of an available
   cloud provider for structured tool tasks.
-- Retrieval embeddings are SHA-256 hash vectors and the vector index is in-memory
-  (rebuilt from Room each cold start). Same `agent-core` gap tracked on the Hermes
-  repo as issues #3 and #4.
+- **Embeddings work, but the model is not shipped.** `MiniLmEmbeddingService`
+  (ONNX Runtime, all-MiniLM-L6-v2 int8, 384-dim) is what DI binds, reading
+  `model.onnx` and `vocab.txt` from `AI Models/embeddings/all-MiniLM-L6-v2` on
+  shared storage. Nothing downloads them, and when absent it falls back to
+  `HashingEmbeddingService` silently, so retrieval quality depends on whether
+  those files happen to be present. The vector index is in-memory and rebuilt
+  from Room each cold start. Same `agent-core` gap, tracked on the Hermes repo as
+  issues #3 and #4.
 - Cloud-provider health is evaluated per request; no persistent cross-session
   score yet.
 - Screen automation and app launching require the accessibility service and stay
