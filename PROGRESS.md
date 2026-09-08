@@ -7,7 +7,7 @@ What's next (digital-butler evolution): `docs/DIGITAL_BUTLER_ROADMAP.md`.
 
 The base is the Hermes Agent app (`com.hermes.agent` namespace), imported here as a fresh
 repo. All three apps are merged and shipping (`:app` + `:feature:jotter` + `:feature:butler`).
-**Published:** GitHub remote `l3ad3r1/jeeves`, releases v0.9.0 through v0.9.4 live.
+**Published:** GitHub remote `l3ad3r1/Jeeves`, releases v0.9.0 through v1.0.3 live.
 
 ## v1.0.3 (2026-09-08) — a tool call no longer evicts the chat model
 
@@ -35,6 +35,14 @@ On the Kotlin side, separate slots mean unloading the chat model no longer
 unloads the tool caller, so changing the model download folder — the one setting
 that invalidates both, since both GGUFs live there — now unloads both. Picking a
 chat model deliberately leaves the tool caller resident.
+
+**Also in this release: `agent-core.ref` repinned to `0e88413`.** The pin is
+load-bearing — CI and `release.yml` check agent-core out at that commit, while
+local builds map `:core:*` onto the working tree and never notice a mismatch. It
+had not been bumped for the v1.0.2 engine work, so CI had been failing since that
+release on `No value passed for parameter 'anchorId'`: new app code compiled
+against an old engine. Green again as of this release. A JNI or shared-API change
+and its app-side use have to be repinned in the same change.
 
 ## v1.0.2 (2026-09-07) — hands-free voice chat, and prefill stops being re-done
 
