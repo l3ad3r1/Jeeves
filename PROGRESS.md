@@ -9,6 +9,33 @@ The base is the Hermes Agent app (`com.hermes.agent` namespace), imported here a
 repo. All three apps are merged and shipping (`:app` + `:feature:jotter` + `:feature:butler`).
 **Published:** GitHub remote `l3ad3r1/jeeves`, releases v0.9.0 through v0.9.4 live.
 
+## v1.0.3 (2026-09-08) — a tool call no longer evicts the chat model
+
+Shared with Hermes; `ai_chat.cpp` stays byte-identical between the two repos, so
+this had to land here or the shared `agent-core` Kotlin would call JNI entry
+points this app does not have.
+
+**The bug.** One `llama_model`/`llama_context` pair served every role. The
+on-device tool caller is a different model (FunctionGemma 270M) from the chat
+model, so a tool turn unloaded the chat GGUF and the next chat turn reloaded it
+and prefilled from nothing. The KV lanes from v1.0.2 could not help — a lane
+subdivides one model's context; this needs two models resident.
+
+**The fix.** Each role gets its own `Slot`, holding the model, context, batch,
+chat templates and lanes that used to be global. Lanes nest inside slots, so each
+model keeps its own chat and auxiliary sequences. Two slots cost real memory, so
+residency is gated on available RAM and a device without the headroom keeps the
+previous swap-in/swap-out behaviour.
+
+Measured on a Galaxy S24 Ultra with both models resident: a chat turn that also
+ran a tool call reused 741 of 778 tokens with zero GGUF reloads, where the same
+turn previously started cold.
+
+On the Kotlin side, separate slots mean unloading the chat model no longer
+unloads the tool caller, so changing the model download folder — the one setting
+that invalidates both, since both GGUFs live there — now unloads both. Picking a
+chat model deliberately leaves the tool caller resident.
+
 ## v1.0.2 (2026-09-07) — hands-free voice chat, and prefill stops being re-done
 
 **Hands-free voice chat.** Jeeves had the parts but not the loop: the voice

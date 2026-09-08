@@ -6,7 +6,7 @@ morning-alarm butler and a Markdown notebook, routes each turn to the best
 available model (cloud-first, on-device GGUF fallback), and keeps every secret
 in the Android Keystore.
 
-> **Status — v1.0.2 (2026-09-07).** Signed release APKs are attached to each
+> **Status — v1.0.3 (2026-09-08).** Signed release APKs are attached to each
 > [GitHub release](https://github.com/l3ad3r1/Jeeves/releases). Jeeves shares its
 > engine with the public **Hermes** app through the
 > [`agent-core`](https://github.com/l3ad3r1/agent-core) library (pinned per build
