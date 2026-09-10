@@ -13,13 +13,12 @@ The shared agent changes now reject injected external text, blank API-server key
 unverified SSH hosts, cross-request deferred-tool grants, and cross-corpus vector
 results. The core pin is `849f55d`.
 
-**VERIFIED:** Jotter focused unit tests passed (16 tests, including new privacy,
-conflict, and tombstone regressions); shared plugin repository regression test
-passed.
+**VERIFIED:** focused Jotter security and Butler alarm regression tests, shared
+plugin repository regression test, and `:app:compileDebugKotlin` passed.
 
 **UNVERIFIED:** device authentication, real alarm firing, live GitHub sync, API-key
-rotation, foreground-service limits, and the full preflight (the build exceeded this
-session's command window).
+rotation and foreground-service limits; the complete `tools/preflight.sh` suite remains
+unrun.
 
 **What this is:** the merged "super app" (working name **Jeeves**) that unifies three
 existing Android apps — **Hermes Agent** (base), **Octo Jotter**, and **Sassy Butler** —
