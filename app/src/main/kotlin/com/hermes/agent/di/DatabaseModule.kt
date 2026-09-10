@@ -4,6 +4,7 @@ import android.content.Context
 import androidx.room.Room
 import androidx.room.RoomDatabase
 import androidx.sqlite.db.SupportSQLiteDatabase
+import com.hermes.agent.data.local.CachedSkillDao
 import com.hermes.agent.data.local.HermesDatabase
 import com.hermes.agent.data.local.dao.BookmarkDao
 import com.hermes.agent.data.local.dao.CalendarEventDao
@@ -96,13 +97,15 @@ object DatabaseModule {
     @Provides fun provideScheduledTaskDao(db: HermesDatabase): ScheduledTaskDao = db.scheduledTaskDao()
     @Provides fun provideConnectorDao(db: HermesDatabase): ConnectorDao = db.connectorDao()
     @Provides fun provideAgentTaskDao(db: HermesDatabase): AgentTaskDao = db.agentTaskDao()
-    @Provides fun provideSkillDao(db: HermesDatabase): SkillDao = db.skillDao()
-    @Provides fun provideSkillRevisionDao(db: HermesDatabase): SkillRevisionDao =
-        db.skillRevisionDao()
-    @Provides fun provideSupplementalPromptDao(db: HermesDatabase): SupplementalPromptDao =
-        db.supplementalPromptDao()
-    @Provides fun providePromptRevisionDao(db: HermesDatabase): PromptRevisionDao =
-        db.promptRevisionDao()
+    // Wrapped on purpose: CachedSkillDao is stateful, so it must be a single
+    // shared instance — an unscoped provider would mint a fresh cache per
+    // injection site and the write-through invalidation would only cover one.
+    @Provides
+    @Singleton
+    fun provideSkillDao(db: HermesDatabase): SkillDao = CachedSkillDao(db.skillDao())
+    @Provides fun provideSkillRevisionDao(db: HermesDatabase): SkillRevisionDao = db.skillRevisionDao()
+    @Provides fun provideSupplementalPromptDao(db: HermesDatabase): SupplementalPromptDao = db.supplementalPromptDao()
+    @Provides fun providePromptRevisionDao(db: HermesDatabase): PromptRevisionDao = db.promptRevisionDao()
     @Provides fun provideKanbanTicketDao(db: HermesDatabase): KanbanTicketDao = db.kanbanTicketDao()
     @Provides fun provideExecutionPlanDao(db: HermesDatabase): ExecutionPlanDao = db.executionPlanDao()
     @Provides fun provideActivityLedgerDao(db: HermesDatabase): ActivityLedgerDao = db.activityLedgerDao()
