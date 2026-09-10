@@ -34,6 +34,7 @@ class AlarmScheduler(private val context: Context) {
             alarmId   = alarmId,
             hour      = hour,
             minute    = minute,
+            triggerAtMillis = triggerAt,
         )
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
@@ -65,7 +66,7 @@ class AlarmScheduler(private val context: Context) {
     fun schedule(alarm: Alarm): Int {
         val triggerAt = alarm.nextTrigger()
         val pendingIntent = AlarmReceiver.buildPendingIntent(
-            context, alarm.id, alarm.hour, alarm.minute
+            context, alarm.id, alarm.hour, alarm.minute, triggerAt
         )
         setExact(triggerAt, pendingIntent)
         Log.i(TAG, "Alarm ${alarm.id} '${alarm.label}' scheduled (triggerAt=$triggerAt)")
@@ -96,8 +97,9 @@ class AlarmScheduler(private val context: Context) {
 
     /** Fire alarm [alarmId] again [minutes] from now (snooze). */
     fun snoozeIn(alarmId: Int, hour: Int, minute: Int, minutes: Int) {
-        val pendingIntent = AlarmReceiver.buildPendingIntent(context, alarmId, hour, minute)
-        setExact(System.currentTimeMillis() + minutes * 60_000L, pendingIntent)
+        val triggerAt = System.currentTimeMillis() + minutes * 60_000L
+        val pendingIntent = AlarmReceiver.buildPendingIntent(context, alarmId, hour, minute, triggerAt)
+        setExact(triggerAt, pendingIntent)
         Log.i(TAG, "Alarm $alarmId snoozed for $minutes min")
     }
 

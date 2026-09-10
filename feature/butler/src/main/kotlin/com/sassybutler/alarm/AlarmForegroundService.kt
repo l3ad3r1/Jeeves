@@ -33,6 +33,7 @@ class AlarmForegroundService : LifecycleService() {
     private var wakeLock: PowerManager.WakeLock? = null
     private var vibrator: Vibrator? = null
     private var alarmRunning = false
+    private var alarmJob: Job? = null
     private var currentAlarmId = -1
     private var currentHour = 7
     private var currentMinute = 0
@@ -76,18 +77,26 @@ class AlarmForegroundService : LifecycleService() {
     // ─── Action handlers ────────────────────────────────────────────────
 
     private fun handleStartAlarm(intent: Intent) {
-        // The system can re-deliver a start intent (e.g. service restart after
-        // a crash) while an alarm is already ringing; a second concurrent
-        // audio sequence doubles the TTS inference load and the audio.
-        if (alarmRunning) {
-            Log.w(TAG, "Alarm already running — ignoring duplicate start")
-            return
-        }
-        alarmRunning = true
-
         val alarmId  = intent.getIntExtra(AlarmReceiver.EXTRA_ALARM_ID, -1)
         val hour     = intent.getIntExtra(AlarmReceiver.EXTRA_ALARM_HOUR, 7)
         val minute   = intent.getIntExtra(AlarmReceiver.EXTRA_ALARM_MINUTE, 0)
+
+        // The same occurrence may be re-delivered after a process restart. A
+        // distinct alarm gets an explicit replacement policy: it takes over the
+        // active wake experience after its schedule was independently advanced by
+        // AlarmReceiver.
+        if (alarmRunning && currentAlarmId == alarmId) {
+            Log.w(TAG, "Alarm already running — ignoring duplicate start")
+            return
+        }
+        if (alarmRunning) {
+            Log.i(TAG, "Replacing active alarm $currentAlarmId with overlapping alarm $alarmId")
+            alarmJob?.cancel()
+            stopHaptics()
+            audioEngine.stopAll()
+        }
+        alarmRunning = true
+
         currentAlarmId = alarmId
         currentHour    = hour
         currentMinute  = minute
@@ -100,40 +109,32 @@ class AlarmForegroundService : LifecycleService() {
         // 2. Acquire wake lock
         acquireWakeLock()
 
-        // 3. Keep the schedule alive immediately
-        AlarmStore.get(this, alarmId)?.let { alarm ->
-            if (alarm.days.isNotEmpty()) {
-                AlarmScheduler(this).schedule(alarm)
-            } else {
-                AlarmStore.upsert(this, alarm.copy(enabled = false))
-            }
-        }
+        // 3. The wake signal must never wait for an optional cloud greeting.
+        val fallbackGreeting = ButlerScript.greeting(this, formatTime(hour, minute))
+        launchAlarmActivity(alarmId, hour, minute, fallbackGreeting)
+        startHaptics()
+        audioEngine.startWakeSignal()
 
-        // 4. Generate AI Greeting and play sequence
-        scope.launch {
-            var greeting = ButlerScript.greeting(this@AlarmForegroundService, formatTime(hour, minute))
-            try {
+        // 4. Refine the greeting independently, with a short deadline. A
+        // dismissal/replacement cancels this job, so a late result cannot restart
+        // playback after the user has acted.
+        alarmJob = scope.launch {
+            val greeting = withTimeoutOrNull(GREETING_TIMEOUT_MILLIS) {
                 val aiProvider = dagger.hilt.android.EntryPointAccessors.fromApplication(
                     applicationContext, com.sassybutler.alarm.di.ButlerAiProviderEntryPoint::class.java
                 ).getButlerAiProvider()
-                
                 val hon = ButlerPrefs.honorific(this@AlarmForegroundService)
                 val sassLevel = ButlerPrefs.sassLevel(this@AlarmForegroundService)
                 val weather = WeatherService.cached(this@AlarmForegroundService)?.sentence() ?: "Unknown weather"
-                
-                val generated = aiProvider.generateMorningGreeting(weather, formatTime(hour, minute), hon, sassLevel)
-                if (generated != null && generated.isNotBlank()) greeting = generated
-            } catch (e: Exception) {
-                Log.w(TAG, "Failed to generate AI greeting, using fallback.")
-            }
+                aiProvider.generateMorningGreeting(weather, formatTime(hour, minute), hon, sassLevel)
+            }?.takeIf { it.isNotBlank() } ?: fallbackGreeting
 
-            // Launch the full-screen lock screen activity (shows the greeting)
+            if (!alarmRunning || currentAlarmId != alarmId || !isActive) return@launch
+
+            // Update the visible greeting once it is available.
             launchAlarmActivity(alarmId, hour, minute, greeting)
 
-            // Optional refined vibration
-            startHaptics()
-
-            // Begin the audio sequence: (birds →) TTS greeting
+            // Birds or the wake ringtone remain active while synthesis runs.
             audioEngine.playAlarmSequence(
                 greeting     = greeting,
                 skipBirds    = !ButlerPrefs.birdsIntro(this@AlarmForegroundService),
@@ -141,14 +142,17 @@ class AlarmForegroundService : LifecycleService() {
                 onBirdsComplete = { Log.d(TAG, "Birds finished, TTS playing") }
             )
 
-            // Refresh the weather cache in the background
-            WeatherService.refresh(this@AlarmForegroundService)
+            if (alarmRunning && currentAlarmId == alarmId) {
+                WeatherService.refresh(this@AlarmForegroundService)
+            }
         }
     }
 
     private fun handleDismiss() {
         Log.i(TAG, "Dismiss received")
         alarmRunning = false
+        alarmJob?.cancel()
+        alarmJob = null
         stopHaptics()
         if (!ButlerPrefs.voiceEnabled(this)) {
             audioEngine.stopAll()
@@ -184,6 +188,8 @@ class AlarmForegroundService : LifecycleService() {
         val minutes = ButlerPrefs.snoozeMinutes(this)
         Log.i(TAG, "Snooze received — $minutes min")
         alarmRunning = false
+        alarmJob?.cancel()
+        alarmJob = null
         stopHaptics()
         audioEngine.stopAll()
 
@@ -318,6 +324,7 @@ class AlarmForegroundService : LifecycleService() {
         private const val TAG             = "AlarmForegroundService"
         private const val CHANNEL_ID      = "alarm_channel"
         private const val NOTIFICATION_ID = 1001
+        private const val GREETING_TIMEOUT_MILLIS = 5_000L
 
         const val EXTRA_GREETING = "extra_greeting"
 

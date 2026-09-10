@@ -1,5 +1,26 @@
 # Jeeves — Progress
 
+## 2026-09-10 — Security audit remediation
+
+Protected notes now require device authentication before open or unlock, excluded
+notes are blocked at sync boundaries, conflicting remote changes are retained, and
+remote-deletion tombstones survive failed syncs. Alarm delivery is internal-only,
+reschedules before playback, replaces overlapping alarms deliberately, and begins a
+local wake signal before the bounded AI greeting attempt. Disabled restored alarms
+are cancelled instead of revived.
+
+The shared agent changes now reject injected external text, blank API-server keys,
+unverified SSH hosts, cross-request deferred-tool grants, and cross-corpus vector
+results. The core pin is `849f55d`.
+
+**VERIFIED:** Jotter focused unit tests passed (16 tests, including new privacy,
+conflict, and tombstone regressions); shared plugin repository regression test
+passed.
+
+**UNVERIFIED:** device authentication, real alarm firing, live GitHub sync, API-key
+rotation, foreground-service limits, and the full preflight (the build exceeded this
+session's command window).
+
 **What this is:** the merged "super app" (working name **Jeeves**) that unifies three
 existing Android apps — **Hermes Agent** (base), **Octo Jotter**, and **Sassy Butler** —
 into a single sideloaded, multi-module APK. Merge roadmap (done): `docs/SUPER_APP_ROADMAP.md`.
@@ -8,6 +29,26 @@ What's next (digital-butler evolution): `docs/DIGITAL_BUTLER_ROADMAP.md`.
 The base is the Hermes Agent app (`com.hermes.agent` namespace), imported here as a fresh
 repo. All three apps are merged and shipping (`:app` + `:feature:jotter` + `:feature:butler`).
 **Published:** GitHub remote `l3ad3r1/Jeeves`, releases v0.9.0 through v1.0.3 live.
+
+## 2026-09-10 — Notes access and GitHub-sync remediation
+
+Protected notes now require biometric or device-credential authentication before their
+contents enter the editor or their individual lock can be removed. Disabling the Notes
+application lock uses the same authentication gate. Locked and encrypted notes are
+excluded from Gist and repository uploads at both query and pre-request boundaries.
+
+Gist and repository pulls now use the last synchronized content hash to distinguish a
+local-only edit from a true concurrent edit; unresolved conflicts and protected notes
+are not overwritten. Emptying trash retains remote-deletion tombstones, retries them
+during foreground/background sync, and removes a tombstone only after GitHub confirms
+the deletion.
+
+**VERIFIED:** `:feature:jotter:testDebugUnitTest --rerun` passed 16 tests with 0
+failures, including five new regression tests for protected uploads, local-only edits,
+unresolved conflicts, and failed/successful tombstone deletion.
+
+**UNVERIFIED:** biometric/device-credential cancellation and success paths on a device;
+live Gist and repository sync/deletion against a test GitHub account.
 
 ## v1.0.3 (2026-09-08) — a tool call no longer evicts the chat model
 

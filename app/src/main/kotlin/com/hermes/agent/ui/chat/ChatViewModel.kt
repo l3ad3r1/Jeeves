@@ -189,6 +189,11 @@ class ChatViewModel @Inject constructor(
         }
     }
 
+    /** Accept text from a share/deep-link surface without executing it. */
+    fun prefillMessage(content: String) {
+        if (!_ephemeral.value.isSending) _inputPrefill.value = content
+    }
+
     private var spokenTextLength = 0
     private val sentenceRegex = Regex("(?<=[.!?])\\s+")
 

@@ -36,7 +36,8 @@ import java.util.concurrent.atomic.AtomicBoolean
 class AudioEngine(private val context: Context) {
 
     private val scope      = CoroutineScope(SupervisorJob() + Dispatchers.IO)
-    private val ttsEngine  = TtsEngine(context)
+    private val ttsEngineLock = Any()
+    @Volatile private var ttsEngine: TtsEngine? = null
     private val voiceOutputManager = VoiceOutputManager(context)
 
     init {
@@ -55,6 +56,16 @@ class AudioEngine(private val context: Context) {
     private val isDismissed= AtomicBoolean(false)
 
     // ─── Public API ─────────────────────────────────────────────────────
+
+    /**
+     * Begin a local, looping wake signal before any network or synthesis work.
+     * It remains active until birds, synthesized speech, platform speech, or a
+     * dismiss/snooze action replaces it.
+     */
+    fun startWakeSignal() {
+        isStopped.set(false)
+        startFallbackRingtone()
+    }
 
     /**
      * Begin the full alarm sequence:
@@ -87,7 +98,7 @@ class AudioEngine(private val context: Context) {
         val ttsDeferred: Deferred<FloatArray?> = async {
             try {
                 Log.d(TAG, "TTS synthesis started")
-                ttsEngine.synthesize(greeting, VoiceCatalog.selected(context)).also {
+                ttsEngine().synthesize(greeting, VoiceCatalog.selected(context)).also {
                     Log.d(TAG, "TTS synthesis complete — ${it?.size ?: 0} samples")
                 }
             } catch (e: Exception) {
@@ -119,6 +130,9 @@ class AudioEngine(private val context: Context) {
         val pcmSamples = ttsDeferred.await()
         if (pcmSamples != null && !isStopped.get()) {
             playPcmBuffer(pcmSamples)
+        } else if (!isStopped.get()) {
+            Log.w(TAG, "ONNX TTS returned no audio during alarm — using platform fallback")
+            speakViaPlatformFallback(greeting)
         }
     }
 
@@ -154,6 +168,7 @@ class AudioEngine(private val context: Context) {
                 onError()
                 true
             }
+            stopFallbackRingtone()
             start()
             Log.d(TAG, "MediaPlayer started (birds, loop=$loop)")
         }
@@ -161,6 +176,7 @@ class AudioEngine(private val context: Context) {
 
     /** Last-resort wake sound when the birds player itself fails. */
     private fun startFallbackRingtone() {
+        if (fallbackRingtone?.isPlaying == true) return
         runCatching {
             val uri = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_ALARM)
             fallbackRingtone = RingtoneManager.getRingtone(context, uri)?.apply {
@@ -173,6 +189,11 @@ class AudioEngine(private val context: Context) {
                 Log.w(TAG, "Fallback system alarm ringtone playing")
             }
         }.onFailure { Log.e(TAG, "Fallback ringtone failed too", it) }
+    }
+
+    private fun stopFallbackRingtone() {
+        runCatching { fallbackRingtone?.stop() }
+        fallbackRingtone = null
     }
 
     /**
@@ -204,7 +225,7 @@ class AudioEngine(private val context: Context) {
 
     private suspend fun synthesizeAndPlay(text: String) {
         val pcm = try {
-            ttsEngine.synthesize(text, VoiceCatalog.selected(context))
+            ttsEngine().synthesize(text, VoiceCatalog.selected(context))
         } catch (e: Exception) {
             Log.e(TAG, "TTS failed", e)
             null
@@ -222,18 +243,25 @@ class AudioEngine(private val context: Context) {
         if (isStopped.get()) return
         runCatching {
             voiceOutputManager.speak(text).collect { event ->
-                if (event is com.sassybutler.alarm.voice.VoiceOutputEvent.Error) {
-                    Log.e(TAG, "Platform TTS fallback also failed: ${event.message}")
+                when (event) {
+                    is VoiceOutputEvent.Start -> stopFallbackRingtone()
+                    is VoiceOutputEvent.Error -> {
+                        Log.e(TAG, "Platform TTS fallback also failed: ${event.message}")
+                        startFallbackRingtone()
+                    }
+                    is VoiceOutputEvent.Done -> Unit
                 }
             }
-        }.onFailure { Log.e(TAG, "Platform TTS fallback threw", it) }
+        }.onFailure {
+            Log.e(TAG, "Platform TTS fallback threw", it)
+            startFallbackRingtone()
+        }
     }
 
     /** Immediately halt all audio (MediaPlayer + AudioTrack + fallback). */
     fun stopAll() {
         isStopped.set(true)
-        runCatching { fallbackRingtone?.stop() }
-        fallbackRingtone = null
+        stopFallbackRingtone()
         try {
             mediaPlayer?.run {
                 if (isPlaying) stop()
@@ -264,8 +292,14 @@ class AudioEngine(private val context: Context) {
     fun release() {
         scope.cancel()
         stopAll()
-        ttsEngine.close()
+        ttsEngine?.close()
+        ttsEngine = null
         voiceOutputManager.shutdown()
+    }
+
+    /** Load the large ONNX model only after a local wake signal is already playing. */
+    private fun ttsEngine(): TtsEngine = ttsEngine ?: synchronized(ttsEngineLock) {
+        ttsEngine ?: TtsEngine(context).also { ttsEngine = it }
     }
 
     // ─── Private: AudioTrack PCM playback ───────────────────────────────
@@ -303,6 +337,7 @@ class AudioEngine(private val context: Context) {
             .build()
 
         audioTrack = track
+        stopFallbackRingtone()
         track.play()
 
         // Write in chunks so we can check for stop signals between chunks.

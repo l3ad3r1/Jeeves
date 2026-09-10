@@ -10,7 +10,14 @@ class RemoteTerminalBackendTest {
         host: String = "example.com",
         port: Int = 22,
         user: String = "root",
-    ) = RemoteTerminalBackend.Config(host = host, port = port, username = user, password = "pw")
+        fingerprint: String = "aa:bb:cc",
+    ) = RemoteTerminalBackend.Config(
+        host = host,
+        port = port,
+        username = user,
+        password = "pw",
+        expectedHostFingerprint = fingerprint,
+    )
 
     @Test
     fun `fully specified config is configured`() {
@@ -26,6 +33,11 @@ class RemoteTerminalBackendTest {
     @Test
     fun `blank user is not configured`() {
         assertFalse(config(user = "").isConfigured)
+    }
+
+    @Test
+    fun `blank host fingerprint is not configured`() {
+        assertFalse(config(fingerprint = "").isConfigured)
     }
 
     @Test

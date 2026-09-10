@@ -20,7 +20,8 @@ class SyncWorker(
         val tokenManager = TokenManager(applicationContext)
         val repository = NoteRepository(noteDao, githubApiService, tokenManager)
 
-        val pullResult = repository.pullFromGithub()
+        val deleteResult = repository.syncPendingRemoteDeletes()
+        val pullResult = if (deleteResult.isSuccess) repository.pullFromGithub() else deleteResult
         val pushResult = if (pullResult.isSuccess) repository.pushToGithub() else pullResult
         return if (pushResult.isSuccess) {
             Result.success()

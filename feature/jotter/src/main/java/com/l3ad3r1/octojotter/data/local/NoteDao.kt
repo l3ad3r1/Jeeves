@@ -31,11 +31,11 @@ interface NoteDao {
 
     // Gist-only dirty notes (repository IS NULL) so repo notes are never
     // accidentally pushed as new Gists by the Gist sync path.
-    @Query("SELECT * FROM notes WHERE needsSync = 1 AND repository IS NULL AND deletedAt IS NULL")
+    @Query("SELECT * FROM notes WHERE needsSync = 1 AND repository IS NULL AND deletedAt IS NULL AND locked = 0 AND encrypted = 0")
     suspend fun getNotesToSync(): List<NoteEntity>
 
     // Dirty notes belonging to a specific repository.
-    @Query("SELECT * FROM notes WHERE needsSync = 1 AND repository = :repository AND deletedAt IS NULL")
+    @Query("SELECT * FROM notes WHERE needsSync = 1 AND repository = :repository AND deletedAt IS NULL AND locked = 0 AND encrypted = 0")
     suspend fun getNotesToSyncForRepository(repository: String): List<NoteEntity>
 
     @Query("SELECT * FROM notes WHERE repository = :repository AND path = :path LIMIT 1")
@@ -102,8 +102,13 @@ interface NoteDao {
     @Query("UPDATE notes SET deletedAt = NULL, pendingRemoteDelete = 0, needsSync = 1 WHERE id = :id")
     suspend fun restoreFromTrash(id: Int)
 
-    @Query("DELETE FROM notes WHERE deletedAt IS NOT NULL")
+    // Remote deletes are tombstoned until GitHub confirms them. Removing them
+    // here would let a later pull import the still-remote note again.
+    @Query("DELETE FROM notes WHERE deletedAt IS NOT NULL AND pendingRemoteDelete = 0")
     suspend fun emptyTrash()
+
+    @Query("SELECT * FROM notes WHERE deletedAt IS NOT NULL AND pendingRemoteDelete = 1")
+    suspend fun getPendingRemoteDeletes(): List<NoteEntity>
 
     @Query("UPDATE notes SET locked = :locked WHERE id = :id")
     suspend fun setLocked(id: Int, locked: Boolean)

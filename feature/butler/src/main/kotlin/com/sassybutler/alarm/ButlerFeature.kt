@@ -101,6 +101,11 @@ class ButlerFeature @Inject constructor(
                     AlarmStore.upsert(context, alarm)
                     if (alarm.enabled) {
                         scheduler.schedule(alarm)
+                    } else {
+                        // Restore can replace an enabled alarm with a disabled record.
+                        // Remove its old PendingIntent and briefing work in that same
+                        // persistence/scheduling transaction.
+                        scheduler.cancel(alarm.id, alarm.hour, alarm.minute)
                     }
                     if (androidx.core.content.ContextCompat.checkSelfPermission(
                             context,

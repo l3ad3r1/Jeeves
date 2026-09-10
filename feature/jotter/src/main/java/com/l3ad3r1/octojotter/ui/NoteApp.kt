@@ -250,6 +250,7 @@ fun NoteApp(viewModel: NoteViewModel) {
     val navController = rememberNavController()
     val appLockEnabled by viewModel.appLockEnabled.collectAsState()
     val appUnlocked by viewModel.appUnlocked.collectAsState()
+    val noteAuthenticationRequest by viewModel.noteAuthenticationRequest.collectAsState()
 
     if (appLockEnabled && !appUnlocked) {
         AppLockScreen(
@@ -258,6 +259,12 @@ fun NoteApp(viewModel: NoteViewModel) {
         )
         return
     }
+
+    NoteAuthenticationGate(
+        request = noteAuthenticationRequest,
+        onAuthenticated = viewModel::completeNoteAuthentication,
+        onRejected = viewModel::rejectNoteAuthentication
+    )
 
     // Settings is a pushed screen reached from the top-bar gear, not a bottom-nav
     // destination - a 2-item bottom bar wasn't worth the permanent vertical cost.
@@ -357,12 +364,15 @@ fun AppLockScreen(
 ) {
     val context = LocalContext.current
     val canAuthenticate = remember(context) {
-        BiometricManager.from(context).canAuthenticate(BiometricManager.Authenticators.BIOMETRIC_WEAK) ==
+        BiometricManager.from(context).canAuthenticate(
+            BiometricManager.Authenticators.BIOMETRIC_WEAK or
+                BiometricManager.Authenticators.DEVICE_CREDENTIAL
+        ) ==
             BiometricManager.BIOMETRIC_SUCCESS
     }
     var message by remember { mutableStateOf<String?>(null) }
 
-    fun launchBiometricPrompt() {
+    fun launchBiometricPrompt(onAuthenticated: () -> Unit = onUnlock) {
         val activity = context as? FragmentActivity
         if (activity == null) {
             message = "Biometric unlock is not available in this window."
@@ -373,7 +383,7 @@ fun AppLockScreen(
             ContextCompat.getMainExecutor(context),
             object : BiometricPrompt.AuthenticationCallback() {
                 override fun onAuthenticationSucceeded(result: BiometricPrompt.AuthenticationResult) {
-                    onUnlock()
+                    onAuthenticated()
                 }
 
                 override fun onAuthenticationError(errorCode: Int, errString: CharSequence) {
@@ -387,9 +397,11 @@ fun AppLockScreen(
         )
         val promptInfo = BiometricPrompt.PromptInfo.Builder()
             .setTitle("Unlock Notes")
-            .setSubtitle("Use your fingerprint to open your notes")
-            .setNegativeButtonText("Cancel")
-            .setAllowedAuthenticators(BiometricManager.Authenticators.BIOMETRIC_WEAK)
+            .setSubtitle("Verify your identity to open your notes")
+            .setAllowedAuthenticators(
+                BiometricManager.Authenticators.BIOMETRIC_WEAK or
+                    BiometricManager.Authenticators.DEVICE_CREDENTIAL
+            )
             .build()
         prompt.authenticate(promptInfo)
     }
@@ -424,9 +436,9 @@ fun AppLockScreen(
             )
             Text(
                 text = if (canAuthenticate) {
-                    "Unlock with your fingerprint to continue."
+                    "Unlock with your screen lock or biometrics to continue."
                 } else {
-                    "Fingerprint unlock is not set up on this device."
+                    "Screen-lock or biometric unlock is not set up on this device."
                 },
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
@@ -440,7 +452,7 @@ fun AppLockScreen(
                 Spacer(modifier = Modifier.width(8.dp))
                 Text("Unlock")
             }
-            TextButton(onClick = onDisableLock) {
+            TextButton(onClick = { launchBiometricPrompt(onDisableLock) }, enabled = canAuthenticate) {
                 Text("Turn off app lock")
             }
             message?.let {
@@ -451,6 +463,56 @@ fun AppLockScreen(
                 )
             }
         }
+    }
+}
+
+/** Prompts only for a ViewModel-requested protected-note operation. */
+@Composable
+private fun NoteAuthenticationGate(
+    request: NoteAuthenticationRequest?,
+    onAuthenticated: () -> Unit,
+    onRejected: (String) -> Unit
+) {
+    val context = LocalContext.current
+    LaunchedEffect(request?.noteId, request?.action) {
+        val pending = request ?: return@LaunchedEffect
+        val activity = context as? FragmentActivity
+        if (activity == null) {
+            onRejected("Couldn't verify your identity in this window.")
+            return@LaunchedEffect
+        }
+        val authenticators = BiometricManager.Authenticators.BIOMETRIC_WEAK or
+            BiometricManager.Authenticators.DEVICE_CREDENTIAL
+        if (BiometricManager.from(context).canAuthenticate(authenticators) != BiometricManager.BIOMETRIC_SUCCESS) {
+            onRejected("Set up a screen lock or biometric unlock to access protected notes.")
+            return@LaunchedEffect
+        }
+        val prompt = BiometricPrompt(
+            activity,
+            ContextCompat.getMainExecutor(context),
+            object : BiometricPrompt.AuthenticationCallback() {
+                override fun onAuthenticationSucceeded(result: BiometricPrompt.AuthenticationResult) {
+                    onAuthenticated()
+                }
+
+                override fun onAuthenticationError(errorCode: Int, errString: CharSequence) {
+                    onRejected("Couldn't verify your identity: $errString")
+                }
+
+                override fun onAuthenticationFailed() = Unit
+            }
+        )
+        val action = when (pending.action) {
+            NoteAuthenticationAction.Open -> "open this protected note"
+            NoteAuthenticationAction.RemoveLock -> "remove this note's lock"
+        }
+        prompt.authenticate(
+            BiometricPrompt.PromptInfo.Builder()
+                .setTitle("Protected note")
+                .setSubtitle("Verify your identity to $action")
+                .setAllowedAuthenticators(authenticators)
+                .build()
+        )
     }
 }
 

@@ -52,6 +52,7 @@ class ApiServerService : Service() {
         const val NOTIFICATION_ID = 2002
         const val ACTION_START = "com.hermes.agent.action.START_API_SERVER"
         const val ACTION_STOP = "com.hermes.agent.action.STOP_API_SERVER"
+        const val ACTION_RESTART = "com.hermes.agent.action.RESTART_API_SERVER"
     }
 
     override fun onCreate() {
@@ -62,6 +63,7 @@ class ApiServerService : Service() {
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         when (intent?.action) {
             ACTION_STOP -> { stopServer(); return START_NOT_STICKY }
+            ACTION_RESTART -> { stopServer(stopService = false); startServer() }
             else -> startServer()
         }
         return START_STICKY
@@ -71,6 +73,11 @@ class ApiServerService : Service() {
         if (server != null) return
 
         val settings = runBlocking { settingsRepository.current() }
+        if (settings.apiServerKey.isBlank()) {
+            ApiServerController.setError("API server needs a bearer token before it can start.")
+            stopSelf()
+            return
+        }
         val host = if (settings.apiServerAllowLan) "0.0.0.0" else "127.0.0.1"
         val port = settings.apiServerPort
         val displayHost = if (settings.apiServerAllowLan) (lanIpv4() ?: "0.0.0.0") else "127.0.0.1"
@@ -106,12 +113,17 @@ class ApiServerService : Service() {
         }
     }
 
-    private fun stopServer() {
+    private fun stopServer(stopService: Boolean = true) {
         server?.let { runCatching { it.stop() } }
         server = null
         ApiServerController.setStopped()
         ServiceCompat.stopForeground(this, ServiceCompat.STOP_FOREGROUND_REMOVE)
-        stopSelf()
+        if (stopService) stopSelf()
+    }
+
+    override fun onTimeout(startId: Int, fgsType: Int) {
+        Timber.tag("ApiServer").w("foreground-service time limit reached; stopping API server")
+        stopServer()
     }
 
     /** First non-loopback IPv4 address, for showing a reachable LAN URL. */

@@ -87,6 +87,13 @@ sealed class DownloadStatus {
     data class Failed(val message: String) : DownloadStatus()
 }
 
+enum class NoteAuthenticationAction { Open, RemoveLock }
+
+data class NoteAuthenticationRequest(
+    val noteId: Int,
+    val action: NoteAuthenticationAction
+)
+
 class NoteViewModel(application: Application) : AndroidViewModel(application) {
     private val logTag = "OctoJotter"
 
@@ -102,6 +109,13 @@ class NoteViewModel(application: Application) : AndroidViewModel(application) {
     private val _appUnlocked = MutableStateFlow(false)
     val appUnlocked: StateFlow<Boolean> = _appUnlocked.asStateFlow()
 
+    // Authentication is deliberately short-lived and scoped to one note. The
+    // editor never receives protected text until the UI confirms success.
+    private var authenticatedNoteId: Int? = null
+    private val _noteAuthenticationRequest = MutableStateFlow<NoteAuthenticationRequest?>(null)
+    val noteAuthenticationRequest: StateFlow<NoteAuthenticationRequest?> =
+        _noteAuthenticationRequest.asStateFlow()
+
     fun setAppLockEnabled(enabled: Boolean) {
         viewModelScope.launch {
             appLockPreferences.setAppLockEnabled(enabled)
@@ -114,6 +128,7 @@ class NoteViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     fun lockApp() {
+        authenticatedNoteId = null
         if (appLockEnabled.value) {
             _appUnlocked.value = false
         }
@@ -988,6 +1003,14 @@ class NoteViewModel(application: Application) : AndroidViewModel(application) {
     fun loadNote(noteId: Int) {
         viewModelScope.launch {
             val note = repository.getNoteById(noteId)
+            if (note?.locked == true && authenticatedNoteId != noteId) {
+                _editingNote.value = null
+                _editorTitle.value = ""
+                _editorContent.value = ""
+                _pendingDraft.value = null
+                _noteAuthenticationRequest.value = NoteAuthenticationRequest(noteId, NoteAuthenticationAction.Open)
+                return@launch
+            }
             _editingNote.value = note
             if (note != null) {
                 _editorTitle.value = note.title
@@ -1187,18 +1210,53 @@ class NoteViewModel(application: Application) : AndroidViewModel(application) {
     fun emptyTrash() {
         viewModelScope.launch {
             repository.emptyTrash()
-            _syncMessage.value = "Trash emptied."
+            repository.syncPendingRemoteDeletes()
+                .onSuccess {
+                    _syncMessage.value = "Trash emptied."
+                }
+                .onFailure {
+                    _syncMessage.value = "Trash emptied locally; remote deletion is pending: ${it.message}"
+                    triggerBackgroundSync()
+                }
         }
     }
 
     fun toggleLockNote(note: NoteEntity) {
+        if (note.locked) {
+            _noteAuthenticationRequest.value = NoteAuthenticationRequest(note.id, NoteAuthenticationAction.RemoveLock)
+            return
+        }
         viewModelScope.launch {
-            repository.setNoteLocked(note, !note.locked)
-            val updated = note.copy(locked = !note.locked)
+            repository.setNoteLocked(note, true)
             if (_editingNote.value?.id == note.id) {
-                _editingNote.value = updated
+                authenticatedNoteId = null
+                _editingNote.value = null
+                _editorTitle.value = ""
+                _editorContent.value = ""
             }
         }
+    }
+
+    fun completeNoteAuthentication() {
+        val request = _noteAuthenticationRequest.value ?: return
+        _noteAuthenticationRequest.value = null
+        authenticatedNoteId = request.noteId
+        when (request.action) {
+            NoteAuthenticationAction.Open -> loadNote(request.noteId)
+            NoteAuthenticationAction.RemoveLock -> viewModelScope.launch {
+                val note = repository.getNoteById(request.noteId) ?: return@launch
+                repository.setNoteLocked(note, false)
+                if (_editingNote.value?.id == note.id) {
+                    _editingNote.value = note.copy(locked = false)
+                }
+                _syncMessage.value = "Unlocked \"${note.displayTitle.ifBlank { "Untitled Note" }}\"."
+            }
+        }
+    }
+
+    fun rejectNoteAuthentication(message: String) {
+        _noteAuthenticationRequest.value = null
+        _syncMessage.value = message
     }
 
     fun loadNoteHistory(noteId: Int) {
@@ -1269,6 +1327,7 @@ class NoteViewModel(application: Application) : AndroidViewModel(application) {
             _syncMessage.value = "Syncing..."
             val errors = mutableListOf<String>()
 
+            repository.syncPendingRemoteDeletes().onFailure { errors.add("Remote deletion: ${it.message}") }
             repository.pullFromGithub().onFailure { errors.add("Gist pull: ${it.message}") }
             repository.pushToGithub().onFailure { errors.add("Gist push: ${it.message}") }
 

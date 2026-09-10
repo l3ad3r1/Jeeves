@@ -124,17 +124,37 @@ class NoteRepository(
         noteDao.emptyTrash()
     }
 
+    /**
+     * Deletes remote copies for notes that have already been emptied from the
+     * local trash.  The rows remain as tombstones until this succeeds so a
+     * pull cannot resurrect a note whose remote deletion was delayed.
+     */
+    suspend fun syncPendingRemoteDeletes(): Result<Unit> {
+        val tombstones = noteDao.getPendingRemoteDeletes()
+        for (note in tombstones) {
+            val deletion = deleteRemoteNote(note)
+            if (deletion.isFailure) return deletion
+            noteDao.delete(note)
+        }
+        return Result.success(Unit)
+    }
+
     suspend fun setNoteLocked(note: NoteEntity, locked: Boolean) {
         noteDao.setLocked(note.id, locked)
     }
 
     suspend fun resolveConflictKeepLocal(note: NoteEntity) {
+        val remote = note.conflictedRemoteContent ?: return
         noteDao.update(
             note.copy(
                 needsSync = true,
                 conflictState = null,
                 conflictedRemoteContent = null,
                 conflictedRemoteModifiedAt = null,
+                // The remote revision becomes the base for the pending local
+                // upload. A following pull can then recognise this as a
+                // local-only change instead of recreating the same conflict.
+                lastSyncedContentHash = hashContent(remote),
                 lastModifiedLocally = System.currentTimeMillis()
             )
         )
@@ -162,6 +182,8 @@ class NoteRepository(
             note.copy(
                 id = 0,
                 gistId = null,
+                repository = null,
+                path = null,
                 sha = null,
                 title = "${note.title.ifBlank { "Untitled" }} (remote copy)",
                 content = remote,
@@ -198,29 +220,9 @@ class NoteRepository(
     }
 
     suspend fun deleteNoteAndGist(note: NoteEntity): Result<Unit> {
-        noteDao.delete(note)
-        // Repo-backed note: remove the file from its repository instead of a Gist.
-        if (!note.repository.isNullOrEmpty()) {
-            return deleteNoteFromRepository(note)
-        }
-        val gistId = note.gistId
-        if (!gistId.isNullOrEmpty()) {
-            val token = tokenManager.getToken()
-            if (token != null) {
-                val formattedToken = "Bearer $token"
-                return try {
-                    val response = githubApiService.deleteGist(formattedToken, gistId)
-                    if (response.isSuccessful || response.code() == 404) {
-                        Result.success(Unit)
-                    } else {
-                        Result.failure(IOException("Failed to delete Gist: ${response.code()} ${response.message()}"))
-                    }
-                } catch (e: Exception) {
-                    Result.failure(e)
-                }
-            }
-        }
-        return Result.success(Unit)
+        val deletion = deleteRemoteNote(note)
+        if (deletion.isSuccess) noteDao.delete(note)
+        return deletion
     }
 
     suspend fun deleteNoteById(id: Int) {
@@ -377,6 +379,28 @@ class NoteRepository(
         )
     }
 
+    private fun NoteEntity.hasProtectedContent(): Boolean = locked || encrypted
+
+    private fun NoteEntity.hasLocalChanges(): Boolean =
+        needsSync || lastSyncedContentHash == null || hashContent(content) != lastSyncedContentHash
+
+    private fun remoteChangedSinceLastSync(note: NoteEntity, remoteContent: String): Boolean =
+        note.lastSyncedContentHash == null || note.lastSyncedContentHash != hashContent(remoteContent)
+
+    /**
+     * Decides a pull without treating an ordinary local edit as a conflict.
+     * A conflict is only possible when both sides changed since the recorded
+     * common content hash. Existing conflicts and deletion tombstones are
+     * intentionally immutable until the user or remote delete resolves them.
+     */
+    private fun shouldKeepLocalOnPull(note: NoteEntity, remoteContent: String): Boolean =
+        note.pendingRemoteDelete || note.conflictState == CONFLICT_STATE ||
+            note.hasProtectedContent() ||
+            (note.hasLocalChanges() && !remoteChangedSinceLastSync(note, remoteContent))
+
+    private fun isTrueConflict(note: NoteEntity, remoteContent: String): Boolean =
+        note.hasLocalChanges() && remoteChangedSinceLastSync(note, remoteContent) && note.content != remoteContent
+
     private fun decodeBase64Text(encoded: String): String =
         String(Base64.decode(encoded.replace("\n", ""), Base64.DEFAULT), Charsets.UTF_8)
 
@@ -475,9 +499,11 @@ class NoteRepository(
                             lastModifiedLocally = System.currentTimeMillis()
                         )
                     )
-                } else if (existing.needsSync && existing.content != decoded) {
+                } else if (shouldKeepLocalOnPull(existing, decoded)) {
+                    continue
+                } else if (isTrueConflict(existing, decoded)) {
                     markConflict(existing, decoded, remoteSha = entry.sha)
-                } else if (!existing.needsSync) {
+                } else {
                     noteDao.update(
                         existing.copy(
                             title = title,
@@ -512,6 +538,9 @@ class NoteRepository(
         return try {
             val notesToSync = noteDao.getNotesToSyncForRepository(repoPath)
             for (note in notesToSync) {
+                // Defend in depth: the DAO filters protected rows, but sync
+                // policy must be enforced immediately before network I/O too.
+                if (note.hasProtectedContent() || note.conflictState == CONFLICT_STATE) continue
                 // Derive a file path from the title's PARA convention if unset.
                 val rawPath = note.path ?: (note.title.replace("__", "/").ifBlank { "Untitled" } + ".md")
                 val encodedPath = encodeRepoPath(rawPath)
@@ -562,7 +591,7 @@ class NoteRepository(
         }
     }
 
-    /** Delete a repo-backed note's file from GitHub (best-effort). */
+    /** Delete a repo-backed note's file from GitHub. */
     suspend fun deleteNoteFromRepository(note: NoteEntity): Result<Unit> {
         val repoPath = note.repository
         val path = note.path
@@ -570,7 +599,8 @@ class NoteRepository(
         if (repoPath.isNullOrEmpty() || path.isNullOrEmpty() || sha.isNullOrEmpty()) {
             return Result.success(Unit)  // never synced remotely; nothing to delete
         }
-        val token = tokenManager.getToken() ?: return Result.success(Unit)
+        val token = tokenManager.getToken()
+            ?: return Result.failure(Exception("No GitHub token saved. Remote deletion is pending."))
         val formattedToken = "Bearer $token"
         val (owner, repo) = parseRepoPath(repoPath).getOrElse { return Result.success(Unit) }
 
@@ -583,6 +613,23 @@ class NoteRepository(
                 Result.success(Unit)
             } else {
                 Result.failure(IOException("Failed to delete file from repo (${response.code()})"))
+            }
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    private suspend fun deleteRemoteNote(note: NoteEntity): Result<Unit> {
+        if (!note.repository.isNullOrEmpty()) return deleteNoteFromRepository(note)
+        val gistId = note.gistId ?: return Result.success(Unit)
+        val token = tokenManager.getToken()
+            ?: return Result.failure(Exception("No GitHub token saved. Remote deletion is pending."))
+        return try {
+            val response = githubApiService.deleteGist("Bearer $token", gistId)
+            if (response.isSuccessful || response.code() == 404) {
+                Result.success(Unit)
+            } else {
+                Result.failure(IOException("Failed to delete Gist: ${response.code()} ${response.message()}"))
             }
         } catch (e: Exception) {
             Result.failure(e)
@@ -626,9 +673,11 @@ class NoteRepository(
                                     needsSync = false
                                 )
                             )
-                        } else if (existingNote.needsSync && existingNote.content != content) {
+                        } else if (shouldKeepLocalOnPull(existingNote, content)) {
+                            continue
+                        } else if (isTrueConflict(existingNote, content)) {
                             markConflict(existingNote, content)
-                        } else if (!existingNote.needsSync) {
+                        } else {
                             noteDao.update(
                                 existingNote.copy(
                                     title = title,
@@ -659,7 +708,9 @@ class NoteRepository(
         return try {
             val notesToSync = noteDao.getNotesToSync()
             for (note in notesToSync) {
-                if (note.conflictState == CONFLICT_STATE) continue
+                // Do not let a lock set after an edit race an already queued
+                // synchronization into sending protected content off-device.
+                if (note.hasProtectedContent() || note.conflictState == CONFLICT_STATE) continue
                 val filename = "${note.title.ifBlank { "Untitled" }}.md"
                 val fileRequest = GistFileRequest(content = note.content)
                 val filesMap = mapOf(filename to fileRequest)
