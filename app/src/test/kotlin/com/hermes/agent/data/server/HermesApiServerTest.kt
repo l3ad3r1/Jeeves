@@ -42,6 +42,10 @@ import java.net.ServerSocket
  */
 class HermesApiServerTest {
 
+    private companion object {
+        const val TEST_API_KEY = "test-api-key"
+    }
+
     private val json = Json { ignoreUnknownKeys = true }
     private val client = OkHttpClient()
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
@@ -60,7 +64,7 @@ class HermesApiServerTest {
         }
     }
 
-    private fun start(apiKey: String = "", reply: String = "hi from hermes") {
+    private fun start(apiKey: String = TEST_API_KEY, reply: String = "hi from hermes") {
         port = ServerSocket(0).use { it.localPort }
         server = HermesApiServer("127.0.0.1", port, apiKey, fakeOrchestrator(reply), scope).also {
             it.start(1000, false)
@@ -96,7 +100,7 @@ class HermesApiServerTest {
         val chatRepo = RecordingChatRepository(reply)
         port = ServerSocket(0).use { it.localPort }
         server = HermesApiServer(
-            "127.0.0.1", port, "", fakeOrchestrator("unused"), scope,
+            "127.0.0.1", port, TEST_API_KEY, fakeOrchestrator("unused"), scope,
             chatRepository = chatRepo,
         ).also { it.start(1000, false) }
         return chatRepo
@@ -107,7 +111,7 @@ class HermesApiServerTest {
         val convRepo = mockk<ConversationRepository>(relaxed = true)
         port = ServerSocket(0).use { it.localPort }
         server = HermesApiServer(
-            "127.0.0.1", port, "", fakeOrchestrator("unused"), scope,
+            "127.0.0.1", port, TEST_API_KEY, fakeOrchestrator("unused"), scope,
             chatRepository = chatRepo,
             conversationRepository = convRepo,
         ).also { it.start(1000, false) }
@@ -122,13 +126,13 @@ class HermesApiServerTest {
         scope.cancel()
     }
 
-    private fun get(path: String, bearer: String? = null): okhttp3.Response {
+    private fun get(path: String, bearer: String? = TEST_API_KEY): okhttp3.Response {
         val b = Request.Builder().url("http://127.0.0.1:$port$path")
         if (bearer != null) b.addHeader("Authorization", "Bearer $bearer")
         return client.newCall(b.get().build()).execute()
     }
 
-    private fun postCompletion(body: String, bearer: String? = null): okhttp3.Response {
+    private fun postCompletion(body: String, bearer: String? = TEST_API_KEY): okhttp3.Response {
         val b = Request.Builder()
             .url("http://127.0.0.1:$port/v1/chat/completions")
             .post(body.toRequestBody("application/json".toMediaType()))
@@ -179,7 +183,7 @@ class HermesApiServerTest {
     @Test
     fun `unauthorized without token when key configured`() {
         start(apiKey = "secret")
-        postCompletion("""{"messages":[{"role":"user","content":"hi"}]}""").use { resp ->
+        postCompletion("""{"messages":[{"role":"user","content":"hi"}]}""", bearer = null).use { resp ->
             assertEquals(401, resp.code)
         }
     }

@@ -42,8 +42,9 @@ import java.util.UUID
  * up in the app's chat list. [chatRepository]/[conversationRepository] are
  * nullable so plain-transport tests can construct the server without them.
  *
- * Auth: when an API key is configured, every request must present
- * `Authorization: Bearer <key>`. Transport/thread model is NanoHTTPD's
+ * Auth: the service requires a non-blank API key before it starts, and every
+ * protected request must present `Authorization: Bearer <key>`.
+ * Transport/thread model is NanoHTTPD's
  * (one worker thread per request); suspend agent calls are bridged with
  * [runBlocking] for the non-streaming path and a piped stream + a coroutine
  * on [scope] for SSE.

@@ -1,5 +1,17 @@
 # Jeeves — Progress
 
+## 2026-09-14 — API-server CI follows the fail-closed auth contract
+
+The transport-level API-server tests now start protected endpoints with a
+non-blank test token and send that bearer token by default. The explicit
+missing-token test still omits it and continues to assert `401`. This aligns
+the app suite with the shared `agent-core` security contract pinned at
+`849f55d`, where a blank configured key is deliberately invalid.
+
+**VERIFIED:** the focused 10-test `HermesApiServerTest` suite passed, followed
+by the complete `tools/preflight.sh` gate: all modules compiled, the debug APK
+assembled, and all 284 unit tests passed.
+
 ## 2026-09-10 — Security audit remediation
 
 Protected notes now require device authentication before open or unlock, excluded
