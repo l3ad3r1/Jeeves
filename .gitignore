@@ -61,3 +61,16 @@ temp_release_notes.md
 # CI checks the shared engine out here (settings.gradle.kts resolves it);
 # locally it lives at ../agent-core. Never commit a nested copy.
 /agent-core/
+
+# Local-only working material: the test regimen workbook, the screenshots/DB
+# dumps/logcat a test pass creates, and agent handoff/handover .md files.
+# None of this belongs in the repo — the workbook is a live working doc (not
+# a record of anything merged), captures can carry real conversation data,
+# and handoff docs are point-in-time notes for one agent to hand off to
+# another, not project documentation. Superseded /ANTIGRAVITY-*.md,
+# /test-run/ and /test_artifacts/, which either never matched the actual
+# on-disk names or only matched at repo root.
+/local/
+
+# SPIKE: gomobile output, built by tsnet-bridge/build.sh
+app/libs/*.aar

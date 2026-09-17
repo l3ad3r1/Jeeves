@@ -256,6 +256,8 @@ kotlin {
 }
 
 dependencies {
+    // SPIKE: embedded Tailscale node, built by tsnet-bridge/build.sh (gomobile).
+    implementation(files("libs/tsbridge.aar"))
     // Jeeves-only synchronous settings and optional feature contracts.
     implementation(project(":core:jeeves-settings"))
     implementation(project(":core:theme"))
