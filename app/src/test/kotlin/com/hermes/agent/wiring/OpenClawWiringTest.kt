@@ -128,8 +128,12 @@ class OpenClawWiringTest {
             orchestrator.contains("StandingInstructions.promptBlock("),
         )
         assertTrue(
+            "a local bot's persona must be layered on top of the agent's own system prompt, not replace it",
+            orchestrator.contains("agent.systemPrompt + \"\\n\\n## Custom persona for this conversation\\n\" + localPersona"),
+        )
+        assertTrue(
             "the block must be concatenated into the stable system message",
-            orchestrator.contains("agent.systemPrompt + standingBlock"),
+            orchestrator.contains("persona + standingBlock"),
         )
     }
 
@@ -137,8 +141,8 @@ class OpenClawWiringTest {
     fun `the system prompt is split into a cacheable stable half and a per-turn half`() {
         val orchestrator = source("data/agent/OrchestratorImpl.kt")
         assertTrue(
-            "stable content must be one system message",
-            orchestrator.contains("val stableSystem = agent.systemPrompt"),
+            "stable content (persona + standing + tool-call format) must be one system message",
+            orchestrator.contains("val stableSystem = persona + standingBlock + supplementalBlock + toolInstruction"),
         )
         assertTrue(
             "per-turn recall must be a separate system message",
@@ -147,7 +151,7 @@ class OpenClawWiringTest {
         )
         assertTrue(
             "memory must NOT be in the stable half or the cache prefix breaks every turn",
-            !orchestrator.contains("stableSystem = agent.systemPrompt + standingBlock + supplementalBlock + memoryBlock"),
+            !orchestrator.contains("stableSystem = persona + standingBlock + supplementalBlock + memoryBlock"),
         )
     }
 

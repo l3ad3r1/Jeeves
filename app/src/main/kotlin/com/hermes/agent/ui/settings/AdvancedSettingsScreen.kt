@@ -130,19 +130,21 @@ private fun FilesWorkspaceSection(
             )
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                horizontalArrangement = Arrangement.spacedBy(6.dp),
             ) {
                 Button(
                     onClick = { launcher.launch(null) },
                     modifier = Modifier.weight(1f),
+                    contentPadding = SettingsButtonPadding,
                 ) {
-                    Text(if (rootUri.isBlank()) "Grant Directory" else "Change Directory")
+                    ButtonLabel(if (rootUri.isBlank()) "Grant Directory" else "Change Directory")
                 }
                 if (rootUri.isNotBlank()) {
                     OutlinedButton(
                         onClick = { onUpdateRoot("") },
+                        contentPadding = SettingsButtonPadding,
                     ) {
-                        Text("Revoke / Reset")
+                        ButtonLabel("Revoke / Reset")
                     }
                 }
             }
@@ -205,11 +207,10 @@ private fun JsonBackupSection(
                 )
                 Text("Backup & Restore", style = MaterialTheme.typography.bodyLarge)
             }
-            Text(
+            InfoNote(
+                "About backup and restore",
                 "Choose what to include. Restoring merges into what is already " +
                     "here and needs no restart.",
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
 
             when (state) {
@@ -313,13 +314,14 @@ private fun JsonBackupSection(
                     )
                 }
 
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                     FilledTonalButton(
                         onClick = { backupLauncher.launch(defaultBackupFileName(APP_LABEL)) },
                         enabled = canBackUp,
                         modifier = Modifier.weight(1f),
+                        contentPadding = SettingsButtonPadding,
                     ) {
-                        Text("Back up")
+                        ButtonLabel("Back up")
                     }
                     OutlinedButton(
                         // Some providers hand JSON back as octet-stream or
@@ -331,8 +333,9 @@ private fun JsonBackupSection(
                             )
                         },
                         modifier = Modifier.weight(1f),
+                        contentPadding = SettingsButtonPadding,
                     ) {
-                        Text("Restore")
+                        ButtonLabel("Restore")
                     }
                 }
                 if (passwordRequired && password.isBlank()) {

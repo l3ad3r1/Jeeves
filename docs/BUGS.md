@@ -3,7 +3,7 @@
 Jeeves shares the `agent-core` engine with the public Hermes app, so most engine
 issues apply to both. This file is the Jeeves-side summary.
 
-Last reviewed: **2026-09-08 (v1.0.3)**.
+Last reviewed: **2026-09-19 (v1.0.5)**.
 
 ## Open
 

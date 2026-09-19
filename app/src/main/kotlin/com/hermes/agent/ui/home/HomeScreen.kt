@@ -49,6 +49,7 @@ import androidx.compose.material.icons.filled.Dashboard
 import androidx.compose.material.icons.filled.EditNote
 import androidx.compose.material.icons.filled.Forum
 import androidx.compose.material.icons.filled.Markunread
+import androidx.compose.material.icons.filled.SmartToy
 import androidx.compose.material3.Icon
 import com.hermes.agent.ui.theme.alt.OutlinedSpaceTile
 import com.hermes.agent.ui.theme.alt.SpaceTile
@@ -68,6 +69,7 @@ fun HomeScreen(
     onOpenConnections: () -> Unit,
     onOpenHaDashboard: () -> Unit = {},
     onOpenPostOffice: () -> Unit = {},
+    onOpenBots: () -> Unit = {},
     viewModel: HomeViewModel = hiltViewModel(),
 ) {
     val showHa by viewModel.showHaDashboard.collectAsStateWithLifecycle()
@@ -169,51 +171,37 @@ fun HomeScreen(
         Spacer(Modifier.height(16.dp))
 
         // Quick actions
-        // Two tiles stretched to half of an 1100dp tablet became 527dp-wide
-        // letterboxes. Lay them out on the same column grid the tiles are sized
-        // for, and pad the row so they keep that width instead of filling it.
+        // Tiles stretched to fill an 1100dp tablet became 527dp-wide letterboxes,
+        // and more tiles than columns squeezed on a phone. Wrap them onto the
+        // column grid the tiles are sized for; a short last row keeps tile width.
         BoxWithConstraints(Modifier.fillMaxWidth()) {
         val tileColumns = tileColumnsFor(maxWidth)
-        Row(horizontalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.fillMaxWidth()) {
-            QuickAction(
-                title = "New chat",
-                subtitle = "Ask or delegate",
-                icon = Icons.AutoMirrored.Filled.Chat,
-                accent = tileAccent(themeStyle, scheme, 2, accentSeed),
-                themeStyle = themeStyle,
-                modifier = Modifier.weight(1f),
-                onClick = { viewModel.createNewConversation(onNewChat) },
-            )
-            QuickAction(
-                title = "Messaging",
-                subtitle = "Link a platform",
-                icon = Icons.Filled.Forum,
-                accent = tileAccent(themeStyle, scheme, 1, accentSeed),
-                themeStyle = themeStyle,
-                modifier = Modifier.weight(1f),
-                onClick = onOpenConnections,
-            )
-            QuickAction(
-                title = "Post Office",
-                subtitle = "Cross-agent mail",
-                icon = Icons.Filled.Markunread,
-                accent = tileAccent(themeStyle, scheme, 0, accentSeed),
-                themeStyle = themeStyle,
-                modifier = Modifier.weight(1f),
-                onClick = onOpenPostOffice,
-            )
-            if (showHa) {
-                QuickAction(
-                    title = "Home Assistant",
-                    subtitle = "Smart-home dashboard",
-                    icon = Icons.Filled.Dashboard,
-                    accent = tileAccent(themeStyle, scheme, 3, accentSeed),
-                    themeStyle = themeStyle,
-                    modifier = Modifier.weight(1f),
-                    onClick = onOpenHaDashboard,
-                )
+        val quickTiles = buildList {
+            add(QuickTile("New chat", "Ask or delegate", Icons.AutoMirrored.Filled.Chat, 2) {
+                viewModel.createNewConversation(onNewChat)
+            })
+            add(QuickTile("Messaging", "Link a platform", Icons.Filled.Forum, 1, onOpenConnections))
+            add(QuickTile("Post Office", "Cross-agent mail", Icons.Filled.Markunread, 0, onOpenPostOffice))
+            add(QuickTile("Bots", "PC bots & chat", Icons.Filled.SmartToy, 4, onOpenBots))
+            if (showHa) add(QuickTile("Home Assistant", "Smart-home dashboard", Icons.Filled.Dashboard, 3, onOpenHaDashboard))
+        }
+        Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            quickTiles.chunked(tileColumns).forEach { rowTiles ->
+                Row(horizontalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.fillMaxWidth()) {
+                    rowTiles.forEach { tile ->
+                        QuickAction(
+                            title = tile.title,
+                            subtitle = tile.subtitle,
+                            icon = tile.icon,
+                            accent = tileAccent(themeStyle, scheme, tile.accentIndex, accentSeed),
+                            themeStyle = themeStyle,
+                            modifier = Modifier.weight(1f),
+                            onClick = tile.onClick,
+                        )
+                    }
+                    repeat(tileColumns - rowTiles.size) { Spacer(Modifier.weight(1f)) }
+                }
             }
-            repeat((tileColumns - (if (showHa) 4 else 3)).coerceAtLeast(0)) { Spacer(Modifier.weight(1f)) }
         }
         }
 
@@ -445,3 +433,11 @@ private fun EmptyHint(text: String) {
         Text(text, style = MaterialTheme.typography.bodyMedium, color = scheme.onSurfaceVariant)
     }
 }
+
+private class QuickTile(
+    val title: String,
+    val subtitle: String,
+    val icon: ImageVector,
+    val accentIndex: Int,
+    val onClick: () -> Unit,
+)
