@@ -20,6 +20,7 @@ import com.hermes.agent.data.update.OtaUpdateChecker
 import com.hermes.agent.domain.security.DeviceAuthenticationService
 import com.jeeves.core.settings.JeevesSettings
 import com.jeeves.core.settings.VoiceCatalog
+import com.hermes.agent.data.export.BotsBackup
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import java.io.File
@@ -109,6 +110,7 @@ class SettingsViewModel @Inject constructor(
     private val cloudModelCatalog: CloudModelCatalog,
     private val localLlmManager: com.hermes.agent.data.llm.LocalLlmManager,
     private val jsonBackupManager: JsonBackupManager,
+    private val botsBackup: BotsBackup,
     private val tailnet: com.hermes.agent.data.remote.TailnetNode,
     private val credentialVault: CredentialVault,
     private val oauthManager: com.hermes.agent.data.oauth.OAuthManager,
@@ -376,7 +378,7 @@ class SettingsViewModel @Inject constructor(
     }
 
     /** Writes the export to a location the user picked through the file picker. */
-    fun exportJson(uri: Uri, sections: Set<BackupSection>, password: String?) {
+    fun exportJson(uri: Uri, sections: Set<BackupSection>, password: String?, includeBots: Boolean = false) {
         if (_jsonBackupState.value is BackupUiState.InProgress) return
         _jsonBackupState.value = BackupUiState.InProgress
         viewModelScope.launch {
@@ -392,6 +394,7 @@ class SettingsViewModel @Inject constructor(
                         } else {
                             null
                         },
+                        extras = if (includeBots) mapOf(BotsBackup.KEY to botsBackup.export()) else emptyMap(),
                     )
                 // encode() refuses credentials without a password, so the guard
                 // holds even if a screen ever forgets to enforce it.
@@ -399,7 +402,11 @@ class SettingsViewModel @Inject constructor(
                 appContext.contentResolver.openOutputStream(uri)?.use { out ->
                     out.write(text.toByteArray(Charsets.UTF_8))
                 } ?: error("Could not open the file for writing.")
-                Triple(backup.totalItems, backup.credentials != null, !password.isNullOrBlank())
+                Triple(
+                    backup.totalItems + if (includeBots) 1 else 0,
+                    backup.credentials != null,
+                    !password.isNullOrBlank(),
+                )
             }.fold(
                 onSuccess = { (items, keys, encrypted) ->
                     BackupUiState.Success(
@@ -426,10 +433,13 @@ class SettingsViewModel @Inject constructor(
                 // Decoded before anything is written, so a wrong password or a
                 // corrupt file cannot leave the database half-updated.
                 val backup = jsonBackupManager.decode(text, password)
-                val report = jsonBackupManager.import(
+                val chats = jsonBackupManager.import(
                     backup,
                     if (overwrite) ImportMode.OVERWRITE_EXISTING else ImportMode.SKIP_EXISTING,
                 )
+                // After the chats, so a bot restored here finds its history already in place.
+                val bots = backup.extras[BotsBackup.KEY]?.let { botsBackup.restore(it, overwrite) }
+                val report = if (bots != null) chats + bots else chats
                 val keys = backup.credentials?.let { credentialVault.apply(it) } ?: 0
                 report to keys
             }.fold(
