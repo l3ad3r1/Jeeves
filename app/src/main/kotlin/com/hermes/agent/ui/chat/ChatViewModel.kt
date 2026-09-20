@@ -48,6 +48,7 @@ class ChatViewModel @Inject constructor(
     private val todoStore: TodoStore,
     private val settingsRepository: SettingsRepository,
     private val reasoningStore: com.hermes.agent.data.chat.ReasoningStore,
+    private val branchStore: com.hermes.agent.data.chat.BranchStore,
     private val toolConfirmationService: com.hermes.agent.domain.tool.ToolConfirmationService,
     private val executionPlanRepository: ExecutionPlanRepository,
 ) : ViewModel() {
@@ -61,6 +62,61 @@ class ChatViewModel @Inject constructor(
     }
 
     private val _ephemeral = MutableStateFlow(ChatEphemeralState())
+
+    private val _branchPoints = MutableStateFlow<List<com.hermes.agent.data.chat.BranchPoint>>(emptyList())
+
+    /** Where this chat went more than one way, keyed by the message the `‹ 2 / 3 ›` switcher sits on. */
+    val branches: StateFlow<Map<String, com.hermes.agent.data.chat.BranchInfo>> =
+        combine(conversationRepository.observeMessages(conversationId), _branchPoints) { messages, points ->
+            com.hermes.agent.data.chat.BranchLogic.switchers(points, messages)
+        }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyMap())
+
+    init {
+        viewModelScope.launch { _branchPoints.value = branchStore.load(conversationId) }
+    }
+
+    /**
+     * Editing or re-running a turn removes it and everything after it. Before that happens, keep
+     * what is about to go as a branch, so the earlier version of the conversation can be brought back.
+     */
+    private suspend fun keepBranchBefore(message: Message) {
+        val messages = uiState.value.messages
+        val index = messages.indexOfFirst { it.id == message.id }
+        if (index < 0) return
+        val parentId = if (index == 0) "" else messages[index - 1].id
+        val points = com.hermes.agent.data.chat.BranchLogic.fork(
+            _branchPoints.value,
+            parentId,
+            messages.drop(index).map(com.hermes.agent.data.chat.Snap::of),
+        )
+        _branchPoints.value = points
+        branchStore.save(conversationId, points)
+    }
+
+    /** Show another branch of this chat: the current one is set aside and the chosen one put in its place. */
+    fun switchBranch(info: com.hermes.agent.data.chat.BranchInfo, targetPosition: Int) {
+        if (_ephemeral.value.isSending) return
+        viewModelScope.launch {
+            val messages = uiState.value.messages
+            val parentIndex = if (info.parentId.isEmpty()) -1 else messages.indexOfFirst { it.id == info.parentId }
+            if (parentIndex < 0 && info.parentId.isNotEmpty()) return@launch
+            val liveTail = messages.drop(parentIndex + 1)
+            val switch = com.hermes.agent.data.chat.BranchLogic.switchTo(
+                _branchPoints.value, info.parentId, targetPosition - 1,
+                liveTail.map(com.hermes.agent.data.chat.Snap::of),
+            ) ?: return@launch
+            runCatching {
+                liveTail.firstOrNull()?.let { conversationRepository.rewindTo(conversationId, it) }
+                switch.install.forEach { conversationRepository.addMessage(conversationId, it.toMessage(conversationId)) }
+            }.onSuccess {
+                _branchPoints.value = switch.points
+                branchStore.save(conversationId, switch.points)
+            }.onFailure { t ->
+                Timber.tag("Chat").w(t, "could not switch branch")
+                _ephemeral.value = _ephemeral.value.copy(errorMessage = "Could not switch to that branch.")
+            }
+        }
+    }
 
     /** The saved reasoning behind each reply that has some, keyed by message id, for the "Thought for" chip. */
     @OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
@@ -152,6 +208,84 @@ class ChatViewModel @Inject constructor(
 
     fun setReasoningEffort(effort: String) = viewModelScope.launch {
         settingsRepository.setReasoningEffort(effort)
+    }
+
+    /**
+     * Edit a turn in place.
+     *
+     * The original turn is removed first. Prefilling the composer alone left
+     * the old message sitting above its own replacement, so an edited turn
+     * appeared twice and the model saw both — an edit is meant to change a
+     * message, not add one.
+     */
+    fun editMessage(message: Message) {
+        viewModelScope.launch {
+            runCatching { keepBranchBefore(message) }
+                .onFailure { Timber.tag("Chat").w(it, "could not keep the earlier version as a branch") }
+            runCatching { conversationRepository.rewindTo(conversationId, message) }
+                .onFailure { Timber.tag("Chat").w(it, "could not clear the turn being edited") }
+            _inputPrefill.value = message.content
+        }
+    }
+
+    /**
+     * Rewind: drop this message and everything after it. Destructive by
+     * definition, so the UI confirms first; the text is handed back to the
+     * composer so the turn can be retried without retyping it.
+     */
+    fun rewindTo(message: Message) {
+        viewModelScope.launch {
+            runCatching { conversationRepository.rewindTo(conversationId, message) }
+                .onSuccess { removed ->
+                    if (message.role == MessageRole.USER) _inputPrefill.value = message.content
+                    _ephemeral.value = _ephemeral.value.copy(
+                        errorMessage = null,
+                        notice = "Rewound $removed message${if (removed == 1) "" else "s"}",
+                    )
+                }
+                .onFailure { t ->
+                    Timber.tag("Chat").w(t, "rewind failed")
+                    _ephemeral.value = _ephemeral.value.copy(errorMessage = "Could not rewind this chat.")
+                }
+        }
+    }
+
+    /**
+     * Fork: copy the transcript up to this message into a new conversation and
+     * hand back its id so the caller can navigate there. Non-destructive, which
+     * is what makes it the safe counterpart to rewind.
+     */
+    fun forkFrom(message: Message, onForked: (String) -> Unit) {
+        viewModelScope.launch {
+            val title = message.content.take(40).ifBlank { "Forked chat" }
+            runCatching { conversationRepository.forkFrom(conversationId, message, title) }
+                .onSuccess(onForked)
+                .onFailure { t ->
+                    Timber.tag("Chat").w(t, "fork failed")
+                    _ephemeral.value = _ephemeral.value.copy(errorMessage = "Could not fork this chat.")
+                }
+        }
+    }
+
+    /**
+     * Re-run a turn against a different model.
+     *
+     * Like [editMessage], this replaces the turn rather than appending one:
+     * retrying used to leave "Update to high" and "[ultrabrain] Update to high"
+     * stacked in the transcript, which reads as the user asking twice.
+     */
+    fun retryWithAlias(message: Message, alias: String) {
+        val cleanContent = message.content
+            .removePrefix("[ultrabrain] ")
+            .removePrefix("[quick] ")
+            .trim()
+        viewModelScope.launch {
+            runCatching { keepBranchBefore(message) }
+                .onFailure { Timber.tag("Chat").w(it, "could not keep the earlier version as a branch") }
+            runCatching { conversationRepository.rewindTo(conversationId, message) }
+                .onFailure { Timber.tag("Chat").w(it, "could not clear the turn being retried") }
+            sendMessage("[$alias] $cleanContent")
+        }
     }
 
     fun sendMessage(
