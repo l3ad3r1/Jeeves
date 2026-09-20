@@ -83,6 +83,8 @@ class MainActivity : FragmentActivity() {
                 .collectAsState(initial = JeevesSettings.themeStyle(this))
             val themeAccentColor by JeevesSettings.themeAccentColorFlow(this)
                 .collectAsState(initial = JeevesSettings.themeAccentColor(this))
+            val colorPreset by JeevesSettings.colorPresetFlow(this)
+                .collectAsState(initial = JeevesSettings.colorPreset(this))
             val fontFamily by JeevesSettings.fontFamilyFlow(this)
                 .collectAsState(initial = JeevesSettings.fontFamily(this))
             val fontScalePercent by JeevesSettings.fontScalePercentFlow(this)
@@ -99,6 +101,7 @@ class MainActivity : FragmentActivity() {
                 },
                 themeStyle = com.hermes.agent.ui.theme.alt.ThemeStyle.fromStorageKey(themeStyle),
                 themeAccentColor = themeAccentColor,
+                colorPreset = com.hermes.agent.ui.theme.SeedPreset.fromStorageKey(colorPreset),
                 fontFamilyName = fontFamily,
                 fontScalePercent = fontScalePercent,
             ) {

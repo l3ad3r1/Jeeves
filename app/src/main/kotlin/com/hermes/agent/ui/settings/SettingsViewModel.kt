@@ -141,6 +141,12 @@ class SettingsViewModel @Inject constructor(
     /** Null clears the override and returns to that style's own default colour. */
     fun setThemeAccentColor(argb: Int?) = JeevesSettings.setThemeAccentColor(appContext, argb)
 
+    val colorPreset: StateFlow<String> = JeevesSettings.colorPresetFlow(appContext)
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), JeevesSettings.colorPreset(appContext))
+
+    /** An empty key turns the preset off and returns to the chosen Theme style. */
+    fun setColorPreset(key: String) = JeevesSettings.setColorPreset(appContext, key)
+
     val fontFamily: StateFlow<String> = JeevesSettings.fontFamilyFlow(appContext)
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), JeevesSettings.FONT_GEIST)
 

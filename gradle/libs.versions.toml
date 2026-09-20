@@ -12,6 +12,7 @@ lifecycle = "2.8.6"
 activityCompose = "1.9.2"
 navigationCompose = "2.8.1"
 composeBom = "2024.09.02"
+materialKolor = "4.1.1"
 hiltNavigationCompose = "1.2.0"
 datastorePreferences = "1.1.1"
 workRuntimeKtx = "2.10.0"   # raised from 2.9.1 to match Octo Jotter
@@ -67,6 +68,7 @@ robolectric = "4.13"
 archCoreTesting = "2.2.0"
 
 [libraries]
+material-color-utilities = { group = "com.materialkolor", name = "material-color-utilities", version.ref = "materialKolor" }
 # AndroidX core
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
 androidx-lifecycle-runtime-ktx = { group = "androidx.lifecycle", name = "lifecycle-runtime-ktx", version.ref = "lifecycle" }

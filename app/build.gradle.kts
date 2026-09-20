@@ -261,6 +261,7 @@ dependencies {
     // Jeeves-only synchronous settings and optional feature contracts.
     implementation(project(":core:jeeves-settings"))
     implementation(project(":core:theme"))
+    implementation(libs.material.color.utilities)
     implementation(project(":core:util"))
     implementation(project(":core:domain"))
     implementation(project(":core:plugin"))

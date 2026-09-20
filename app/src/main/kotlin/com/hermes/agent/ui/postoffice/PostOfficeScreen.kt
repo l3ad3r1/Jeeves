@@ -42,7 +42,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewModelScope
-import com.hermes.agent.core.settings.HermesSettings
+import com.jeeves.core.settings.JeevesSettings
 import com.hermes.agent.domain.model.Conversation
 import com.hermes.agent.domain.repository.ConversationRepository
 import com.hermes.agent.ui.components.SlimTopBar
@@ -88,11 +88,11 @@ fun PostOfficeScreen(
     val conversations by viewModel.conversations.collectAsStateWithLifecycle()
     val scheme = MaterialTheme.colorScheme
     val context = LocalContext.current
-    val themeStyleKey by HermesSettings.themeStyleFlow(context)
-        .collectAsStateWithLifecycle(initialValue = HermesSettings.THEME_STYLE_CLASSIC)
+    val themeStyleKey by JeevesSettings.themeStyleFlow(context)
+        .collectAsStateWithLifecycle(initialValue = JeevesSettings.THEME_STYLE_CLASSIC)
     val themeStyle = ThemeStyle.fromStorageKey(themeStyleKey)
-    val themeAccentArgb by HermesSettings.themeAccentColorFlow(context)
-        .collectAsStateWithLifecycle(initialValue = HermesSettings.themeAccentColor(context))
+    val themeAccentArgb by JeevesSettings.themeAccentColorFlow(context)
+        .collectAsStateWithLifecycle(initialValue = JeevesSettings.themeAccentColor(context))
     val accentSeed = themeAccentArgb?.let { Color(it) }
 
     Scaffold(

@@ -155,14 +155,17 @@ fun ChatInputBar(
             }
         }
 
+        // One rounded container holds everything: the text field across the top, and beneath it
+        // the actions (attach, mic, model, effort) with send at the far end, so the whole
+        // composer reads as a single floating pill and the typing area keeps the full width.
         Surface(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 8.dp),
-            shape = RoundedCornerShape(28.dp),
-            color = MaterialTheme.colorScheme.surfaceVariant,
+                .padding(start = 12.dp, end = 12.dp, top = 8.dp, bottom = 8.dp),
+            shape = RoundedCornerShape(32.dp),
+            color = MaterialTheme.colorScheme.surfaceContainerHigh,
         ) {
-            Column(modifier = Modifier.padding(horizontal = 10.dp, vertical = 8.dp)) {
+            Column(modifier = Modifier.padding(start = 10.dp, end = 10.dp, top = 6.dp, bottom = 8.dp)) {
                 BasicTextField(
                     value = text,
                     onValueChange = { text = it },
@@ -194,8 +197,12 @@ fun ChatInputBar(
                     },
                 )
 
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Box {
+
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.fillMaxWidth(),
+                ) {
+            Box {
                         IconButton(
                             onClick = { quickActionsOpen = true },
                             modifier = Modifier.size(40.dp),
@@ -334,54 +341,53 @@ fun ChatInputBar(
                         }
                     }
 
-                    Spacer(Modifier.size(4.dp))
+                    Spacer(Modifier.size(6.dp))
 
-                    // One shape — a keyboard-return glyph — regardless of
-                    // whether there is text; only the colour shifts.
-                    val hasText = text.isNotBlank()
-                    val actionColor = when {
-                        isSending -> Color(0xFFE5484D) // red stop while Jeeves is replying
-                        hasText -> MaterialTheme.colorScheme.primary
-                        else -> MaterialTheme.colorScheme.surfaceVariant
+                // Send / stop — colour shifts with state, the shape and
+                // keyboard-return glyph stay constant. Stop is red.
+                //
+                // This button used to start voice chat whenever the field was
+                // empty, so a stray tap on what reads as Enter dropped the user
+                // into a talking session. Voice chat lives on the microphone
+                // now; with nothing to send this does nothing.
+                val hasText = text.isNotBlank()
+                val canSend = hasText || attachedImageUri != null
+                val actionColor = when {
+                    isSending -> Color(0xFFE5484D) // red stop while Jeeves is replying
+                    canSend -> MaterialTheme.colorScheme.primary
+                    else -> MaterialTheme.colorScheme.surfaceVariant
+                }
+                Surface(
+                    onClick = when {
+                        isSending -> onCancel
+                        canSend -> ::submit
+                        else -> ({})
+                    },
+                    modifier = Modifier.size(40.dp),
+                    shape = RoundedCornerShape(20.dp),
+                    color = actionColor,
+                    contentColor = when {
+                        isSending -> Color.White
+                        canSend -> MaterialTheme.colorScheme.onPrimary
+                        else -> MaterialTheme.colorScheme.onSurfaceVariant
+                    },
+                ) {
+                    Box(contentAlignment = Alignment.Center) {
+                        Icon(
+                            imageVector = if (isSending) {
+                                Icons.Outlined.Stop
+                            } else {
+                                Icons.AutoMirrored.Outlined.KeyboardReturn
+                            },
+                            contentDescription = if (isSending) {
+                                stringResource(R.string.a11y_stop_generating)
+                            } else {
+                                stringResource(R.string.a11y_send_button)
+                            },
+                            modifier = Modifier.size(22.dp),
+                        )
                     }
-                    // With nothing to send this does nothing. It used to start
-                    // voice capture, so a stray tap on what reads as Enter began
-                    // listening with no way to tell that from a mis-tap. Voice
-                    // input stays on the microphone, where it is labelled.
-                    Surface(
-                        onClick = when {
-                            isSending -> onCancel
-                            hasText -> ::submit
-                            else -> ({})
-                        },
-                        modifier = Modifier.size(44.dp),
-                        shape = RoundedCornerShape(22.dp),
-                        color = actionColor,
-                        contentColor = when {
-                            isSending -> Color.White
-                            hasText -> MaterialTheme.colorScheme.onPrimary
-                            else -> MaterialTheme.colorScheme.onSurfaceVariant
-                        },
-                    ) {
-                        Box(contentAlignment = Alignment.Center) {
-                            Icon(
-                                imageVector = if (isSending) {
-                                    Icons.Outlined.Stop
-                                } else {
-                                    Icons.AutoMirrored.Outlined.KeyboardReturn
-                                },
-                                contentDescription = if (isSending) {
-                                    stringResource(R.string.a11y_stop_generating)
-                                } else {
-                                    // Always "send" now, including when inert:
-                                    // it used to announce itself as voice input,
-                                    // which is no longer what it does.
-                                    stringResource(R.string.a11y_send_button)
-                                },
-                                modifier = Modifier.size(23.dp),
-                            )
-                        }
-                    }
+                }
                 }
             }
         }

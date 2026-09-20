@@ -18,6 +18,7 @@ import androidx.core.view.WindowCompat
 import com.hermes.agent.ui.theme.alt.ThemeStyle
 import com.hermes.agent.ui.theme.alt.resolveAltColorScheme
 import com.hermes.agent.ui.theme.alt.resolveAltShapes
+import com.jeeves.core.theme.GeometricTypography
 import com.jeeves.core.theme.jeevesColorScheme
 import com.jeeves.core.theme.jeevesTypography
 
@@ -36,14 +37,20 @@ fun HermesTheme(
     darkTheme: Boolean = isSystemInDarkTheme(),
     themeStyle: ThemeStyle = ThemeStyle.DEFAULT,
     themeAccentColor: Int? = null,
+    colorPreset: SeedPreset? = null,
     fontFamilyName: String = "geist",
     fontScalePercent: Int = 100,
     content: @Composable () -> Unit,
 ) {
     // null means "the style has nothing to add" (classic, or Material You
     // requested below API 31) — Jeeves' own monochrome scheme applies as before.
-    val colorScheme = resolveAltColorScheme(themeStyle, darkTheme, themeAccentColor?.let { Color(it) })
-        ?: jeevesColorScheme(darkTheme)
+    // A seed-colour preset overrides the style while it is on.
+    val colorScheme = if (colorPreset != null) {
+        seedColorScheme(colorPreset, darkTheme)
+    } else {
+        resolveAltColorScheme(themeStyle, darkTheme, themeAccentColor?.let { Color(it) })
+            ?: jeevesColorScheme(darkTheme)
+    }
     val view = LocalView.current
     if (!view.isInEditMode) {
         SideEffect {
@@ -59,13 +66,17 @@ fun HermesTheme(
 
     val context = LocalContext.current
     val fontScale = context.resources.configuration.fontScale
-    val selectedTypography = jeevesTypography(fontFamilyName, fontScalePercent)
+    val selectedTypography = if (colorPreset != null) {
+        jeevesTypography(fontFamilyName, fontScalePercent, base = GeometricTypography)
+    } else {
+        jeevesTypography(fontFamilyName, fontScalePercent)
+    }
     val typography = if (fontScale > 1.2f) boostedTypography(selectedTypography) else selectedTypography
 
     MaterialTheme(
         colorScheme = colorScheme,
         typography = typography,
-        shapes = resolveAltShapes(themeStyle) ?: HermesShapes,
+        shapes = if (colorPreset != null) SeedShapes else resolveAltShapes(themeStyle) ?: HermesShapes,
     ) {
         HermesHighContrastWrapper(darkTheme = darkTheme, content = content)
     }
