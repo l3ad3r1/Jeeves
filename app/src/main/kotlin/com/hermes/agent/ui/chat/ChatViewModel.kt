@@ -23,6 +23,9 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.mapLatest
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import timber.log.Timber
@@ -44,6 +47,7 @@ class ChatViewModel @Inject constructor(
     private val clarificationBus: ClarificationBus,
     private val todoStore: TodoStore,
     private val settingsRepository: SettingsRepository,
+    private val reasoningStore: com.hermes.agent.data.chat.ReasoningStore,
     private val toolConfirmationService: com.hermes.agent.domain.tool.ToolConfirmationService,
     private val executionPlanRepository: ExecutionPlanRepository,
 ) : ViewModel() {
@@ -57,6 +61,15 @@ class ChatViewModel @Inject constructor(
     }
 
     private val _ephemeral = MutableStateFlow(ChatEphemeralState())
+
+    /** The saved reasoning behind each reply that has some, keyed by message id, for the "Thought for" chip. */
+    @OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
+    val reasoning: StateFlow<Map<String, com.hermes.agent.data.chat.StoredReasoning>> =
+        conversationRepository.observeMessages(conversationId)
+            .map { messages -> messages.filter { it.role == MessageRole.ASSISTANT }.map { it.id } }
+            .distinctUntilChanged()
+            .mapLatest { ids -> reasoningStore.load(ids) }
+            .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyMap())
 
     /** Phase 3: text that should prefill the input bar (e.g. from voice). */
     private val _inputPrefill = MutableStateFlow("")

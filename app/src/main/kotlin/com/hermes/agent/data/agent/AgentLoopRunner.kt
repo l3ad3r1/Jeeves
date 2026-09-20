@@ -31,6 +31,8 @@ sealed interface AgentLoopOutcome {
     data class Completed(
         val reply: String,
         override val toolsInvoked: List<String>,
+        val reasoning: String = "",
+        val reasoningMillis: Long = 0L,
     ) : AgentLoopOutcome
 
     data class Failed(
@@ -56,21 +58,30 @@ class AgentLoopRunner @Inject constructor(
         onToolRequested: suspend (ToolCall, Boolean) -> Unit,
         confirmationGate: ToolCallExecutor.ConfirmationGate?,
         onToolResult: suspend (ToolCall, ToolResult) -> Unit,
-    ): AgentLoopOutcome = withTimeoutOrNull(MAX_LOOP_DURATION_MS) {
-        runWithinBudget(
-            provider,
-            initialMessages,
-            tools,
-            origin,
-            onToolRequested,
-            confirmationGate,
-            onToolResult,
+    ): AgentLoopOutcome {
+        // Collected outside the timeout. When the budget ran out this reported
+        // no tools at all, so a turn that had already created a task looked to
+        // every caller like nothing had happened.
+        val toolsInvoked = mutableListOf<String>()
+        val trace = ReasoningTrace()
+        return withTimeoutOrNull(MAX_LOOP_DURATION_MS) {
+            runWithinBudget(
+                provider,
+                initialMessages,
+                tools,
+                origin,
+                onToolRequested,
+                confirmationGate,
+                onToolResult,
+                toolsInvoked,
+                trace,
+            )
+        } ?: AgentLoopOutcome.Failed(
+            AgentLoopFailureReason.TIMED_OUT,
+            "Hermes stopped because this task took too long. Try again or split it into smaller steps.",
+            toolsInvoked.toList(),
         )
-    } ?: AgentLoopOutcome.Failed(
-        AgentLoopFailureReason.TIMED_OUT,
-        "Jeeves stopped because this task took too long. Try again or split it into smaller steps.",
-        emptyList(),
-    )
+    }
 
     private suspend fun runWithinBudget(
         provider: LlmProvider,
@@ -80,15 +91,27 @@ class AgentLoopRunner @Inject constructor(
         onToolRequested: suspend (ToolCall, Boolean) -> Unit,
         confirmationGate: ToolCallExecutor.ConfirmationGate?,
         onToolResult: suspend (ToolCall, ToolResult) -> Unit,
+        toolsInvoked: MutableList<String>,
+        trace: ReasoningTrace,
     ): AgentLoopOutcome {
         var messages = initialMessages
-        val toolsInvoked = mutableListOf<String>()
         val guardSession = executionGuard.openSession()
+        // Results of calls recovered from a model that could not produce the
+        // tool envelope. Only those are answered from here on a repeat: such a
+        // model routinely cannot read a tool result and reissues the identical
+        // call, which for a create-style tool wrote a duplicate row every round.
+        // A call the model formatted properly is left alone, because repeating
+        // one with a changing result is legitimate progress.
+        val recoveredResults = mutableMapOf<String, ToolResult>()
 
         repeat(MAX_TOOL_ROUNDS) { round ->
+            val startedAt = System.nanoTime()
             val response = provider.completeWithTools(messages, tools)
+            trace.record(response.reasoning, (System.nanoTime() - startedAt) / 1_000_000)
             if (response.toolCalls.isEmpty()) {
-                return AgentLoopOutcome.Completed(response.content, toolsInvoked)
+                return AgentLoopOutcome.Completed(
+                    response.content, toolsInvoked.toList(), trace.text(), trace.millis,
+                )
             }
 
             messages = messages + LlmMessage(
@@ -106,6 +129,13 @@ class AgentLoopRunner @Inject constructor(
                 val mustConfirm = decision is ToolExecutionDecision.Confirm
                 onToolRequested(call, mustConfirm)
 
+                val signature = call.name + "|" +
+                    RepeatedExecutionGuard.canonicalArguments(call.arguments)
+                val repeated = if (call.id.startsWith(RECOVERED_CALL_PREFIX)) {
+                    recoveredResults[signature]
+                } else {
+                    null
+                }
                 // Asked once, in the same order as before: never prompt for a tool that
                 // is unauthorised or already denied by policy. A null answer means there
                 // was no gate to ask (a headless turn) - not the same as a person saying
@@ -152,7 +182,13 @@ class AgentLoopRunner @Inject constructor(
                     // Headless: there was no gate to ask, so a confirmation-required
                     // tool still cannot run. Unchanged from before this fix.
                     mustConfirm && confirmed != true -> ToolResult.error("user declined")
-                    else -> toolCallExecutor.execute(call, confirmationGate = null)
+                    // A small model that cannot read a tool result often just
+                    // reissues the same call. Executing it again created a
+                    // second identical task rather than answering the user.
+                    repeated != null -> repeated
+                    else -> toolCallExecutor.execute(call, confirmationGate = null).also {
+                        if (call.id.startsWith(RECOVERED_CALL_PREFIX)) recoveredResults[signature] = it
+                    }
                 }
 
                 onToolResult(call, result)
@@ -169,7 +205,7 @@ class AgentLoopRunner @Inject constructor(
                 return AgentLoopOutcome.Failed(
                     AgentLoopFailureReason.REPEATED_NO_PROGRESS,
                     "Jeeves stopped because the same tool actions repeated without making progress. Try rephrasing the request or changing the inputs.",
-                    toolsInvoked,
+                    toolsInvoked.toList(),
                 )
             }
         }
@@ -177,13 +213,15 @@ class AgentLoopRunner @Inject constructor(
         return AgentLoopOutcome.Failed(
             AgentLoopFailureReason.ROUND_LIMIT_REACHED,
             "Jeeves reached the tool-step limit before finishing. Try splitting the request into smaller steps.",
-            toolsInvoked,
+            toolsInvoked.toList(),
         )
     }
 
     companion object {
         const val MAX_TOOL_ROUNDS = 12
 
+        /** Marks a call rebuilt from a reply that did not use the tool envelope. */
+        const val RECOVERED_CALL_PREFIX = "recovered_call_"
         // Covers a reasoning model's deepest thinking floor (10 min in
         // ReasoningStaleTimeout) plus a couple of fast tool rounds.
         const val MAX_LOOP_DURATION_MS = 12 * 60 * 1000L

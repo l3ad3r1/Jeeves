@@ -285,6 +285,8 @@ class OrchestratorImpl @Inject constructor(
 
         // 4. Execute each step; collect all tool names used for learning.
         val aggregator = StringBuilder()
+        val reasoningParts = mutableListOf<String>()
+        var reasoningMillis = 0L
         val allToolsUsed = mutableListOf<String>()
         var lastProviderWasOnDevice = true
         // Tools that actually completed. A step can fail after its work landed —
@@ -520,6 +522,10 @@ class OrchestratorImpl @Inject constructor(
             lastProviderWasOnDevice = provider.isOnDevice
             allToolsUsed += completed.toolsInvoked
             aggregator.append(completed.reply)
+            if (completed.reasoning.isNotBlank()) {
+                reasoningParts += completed.reasoning
+                reasoningMillis += completed.reasoningMillis
+            }
             AgentActivity.setPhase(AgentPhase.COMPOSING)
             send(OrchestratorEvent.ReplyToken(completed.reply))
             executionPlanRepository.markStepFinished(step.id, StepStatus.SUCCEEDED)
@@ -532,6 +538,8 @@ class OrchestratorImpl @Inject constructor(
                 finalText = finalText,
                 agentRole = primaryRole,
                 isOnDevice = lastProviderWasOnDevice,
+                reasoning = reasoningParts.joinToString("\n\n"),
+                reasoningMillis = reasoningMillis,
             )
         )
 

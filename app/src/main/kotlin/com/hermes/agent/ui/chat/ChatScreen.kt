@@ -96,6 +96,7 @@ fun ChatScreen(
     viewModel: ChatViewModel = hiltViewModel(),
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    val reasoning by viewModel.reasoning.collectAsStateWithLifecycle()
     val listState = rememberLazyListState()
     val snackbarHostState = remember { SnackbarHostState() }
     var planDrawerOpen by remember { mutableStateOf(false) }
@@ -210,26 +211,39 @@ fun ChatScreen(
                     TodoPanel(todos = uiState.todos)
                 }
                 Box(modifier = Modifier.weight(1f).fillMaxSize()) {
-                    if (chatTab == 1) {
-                        TerminalPanel()
-                    } else if (uiState.messages.isEmpty() && uiState.streamingText == null) {
-                        EmptyChatState(
-                            onPromptSelected = viewModel::sendMessage,
-                            modifier = Modifier.fillMaxSize(),
-                        )
-                    } else {
-                        LazyColumn(
-                            state = listState,
-                            modifier = Modifier.fillMaxSize(),
-                            verticalArrangement = Arrangement.spacedBy(4.dp),
-                            contentPadding = androidx.compose.foundation.layout.PaddingValues(
-                                vertical = 12.dp,
-                            ),
-                        ) {
-                            items(uiState.visibleItems) { item ->
-                                when (item) {
-                                    is ChatListItem.MessageItem -> MessageBubble(message = item.message)
-                                    is ChatListItem.StreamingItem -> StreamingBubble(item = item)
+                    when (chatTab) {
+                        1 -> TerminalPanel()
+                        else ->
+                            if (uiState.messages.isEmpty() && uiState.streamingText == null) {
+                                EmptyChatState(
+                                    onPromptSelected = viewModel::sendMessage,
+                                    modifier = Modifier.fillMaxSize(),
+                                )
+                            } else {
+                                LazyColumn(
+                                    state = listState,
+                                    modifier = Modifier.fillMaxSize(),
+                                    verticalArrangement = Arrangement.spacedBy(4.dp),
+                                    contentPadding = androidx.compose.foundation.layout.PaddingValues(
+                                        vertical = 12.dp,
+                                    ),
+                                ) {
+                                    items(uiState.visibleItems) { item ->
+                                        when (item) {
+                                            is ChatListItem.MessageItem -> MessageBubble(
+                                                message = item.message,
+                                                reasoning = reasoning[item.message.id],
+                                                onEditMessage = viewModel::editMessage,
+                                                onRetryWithAlias = viewModel::retryWithAlias,
+                                                onRewindTo = viewModel::rewindTo,
+                                                onForkFrom = { message ->
+                                                    viewModel.forkFrom(message, onOpenConversation)
+                                                },
+                                            )
+                                            is ChatListItem.StreamingItem -> StreamingBubble(item = item)
+                                        }
+                                    }
+                                    item { Spacer(modifier = Modifier.height(8.dp)) }
                                 }
                             }
                             item { Spacer(modifier = Modifier.height(8.dp)) }

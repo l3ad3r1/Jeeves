@@ -39,6 +39,11 @@ import com.hermes.agent.ui.chat.ChatListItem
 fun MessageBubble(
     message: Message,
     modifier: Modifier = Modifier,
+    onEditMessage: ((Message) -> Unit)? = null,
+    onRetryWithAlias: ((Message, String) -> Unit)? = null,
+    onRewindTo: ((Message) -> Unit)? = null,
+    onForkFrom: ((Message) -> Unit)? = null,
+    reasoning: com.hermes.agent.data.chat.StoredReasoning? = null,
 ) {
     val isUser = message.role == MessageRole.USER
     val alignment = if (isUser) Alignment.End else Alignment.Start
@@ -69,6 +74,19 @@ fun MessageBubble(
                 modifier = Modifier.padding(bottom = 4.dp),
             )
         }
+
+
+        message.evidenceState?.let { evidence ->
+            EvidenceStateBadge(
+                state = evidence,
+                modifier = Modifier.padding(bottom = 4.dp),
+            )
+        }
+
+        if (!isUser && reasoning != null) {
+            ThoughtChip(reasoning)
+        }
+
         Box(
             modifier = Modifier
                 .widthIn(max = 320.dp)
