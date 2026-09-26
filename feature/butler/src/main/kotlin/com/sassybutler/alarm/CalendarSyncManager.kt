@@ -91,12 +91,16 @@ object CalendarSyncManager {
         val existingEventId = prefs.getLong("event_${alarm.id}", -1L)
 
         try {
-            if (existingEventId != -1L) {
-                // Update
+            // Only trust the remembered event id if the row is still there — if the
+            // user deleted it externally, updating a nonexistent row is a silent
+            // no-op and the alarm would never get a calendar entry again.
+            val updated = if (existingEventId != -1L) {
                 val updateUri = ContentUris.withAppendedId(CalendarContract.Events.CONTENT_URI, existingEventId)
-                context.contentResolver.update(updateUri, values, null, null)
+                context.contentResolver.update(updateUri, values, null, null) > 0
             } else {
-                // Insert
+                false
+            }
+            if (!updated) {
                 val uri: Uri? = context.contentResolver.insert(CalendarContract.Events.CONTENT_URI, values)
                 uri?.lastPathSegment?.toLongOrNull()?.let { newEventId ->
                     prefs.edit().putLong("event_${alarm.id}", newEventId).apply()

@@ -347,8 +347,16 @@ class AudioEngine(private val context: Context) {
         val chunkSize = minBufSize / 4 // number of floats
         var offset    = 0
         while (offset < samples.size && !isStopped.get()) {
-            val end   = minOf(offset + chunkSize, samples.size)
-            val wrote = track.write(samples, offset, end - offset, AudioTrack.WRITE_BLOCKING)
+            val end = minOf(offset + chunkSize, samples.size)
+            val wrote = try {
+                track.write(samples, offset, end - offset, AudioTrack.WRITE_BLOCKING)
+            } catch (e: IllegalStateException) {
+                // stopAll() can release this same track from another thread between
+                // our isStopped check above and this write — treat that race the
+                // same as a stop signal instead of crashing the playback coroutine.
+                Log.w(TAG, "AudioTrack released mid-write, stopping playback", e)
+                break
+            }
             if (wrote < 0) {
                 Log.e(TAG, "AudioTrack.write error: $wrote")
                 break
@@ -374,7 +382,11 @@ class AudioEngine(private val context: Context) {
                 Log.e(TAG, "Error draining AudioTrack", e)
             }
         }
-        track.release()
+        try {
+            track.release()
+        } catch (e: IllegalStateException) {
+            // Already released by a concurrent stopAll() — harmless.
+        }
         audioTrack = null
         Log.d(TAG, "AudioTrack playback complete")
     }
