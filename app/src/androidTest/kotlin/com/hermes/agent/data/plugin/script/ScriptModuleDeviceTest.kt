@@ -48,6 +48,7 @@ class ScriptModuleDeviceTest {
             todos = TodoRepositoryImpl(db.todoTaskDao()),
             bookmarks = BookmarkRepositoryImpl(db.bookmarkDao()),
             okHttpClient = OkHttpClient(),
+            networkGuard = com.hermes.agent.util.net.PublicNetworkGuard(),
         )
     }
 
