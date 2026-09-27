@@ -33,6 +33,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.withLock
 import javax.inject.Inject
 import retrofit2.HttpException
 
@@ -328,6 +329,9 @@ class SettingsViewModel @Inject constructor(
         scheduleModelDiscovery(delayMillis = 0L)
         viewModelScope.launch {
             oauthCallbackReceiver.events.collect { event ->
+                // One exchange per callback: the flow replays to every settings screen, and an
+                // authorization code is single-use.
+                if (!oauthCallbackReceiver.claim(event)) return@collect
                 when (event) {
                     is com.hermes.agent.data.oauth.OAuthCallbackEvent.Success ->
                         handleOAuthSuccess(event.session, event.code)
@@ -689,7 +693,8 @@ class SettingsViewModel @Inject constructor(
         setProviderDiscovery(session.providerId, ModelDiscoveryUiState.Loading)
         oauthManager.exchangeCodeForApiKey(session, code)
             .onSuccess { exchange ->
-                setProviderApiKey(exchange.providerId, exchange.apiKey)
+                // Saved before discovery reads it, or /models is asked with the old key.
+                setProviderApiKey(exchange.providerId, exchange.apiKey).join()
                 refreshProviderModels(exchange.providerId, debounceMillis = 0L)
             }
             .onFailure { t ->
@@ -761,7 +766,15 @@ class SettingsViewModel @Inject constructor(
         _providerModelDiscovery.value = _providerModelDiscovery.value + (providerId to state)
     }
 
+    private val providerMutex = kotlinx.coroutines.sync.Mutex()
+
+    /** A read-modify-write of the whole profile list: concurrent edits must not overwrite each other. */
     private suspend fun updateProvider(
+        providerId: String,
+        transform: (com.hermes.agent.domain.settings.CloudProviderProfile) -> com.hermes.agent.domain.settings.CloudProviderProfile,
+    ) = providerMutex.withLock { updateProviderUnlocked(providerId, transform) }
+
+    private suspend fun updateProviderUnlocked(
         providerId: String,
         transform: (com.hermes.agent.domain.settings.CloudProviderProfile) -> com.hermes.agent.domain.settings.CloudProviderProfile,
     ) {

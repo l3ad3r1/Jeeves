@@ -8,13 +8,16 @@ import androidx.room.TypeConverters
 import androidx.room.migration.Migration
 import androidx.sqlite.db.SupportSQLiteDatabase
 
-@Database(entities = [NoteEntity::class, DraftEntity::class, TagEntity::class, NoteTagCrossRef::class, PluginEntity::class], version = 10, exportSchema = false)
+@Database(entities = [NoteEntity::class, DraftEntity::class, TagEntity::class, NoteTagCrossRef::class, PluginEntity::class], version = AppDatabase.VERSION, exportSchema = false)
 @TypeConverters(Converters::class)
 abstract class AppDatabase : RoomDatabase() {
     abstract fun noteDao(): NoteDao
     abstract fun pluginDao(): PluginDao
 
     companion object {
+        /** Schema version; a backup restore refuses a notes database newer than this. */
+        const val VERSION = 10
+
         @Volatile
         private var INSTANCE: AppDatabase? = null
 

@@ -300,9 +300,8 @@ class FullBackupManager @Inject constructor(
             DatabaseFiles.requireIntact(File(staging, FullBackupFormat.DATABASE), current)
             for (name in FullBackupFormat.EXTRA_DATABASES) {
                 val extra = File(staging, FullBackupFormat.extraDatabaseEntry(name))
-                if (extra.isFile && !DatabaseFiles.isIntact(extra)) {
-                    throw BackupStreamCipher.CorruptBackupException("The $name database in this backup is damaged.")
-                }
+                // Room has no downgrade path, so a newer notes schema would crash Notes on open.
+                if (extra.isFile) DatabaseFiles.requireIntact(extra, extraDatabaseVersion(name))
             }
             // Decoded now so a bad file is reported here, not discovered halfway through applying it.
             json.decodeFromString(rawMap, File(staging, FullBackupFormat.SETTINGS).readText())
@@ -334,6 +333,11 @@ class FullBackupManager @Inject constructor(
     fun clearRestoreResult() = PendingRestore.clearResult(context)
 
     private fun currentDatabaseVersion(): Int = database.openHelper.readableDatabase.version
+
+    private fun extraDatabaseVersion(name: String): Int = when (name) {
+        "gist_notes_database" -> com.l3ad3r1.octojotter.data.local.AppDatabase.VERSION
+        else -> Int.MAX_VALUE
+    }
 
     /**
      * A consistent copy of the live database. The write-ahead log is folded into the main file
@@ -642,15 +646,26 @@ object PendingRestore {
         if (target.exists()) {
             Files.move(target.toPath(), kept.toPath(), StandardCopyOption.REPLACE_EXISTING)
         }
-        // A leftover log or shared-memory file from the old database would be replayed onto the new.
-        File(target.path + "-wal").delete()
-        File(target.path + "-shm").delete()
-        File(target.path + "-journal").delete()
+        // The old database's log holds its most recent commits (the app is never closed
+        // cleanly), so it moves with the kept copy instead of being deleted. Left in
+        // place it would be replayed onto the new database.
+        val sidecars = listOf("-wal", "-shm", "-journal")
+        for (suffix in sidecars) {
+            val log = File(target.path + suffix)
+            if (log.exists()) Files.move(log.toPath(), File(kept.path + suffix).toPath(), StandardCopyOption.REPLACE_EXISTING)
+            else File(kept.path + suffix).delete()
+        }
         try {
             Files.move(incoming.toPath(), target.toPath(), StandardCopyOption.ATOMIC_MOVE)
         } catch (t: Throwable) {
             // Put the old one back rather than leave the app without a database.
-            if (kept.exists()) Files.move(kept.toPath(), target.toPath(), StandardCopyOption.REPLACE_EXISTING)
+            if (kept.exists()) {
+                Files.move(kept.toPath(), target.toPath(), StandardCopyOption.REPLACE_EXISTING)
+                for (suffix in sidecars) {
+                    val log = File(kept.path + suffix)
+                    if (log.exists()) Files.move(log.toPath(), File(target.path + suffix).toPath(), StandardCopyOption.REPLACE_EXISTING)
+                }
+            }
             throw t
         }
     }

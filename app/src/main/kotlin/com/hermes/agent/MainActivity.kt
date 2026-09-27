@@ -76,7 +76,10 @@ class MainActivity : FragmentActivity() {
             onboardingState.value = settings.isOnboardingCompleted()
         }
 
-        handleIntent(intent)
+        // A recreation (rotation, theme change) hands back the same launch intent;
+        // acting on it again opened a second chat or re-armed dictation.
+        val freshLaunch = savedInstanceState == null
+        if (freshLaunch) handleIntent(intent)
         installDeviceAuthenticationHost()
 
         setContent {
@@ -147,7 +150,7 @@ class MainActivity : FragmentActivity() {
                         )
                         true -> HermesNavGraph(
                             // Update notification deep-links to Settings → Updates.
-                            startAtSettings = intent?.getBooleanExtra(
+                            startAtSettings = freshLaunch && intent?.getBooleanExtra(
                                 OtaUpdateWorker.EXTRA_OPEN_UPDATES, false,
                             ) == true,
                             startPendingChatIntent = pendingChatIntentTrigger,
