@@ -37,16 +37,18 @@ class SyncWorker(
             steps += { repository.pushToRepository(repoPath) }
         }
 
-        // Stop at the first failure, as before.
+        // Every step runs: one stuck tombstone or conflict used to stop the pull
+        // and push behind it on every run, so nothing synced again.
+        var firstError: Throwable? = null
         for (step in steps) {
             val error = step().exceptionOrNull() ?: continue
             val message = error.message.orEmpty()
-            return if (message.contains("No GitHub token", ignoreCase = true) || message.contains("401", ignoreCase = true)) {
-                Result.failure()
-            } else {
-                Result.retry()
+            // Without a working token the remaining steps would only fail the same way.
+            if (message.contains("No GitHub token", ignoreCase = true) || message.contains("401", ignoreCase = true)) {
+                return Result.failure()
             }
+            if (firstError == null) firstError = error
         }
-        return Result.success()
+        return if (firstError == null) Result.success() else Result.retry()
     }
 }

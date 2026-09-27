@@ -102,6 +102,20 @@ class NoteRepositorySyncSecurityTest {
     }
 
     @Test
+    fun `one failing tombstone does not block the others`() = runTest {
+        val stuck = NoteEntity(id = 7, gistId = "stuck", title = "a", content = "x", deletedAt = 1, pendingRemoteDelete = true)
+        val fine = NoteEntity(id = 8, gistId = "fine", title = "b", content = "y", deletedAt = 1, pendingRemoteDelete = true)
+        coEvery { dao.getPendingRemoteDeletes() } returns listOf(stuck, fine)
+        coEvery { github.deleteGist(any(), "stuck") } throws IOException("offline")
+        coEvery { github.deleteGist(any(), "fine") } returns Response.success(Unit)
+
+        assertTrue(repository.syncPendingRemoteDeletes().isFailure)
+
+        coVerify(exactly = 0) { dao.delete(stuck) }
+        coVerify(exactly = 1) { dao.delete(fine) }
+    }
+
+    @Test
     fun `successful remote deletion removes the tombstone`() = runTest {
         val tombstone = NoteEntity(id = 7, gistId = "gist", title = "deleted", content = "x", deletedAt = 1, pendingRemoteDelete = true)
         coEvery { dao.getPendingRemoteDeletes() } returns listOf(tombstone)

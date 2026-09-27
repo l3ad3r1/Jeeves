@@ -126,12 +126,17 @@ class NoteRepository(
      */
     suspend fun syncPendingRemoteDeletes(): Result<Unit> {
         val tombstones = noteDao.getPendingRemoteDeletes()
+        // One tombstone that keeps failing must not hold back the others.
+        var failure: Result<Unit>? = null
         for (note in tombstones) {
             val deletion = deleteRemoteNote(note)
-            if (deletion.isFailure) return deletion
+            if (deletion.isFailure) {
+                if (failure == null) failure = deletion
+                continue
+            }
             noteDao.delete(note)
         }
-        return Result.success(Unit)
+        return failure ?: Result.success(Unit)
     }
 
     suspend fun setNoteLocked(note: NoteEntity, locked: Boolean) {
@@ -532,6 +537,8 @@ class NoteRepository(
 
         return try {
             val notesToSync = noteDao.getNotesToSyncForRepository(repoPath)
+            // A conflict on one note is recorded and the rest still upload.
+            var failure: Exception? = null
             for (note in notesToSync) {
                 // Defend in depth: the DAO filters protected rows, but sync
                 // policy must be enforced immediately before network I/O too.
@@ -560,7 +567,8 @@ class NoteRepository(
                     if (remoteContent != null) {
                         markConflict(note, remoteContent, remoteSha = remoteBody.sha)
                     }
-                    return Result.failure(IOException("Conflict detected for ${note.title}. Resolve it in Sync Health."))
+                    if (failure == null) failure = IOException("Conflict detected for ${note.title}. Resolve it in Sync Health.")
+                    continue
                 }
 
                 if (response.isSuccessful) {
@@ -582,7 +590,7 @@ class NoteRepository(
                     return Result.failure(IOException("Failed to upload ${note.title} (${response.code()})"))
                 }
             }
-            Result.success(Unit)
+            failure?.let { Result.failure(it) } ?: Result.success(Unit)
         } catch (e: Exception) {
             Result.failure(e)
         }
