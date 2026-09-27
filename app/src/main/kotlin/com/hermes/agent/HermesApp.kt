@@ -106,15 +106,15 @@ class HermesApp : Application(), Configuration.Provider {
         // without racing the code that uses them. Only the main process, since the shell service
         // runs another copy of this class. It cannot be attachBaseContext: DataStore needs the
         // application context, which does not exist yet there.
-        if (getProcessName() == packageName) {
-            val restored = com.hermes.agent.data.export.PendingRestore.applyIfPending(this)
-            if (restored) {
-                runCatching {
-                    com.sassybutler.alarm.AlarmScheduler(this).rescheduleAll()
-                }
-            }
-        }
+        val restored = getProcessName() == packageName &&
+            com.hermes.agent.data.export.PendingRestore.applyIfPending(this)
         super.onCreate()
+        // After super.onCreate(): scheduling enqueues WorkManager work, and WorkManager's
+        // configuration needs the Hilt-injected worker factory.
+        if (restored) {
+            runCatching { com.sassybutler.alarm.AlarmScheduler(this).rescheduleAll() }
+                .onFailure { Timber.e(it, "Could not re-arm alarms after restore") }
+        }
         DebugScreenAwake.install(this)
         // Capture logs to a file (all build types) so the user can pull them
         // from Settings → Logs; keep the console DebugTree in debug builds.
