@@ -33,9 +33,10 @@ class AlarmReceiver : BroadcastReceiver() {
         val alarmHour = intent.getIntExtra(EXTRA_ALARM_HOUR, -1)
         val alarmMin  = intent.getIntExtra(EXTRA_ALARM_MINUTE, -1)
         val triggerAt = intent.getLongExtra(EXTRA_TRIGGER_AT_MILLIS, INVALID_TRIGGER_AT)
+        val isSnooze  = intent.getBooleanExtra(EXTRA_IS_SNOOZE, false)
         val alarm = AlarmStore.get(context, alarmId)
 
-        if (!isExpectedAlarmFire(alarm, alarmId, alarmHour, alarmMin, triggerAt)) {
+        if (!isExpectedAlarmFire(alarm, alarmId, alarmHour, alarmMin, triggerAt, isSnooze = isSnooze)) {
             Log.w(TAG, "Ignoring invalid, disabled, or stale alarm occurrence id=$alarmId")
             return
         }
@@ -83,6 +84,8 @@ class AlarmReceiver : BroadcastReceiver() {
         const val EXTRA_ALARM_MINUTE  = "extra_alarm_minute"
         const val EXTRA_TRIGGER_AT_MILLIS = "extra_alarm_trigger_at_millis"
 
+        const val EXTRA_IS_SNOOZE     = "extra_is_snooze"
+
         private const val INVALID_TRIGGER_AT = Long.MIN_VALUE
         private const val MAX_DELIVERY_DELAY_MILLIS = 15 * 60 * 1000L
 
@@ -99,9 +102,10 @@ class AlarmReceiver : BroadcastReceiver() {
             minute: Int,
             triggerAtMillis: Long,
             nowMillis: Long = System.currentTimeMillis(),
+            isSnooze: Boolean = false,
         ): Boolean = alarm != null &&
             alarm.id == alarmId &&
-            alarm.enabled &&
+            (alarm.enabled || isSnooze) &&
             alarm.hour == hour &&
             alarm.minute == minute &&
             triggerAtMillis != INVALID_TRIGGER_AT &&
@@ -117,6 +121,7 @@ class AlarmReceiver : BroadcastReceiver() {
             hour: Int,
             minute: Int,
             triggerAtMillis: Long = INVALID_TRIGGER_AT,
+            isSnooze: Boolean = false,
         ): PendingIntent {
             val intent = Intent(context, AlarmReceiver::class.java).apply {
                 action = ACTION_ALARM_FIRE
@@ -124,6 +129,7 @@ class AlarmReceiver : BroadcastReceiver() {
                 putExtra(EXTRA_ALARM_HOUR,   hour)
                 putExtra(EXTRA_ALARM_MINUTE, minute)
                 putExtra(EXTRA_TRIGGER_AT_MILLIS, triggerAtMillis)
+                putExtra(EXTRA_IS_SNOOZE, isSnooze)
             }
 
             val flags = PendingIntent.FLAG_UPDATE_CURRENT or

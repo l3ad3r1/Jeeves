@@ -96,8 +96,9 @@ interface NoteDao {
     @Query("SELECT * FROM notes WHERE conflictState = 'CONFLICT' AND deletedAt IS NULL ORDER BY lastModifiedLocally DESC")
     fun getConflictedNotesFlow(): Flow<List<NoteEntity>>
 
-    @Query("UPDATE notes SET deletedAt = :deletedAt, pendingRemoteDelete = :pendingRemoteDelete, needsSync = 0 WHERE id = :id")
-    suspend fun moveToTrash(id: Int, deletedAt: Long, pendingRemoteDelete: Boolean)
+    // Trash is reversible, so it never schedules a remote delete; emptying it does.
+    @Query("UPDATE notes SET deletedAt = :deletedAt, pendingRemoteDelete = 0, needsSync = 0 WHERE id = :id")
+    suspend fun moveToTrash(id: Int, deletedAt: Long)
 
     @Query("UPDATE notes SET deletedAt = NULL, pendingRemoteDelete = 0, needsSync = 1 WHERE id = :id")
     suspend fun restoreFromTrash(id: Int)
@@ -105,7 +106,21 @@ interface NoteDao {
     // Remote deletes are tombstoned until GitHub confirms them. Removing them
     // here would let a later pull import the still-remote note again.
     @Query("DELETE FROM notes WHERE deletedAt IS NOT NULL AND pendingRemoteDelete = 0")
-    suspend fun emptyTrash()
+    suspend fun deleteTrashedLocalNotes()
+
+    @Query(
+        "UPDATE notes SET pendingRemoteDelete = 1 WHERE deletedAt IS NOT NULL AND (" +
+            "(gistId IS NOT NULL AND gistId != '') OR " +
+            "(repository IS NOT NULL AND repository != '' AND path IS NOT NULL AND path != ''))"
+    )
+    suspend fun tombstoneTrashedRemoteNotes()
+
+    /** Trashed notes with a remote copy become tombstones; the rest are deleted now. */
+    @Transaction
+    suspend fun emptyTrash() {
+        tombstoneTrashedRemoteNotes()
+        deleteTrashedLocalNotes()
+    }
 
     @Query("SELECT * FROM notes WHERE deletedAt IS NOT NULL AND pendingRemoteDelete = 1")
     suspend fun getPendingRemoteDeletes(): List<NoteEntity>

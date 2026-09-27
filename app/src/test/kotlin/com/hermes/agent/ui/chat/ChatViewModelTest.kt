@@ -82,6 +82,7 @@ class ChatViewModelTest {
         chatRepo: ChatRepository = mockk(relaxed = true),
         settingsRepository: SettingsRepository = fakeSettingsRepository(),
         planRepository: ExecutionPlanRepository? = null,
+        voiceOutputManager: VoiceOutputManager = mockk(relaxed = true),
     ): ChatViewModel {
         val plans = planRepository ?: mockk<ExecutionPlanRepository>(relaxed = true).also {
             every { it.observeLatest(conversationId) } returns flowOf(null)
@@ -91,7 +92,7 @@ class ChatViewModelTest {
         conversationRepository = fakeConversationRepository(conversationId),
         chatRepository = chatRepo,
         voiceInputManager = mockk<VoiceInputManager>(relaxed = true),
-        voiceOutputManager = mockk<VoiceOutputManager>(relaxed = true),
+        voiceOutputManager = voiceOutputManager,
         clarificationBus = ClarificationBus(),
         todoStore = TodoStore(),
         settingsRepository = settingsRepository,
@@ -207,6 +208,36 @@ class ChatViewModelTest {
         advanceUntilIdle()
 
         assertFalse("expected isSending=false for empty input", vm.uiState.value.isSending)
+    }
+
+    @Test
+    fun `a reply after a cancelled spoken reply streams without crashing`() = runTest {
+        val conversationId = "conv-1"
+        val first = MutableSharedFlow<OrchestratorEvent>(extraBufferCapacity = 10)
+        val second = MutableSharedFlow<OrchestratorEvent>(extraBufferCapacity = 10)
+        val chatRepo = mockk<ChatRepository>()
+        every { chatRepo.sendMessageOrchestrated(conversationId, any(), any()) } returnsMany listOf(first, second)
+        val voice = mockk<VoiceOutputManager>(relaxed = true).also { every { it.isAvailable() } returns true }
+
+        val vm = buildViewModel(conversationId, chatRepo, voiceOutputManager = voice)
+        backgroundScope.launch { vm.uiState.collect { } }
+        advanceUntilIdle()
+
+        vm.sendMessage("tell me a story")
+        advanceUntilIdle()
+        first.emit(OrchestratorEvent.ReplyToken("Once upon a time there was a long sentence. And"))
+        advanceUntilIdle()
+        vm.cancel()
+        advanceUntilIdle()
+
+        // The first turn left a spoken offset far past the end of this short reply.
+        vm.sendMessage("hi")
+        advanceUntilIdle()
+        second.emit(OrchestratorEvent.ReplyToken("Hi."))
+        advanceUntilIdle()
+
+        assertNull(vm.uiState.value.errorMessage)
+        assertEquals("Hi.", vm.uiState.value.streamingText)
     }
 
     @Test

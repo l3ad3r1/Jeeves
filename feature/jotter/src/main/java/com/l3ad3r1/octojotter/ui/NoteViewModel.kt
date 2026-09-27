@@ -1054,7 +1054,8 @@ class NoteViewModel(application: Application) : AndroidViewModel(application) {
         autoSaveJob?.cancel()
         autoSaveJob = viewModelScope.launch {
             delay(1500) // 1.5s debounce
-            val updated = note.copy(
+            val latestNote = repository.getNoteById(note.id) ?: note
+            val updated = latestNote.copy(
                 title = newTitle,
                 content = newContent,
                 lastModifiedLocally = System.currentTimeMillis(),

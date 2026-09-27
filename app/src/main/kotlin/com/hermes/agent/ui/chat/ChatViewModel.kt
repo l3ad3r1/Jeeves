@@ -314,6 +314,9 @@ class ChatViewModel @Inject constructor(
         val isFirstTurn = uiState.value.messages.isEmpty()
         val titleIsDefault = uiState.value.title.isBlank() || uiState.value.title == "New conversation"
 
+        // Each turn is spoken from its own start. A cancelled or failed turn never
+        // reaches ReplyComplete, so the offset is reset here, not only there.
+        spokenTextLength = 0
         sendJob = viewModelScope.launch {
             try {
                 if (isFirstTurn && titleIsDefault && trimmed.isNotEmpty()) {
@@ -447,7 +450,7 @@ class ChatViewModel @Inject constructor(
                 // would say everything twice and give no such signal.
                 val alreadySpoke = _ephemeral.value.toolCalls.any { it.name == "speak" }
                 if (!alreadySpoke && !_voiceChatActive.value && voiceOutputManager.isAvailable()) {
-                    val unreadText = acc.substring(spokenTextLength)
+                    val unreadText = acc.substring(spokenTextLength.coerceAtMost(acc.length))
                     val lastBoundary = sentenceRegex.findAll(unreadText).lastOrNull()
                     if (lastBoundary != null) {
                         val completeEnd = lastBoundary.range.last + 1

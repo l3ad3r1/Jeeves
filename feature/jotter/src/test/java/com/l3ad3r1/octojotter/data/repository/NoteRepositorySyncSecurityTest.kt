@@ -112,6 +112,19 @@ class NoteRepositorySyncSecurityTest {
         coVerify(exactly = 1) { dao.delete(tombstone) }
     }
 
+    @Test
+    fun `trashed but not emptied note is not overwritten by pull`() = runTest {
+        val trashed = NoteEntity(id = 8, gistId = "gist", title = "deleted", content = "x", deletedAt = 1, pendingRemoteDelete = false)
+        val file = GistFile(filename = "deleted.md", type = "text/markdown", language = null, rawUrl = null, size = 1, content = "new")
+        coEvery { github.getGists(any()) } returns Response.success(listOf(GistResponse("gist", null, null, mapOf("deleted.md" to file))))
+        coEvery { github.getGist(any(), "gist") } returns Response.success(GistResponse("gist", null, null, mapOf("deleted.md" to file)))
+        coEvery { dao.getNoteByGistId("gist") } returns trashed
+
+        assertTrue(repository.pullFromGithub().isSuccess)
+
+        coVerify(exactly = 0) { dao.update(any()) }
+    }
+
     private fun sha256(content: String): String =
         MessageDigest.getInstance("SHA-256").digest(content.toByteArray()).joinToString("") { "%02x".format(it) }
 }

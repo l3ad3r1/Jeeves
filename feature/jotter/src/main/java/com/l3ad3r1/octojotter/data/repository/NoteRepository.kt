@@ -108,12 +108,7 @@ class NoteRepository(
     }
 
     suspend fun moveNoteToTrash(note: NoteEntity) {
-        val hasRemote = !note.gistId.isNullOrEmpty() || (!note.repository.isNullOrEmpty() && !note.path.isNullOrEmpty())
-        noteDao.moveToTrash(
-            id = note.id,
-            deletedAt = System.currentTimeMillis(),
-            pendingRemoteDelete = hasRemote
-        )
+        noteDao.moveToTrash(id = note.id, deletedAt = System.currentTimeMillis())
     }
 
     suspend fun restoreNoteFromTrash(note: NoteEntity) {
@@ -394,7 +389,7 @@ class NoteRepository(
      * intentionally immutable until the user or remote delete resolves them.
      */
     private fun shouldKeepLocalOnPull(note: NoteEntity, remoteContent: String): Boolean =
-        note.pendingRemoteDelete || note.conflictState == CONFLICT_STATE ||
+        note.pendingRemoteDelete || note.deletedAt != null || note.conflictState == CONFLICT_STATE ||
             note.hasProtectedContent() ||
             (note.hasLocalChanges() && !remoteChangedSinceLastSync(note, remoteContent))
 
@@ -570,17 +565,19 @@ class NoteRepository(
 
                 if (response.isSuccessful) {
                     val newSha = response.body()?.content?.sha
-                    noteDao.update(
-                        note.copy(
-                            path = rawPath,
-                            sha = newSha,
-                            needsSync = false,
-                            conflictState = null,
-                            conflictedRemoteContent = null,
-                            conflictedRemoteModifiedAt = null,
-                            lastSyncedContentHash = hashContent(note.content)
+                    noteDao.getNoteById(note.id)?.let { latestNote ->
+                        noteDao.update(
+                            latestNote.copy(
+                                path = rawPath,
+                                sha = newSha,
+                                needsSync = latestNote.content != note.content,
+                                conflictState = null,
+                                conflictedRemoteContent = null,
+                                conflictedRemoteModifiedAt = null,
+                                lastSyncedContentHash = hashContent(note.content)
+                            )
                         )
-                    )
+                    }
                 } else {
                     return Result.failure(IOException("Failed to upload ${note.title} (${response.code()})"))
                 }
@@ -725,41 +722,61 @@ class NoteRepository(
                     if (response.isSuccessful) {
                         val createdGist = response.body()
                         if (createdGist != null) {
-                            noteDao.update(
-                                note.copy(
-                                    gistId = createdGist.id,
-                                    needsSync = false,
-                                    remoteUpdatedAt = createdGist.updatedAt,
-                                    lastSyncedContentHash = hashContent(note.content)
+                            noteDao.getNoteById(note.id)?.let { latestNote ->
+                                noteDao.update(
+                                    latestNote.copy(
+                                        gistId = createdGist.id,
+                                        needsSync = latestNote.content != note.content,
+                                        remoteUpdatedAt = createdGist.updatedAt,
+                                        lastSyncedContentHash = hashContent(note.content)
+                                    )
                                 )
-                            )
+                            }
                         }
                     } else {
                         return Result.failure(IOException("Failed to create Gist: ${response.code()} ${response.message()}"))
                     }
                 } else {
-                    val response = githubApiService.updateGist(formattedToken, note.gistId, gistRequest)
-                    if (response.isSuccessful) {
-                        noteDao.update(
-                            note.copy(
-                                needsSync = false,
-                                remoteUpdatedAt = response.body()?.updatedAt,
-                                lastSyncedContentHash = hashContent(note.content)
+                    var gistRequestToUse = gistRequest
+                    val existingGistResponse = githubApiService.getGist(formattedToken, note.gistId)
+                    if (existingGistResponse.isSuccessful) {
+                        val existingGist = existingGistResponse.body()
+                        val oldFilename = existingGist?.files?.keys?.firstOrNull { it.endsWith(".md", ignoreCase = true) }
+                        if (oldFilename != null && oldFilename != filename) {
+                            gistRequestToUse = GistRequest(
+                                description = gistRequest.description,
+                                public = gistRequest.public,
+                                files = mapOf(oldFilename to GistFileRequest(content = note.content, filename = filename))
                             )
-                        )
+                        }
+                    }
+
+                    val response = githubApiService.updateGist(formattedToken, note.gistId, gistRequestToUse)
+                    if (response.isSuccessful) {
+                        noteDao.getNoteById(note.id)?.let { latestNote ->
+                            noteDao.update(
+                                latestNote.copy(
+                                    needsSync = latestNote.content != note.content,
+                                    remoteUpdatedAt = response.body()?.updatedAt,
+                                    lastSyncedContentHash = hashContent(note.content)
+                                )
+                            )
+                        }
                     } else if (response.code() == 404) {
                         val responseCreate = githubApiService.createGist(formattedToken, gistRequest)
                         if (responseCreate.isSuccessful) {
                             val createdGist = responseCreate.body()
                             if (createdGist != null) {
-                                noteDao.update(
-                                    note.copy(
-                                        gistId = createdGist.id,
-                                        needsSync = false,
-                                        remoteUpdatedAt = createdGist.updatedAt,
-                                        lastSyncedContentHash = hashContent(note.content)
+                                noteDao.getNoteById(note.id)?.let { latestNote ->
+                                    noteDao.update(
+                                        latestNote.copy(
+                                            gistId = createdGist.id,
+                                            needsSync = latestNote.content != note.content,
+                                            remoteUpdatedAt = createdGist.updatedAt,
+                                            lastSyncedContentHash = hashContent(note.content)
+                                        )
                                     )
-                                )
+                                }
                             }
                         }
                     } else {

@@ -98,7 +98,7 @@ class AlarmScheduler(private val context: Context) {
     /** Fire alarm [alarmId] again [minutes] from now (snooze). */
     fun snoozeIn(alarmId: Int, hour: Int, minute: Int, minutes: Int) {
         val triggerAt = System.currentTimeMillis() + minutes * 60_000L
-        val pendingIntent = AlarmReceiver.buildPendingIntent(context, alarmId, hour, minute, triggerAt)
+        val pendingIntent = AlarmReceiver.buildPendingIntent(context, alarmId, hour, minute, triggerAt, isSnooze = true)
         setExact(triggerAt, pendingIntent)
         Log.i(TAG, "Alarm $alarmId snoozed for $minutes min")
     }
