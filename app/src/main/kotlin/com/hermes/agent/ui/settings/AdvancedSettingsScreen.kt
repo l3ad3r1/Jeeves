@@ -1,4 +1,5 @@
 package com.hermes.agent.ui.settings
+import com.hermes.agent.domain.settings.*
 
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -13,8 +14,9 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.outlined.Backup
-import androidx.compose.material.icons.outlined.Key
 import androidx.compose.material.icons.outlined.SaveAlt
+import androidx.compose.material.icons.outlined.Restore
+import androidx.compose.material.icons.outlined.Science
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CircularProgressIndicator
@@ -40,8 +42,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.input.PasswordVisualTransformation
-import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -58,6 +60,8 @@ fun AdvancedSettingsScreen(
 ) {
     val settings by viewModel.settings.collectAsStateWithLifecycle()
     val jsonBackupState by viewModel.jsonBackupState.collectAsStateWithLifecycle()
+    val privilegedStatus by viewModel.privilegedStatus.collectAsStateWithLifecycle()
+    val retryGateStatus by viewModel.privilegedRetryGateStatus.collectAsStateWithLifecycle()
 
     Scaffold(
         topBar = {
@@ -79,6 +83,17 @@ fun AdvancedSettingsScreen(
                 .padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
+            SectionHeader(text = "Privileged Shell (Shizuku)")
+            PrivilegedShellSection(
+                enabled = settings.privilegedShellEnabled,
+                status = privilegedStatus,
+                gateStatus = retryGateStatus,
+                onToggleEnabled = viewModel::setPrivilegedShellEnabled,
+                onRequestPermission = viewModel::requestPrivilegedPermission,
+                onRefresh = viewModel::refreshPrivilegedStatus,
+                onResetGate = viewModel::resetPrivilegedGate,
+            )
+
             SectionHeader(text = "Backup & Restore")
             BackupRestoreSection(
                 jsonState = jsonBackupState,
@@ -156,3 +171,120 @@ private fun FilesWorkspaceSection(
     }
 }
 
+@Composable
+private fun PrivilegedShellSection(
+    enabled: Boolean,
+    status: com.hermes.agent.domain.device.PrivilegedShellBackend.PrivilegedStatus,
+    gateStatus: com.hermes.agent.data.device.PrivilegedShellRetryGate.GateStatus,
+    onToggleEnabled: (Boolean) -> Unit,
+    onRequestPermission: () -> Unit,
+    onRefresh: () -> Unit,
+    onResetGate: () -> Unit,
+) {
+    val context = LocalContext.current
+    Card(modifier = Modifier.fillMaxWidth()) {
+        Column(
+            modifier = Modifier.padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                DescribedTitle(
+                    title = "Enable Privileged Shell",
+                    description = "Allows the shell tool to run with ADB privileges (UID 2000) via Shizuku.",
+                    modifier = Modifier.weight(1f),
+                )
+                androidx.compose.material3.Switch(
+                    checked = enabled,
+                    onCheckedChange = onToggleEnabled,
+                )
+            }
+
+            androidx.compose.material3.HorizontalDivider()
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text(
+                    text = "Shizuku Status",
+                    style = MaterialTheme.typography.titleSmall,
+                )
+                androidx.compose.material3.TextButton(onClick = onRefresh) {
+                    Text("Check Status")
+                }
+            }
+
+            when (status.status) {
+                com.hermes.agent.domain.device.PrivilegedShellBackend.Status.READY -> {
+                    Text(
+                        text = "● Connected (UID ${status.uid} · Version ${status.version})",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.primary,
+                    )
+                }
+                com.hermes.agent.domain.device.PrivilegedShellBackend.Status.PERMISSION_REQUIRED -> {
+                    Text(
+                        text = "⚠️ Permission Required: Jeeves needs Shizuku access.",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.error,
+                    )
+                    Button(
+                        onClick = onRequestPermission,
+                        modifier = Modifier.fillMaxWidth(),
+                    ) {
+                        Text("Grant Shizuku Permission")
+                    }
+                }
+                com.hermes.agent.domain.device.PrivilegedShellBackend.Status.DEAD -> {
+                    Text(
+                        text = "⚠️ Shizuku service is not running.",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.error,
+                    )
+                    Text(
+                        text = "Start it via ADB:\n${com.hermes.agent.data.device.PrivilegedShellGateway.ADB_START_COMMAND}",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                    OutlinedButton(
+                        onClick = {
+                            val clipboard = context.getSystemService(android.content.Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager
+                            val clip = android.content.ClipData.newPlainText("ADB Command", com.hermes.agent.data.device.PrivilegedShellGateway.ADB_START_COMMAND)
+                            clipboard.setPrimaryClip(clip)
+                        },
+                        modifier = Modifier.fillMaxWidth(),
+                    ) {
+                        Text("Copy ADB Command")
+                    }
+                }
+                com.hermes.agent.domain.device.PrivilegedShellBackend.Status.NOT_INSTALLED -> {
+                    Text(
+                        text = "Shizuku app is not installed on this device.",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+            }
+
+            if (gateStatus.state == com.hermes.agent.data.device.PrivilegedShellRetryGate.State.DIRTY_UNWIND) {
+                androidx.compose.material3.HorizontalDivider()
+                Text(
+                    text = "⚠️ Execution Gate Locked: ${gateStatus.reason}",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.error,
+                )
+                OutlinedButton(
+                    onClick = onResetGate,
+                    modifier = Modifier.fillMaxWidth(),
+                ) {
+                    Text("Reset Execution Gate")
+                }
+            }
+        }
+    }
+}

@@ -79,7 +79,7 @@ class FullBackupViewModel @Inject constructor(
 
     private val _state = MutableStateFlow<FullBackupUiState>(
         if (manager.isRestorePending()) {
-            FullBackupUiState.RestoreStaged("A backup is verified and waiting. Close Hermes and open it again to finish the restore.")
+            FullBackupUiState.RestoreStaged("A backup is verified and waiting. Close Jeeves and open it again to finish the restore.")
         } else {
             FullBackupUiState.Idle
         },
@@ -152,8 +152,8 @@ class FullBackupViewModel @Inject constructor(
 
     private fun describe(s: StagedRestore): String = buildString {
         val made = DateFormat.getDateTimeInstance(DateFormat.MEDIUM, DateFormat.SHORT).format(Date(s.manifest.exportedAt))
-        append("Backup verified (made $made by Hermes ${s.manifest.appVersionName}). ")
-        append("Close Hermes and open it again to finish the restore.")
+        append("Backup verified (made $made by Jeeves ${s.manifest.appVersionName}). ")
+        append("Close Jeeves and open it again to finish the restore.")
         if (!s.sameDevice) append(" It came from another phone, so its Tailscale sign-in will not be applied.")
     }
 
@@ -220,7 +220,7 @@ fun BackupRestoreSection(
                 Text(
                     "Chats, settings, API keys, cron jobs, MCP servers, connectors and files will be replaced " +
                         "by what is in the backup. Your current database is kept as a safety copy. " +
-                        "Hermes has to be closed and reopened to finish.",
+                        "Jeeves has to be closed and reopened to finish.",
                 )
             },
             confirmButton = {
@@ -238,7 +238,7 @@ fun BackupRestoreSection(
             }
             InfoNote(
                 "What gets backed up",
-                "Everything is one encrypted file of all Hermes keeps on this phone: chats and memory, every " +
+                "Everything is one encrypted file of all Jeeves keeps on this phone: chats and memory, every " +
                     "setting, API keys and tokens, providers, cron jobs, messaging, MCP servers, connectors, skills, " +
                     "modules, bots, board, notes, documents and the agent's workspace files. Untick it to choose " +
                     "parts instead; a file of chosen parts is merged into what is already here and needs no restart. " +
@@ -335,7 +335,7 @@ fun BackupRestoreSection(
                 }
                 is FullBackupUiState.RestoreStaged -> {
                     Text(s.message, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.primary)
-                    Button(onClick = { closeHermes(context) }, modifier = Modifier.fillMaxWidth()) { Text("Close Hermes now") }
+                    Button(onClick = { closeHermes(context) }, modifier = Modifier.fillMaxWidth()) { Text("Close Jeeves now") }
                     OutlinedButton(onClick = viewModel::cancelStaged, modifier = Modifier.fillMaxWidth()) { Text("Cancel restore") }
                 }
                 FullBackupUiState.Idle -> Unit

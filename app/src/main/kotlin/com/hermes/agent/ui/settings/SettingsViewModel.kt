@@ -113,6 +113,8 @@ class SettingsViewModel @Inject constructor(
     private val botsBackup: BotsBackup,
     private val tailnet: com.hermes.agent.data.remote.TailnetNode,
     private val credentialVault: CredentialVault,
+    private val privilegedShellBackend: com.hermes.agent.domain.device.PrivilegedShellBackend,
+    private val privilegedShellRetryGate: com.hermes.agent.data.device.PrivilegedShellRetryGate,
     private val oauthManager: com.hermes.agent.data.oauth.OAuthManager,
     private val oauthCallbackReceiver: com.hermes.agent.data.oauth.OAuthCallbackReceiver,
     private val deviceAuthenticationService: DeviceAuthenticationService = DeviceAuthenticationService(),
@@ -121,6 +123,44 @@ class SettingsViewModel @Inject constructor(
     private val _placeFeedback = MutableStateFlow<String?>(null)
     val placeFeedback = _placeFeedback.asStateFlow()
 
+
+    // ─── Privileged Shell (Shizuku) ──────────────────────────────────────────
+    private val _privilegedStatus = MutableStateFlow(
+        com.hermes.agent.domain.device.PrivilegedShellBackend.PrivilegedStatus(
+            com.hermes.agent.domain.device.PrivilegedShellBackend.Status.NOT_INSTALLED,
+        ),
+    )
+    val privilegedStatus: StateFlow<com.hermes.agent.domain.device.PrivilegedShellBackend.PrivilegedStatus> =
+        _privilegedStatus.asStateFlow()
+    val privilegedRetryGateStatus = privilegedShellRetryGate.status
+
+    init {
+        refreshPrivilegedStatus()
+    }
+
+    fun refreshPrivilegedStatus() {
+        viewModelScope.launch {
+            _privilegedStatus.value = privilegedShellBackend.getStatus()
+        }
+    }
+
+    fun requestPrivilegedPermission() {
+        viewModelScope.launch {
+            privilegedShellBackend.requestPermission()
+            _privilegedStatus.value = privilegedShellBackend.getStatus()
+        }
+    }
+
+    fun resetPrivilegedGate() {
+        privilegedShellRetryGate.resetGate()
+    }
+
+    fun setPrivilegedShellEnabled(enabled: Boolean) {
+        viewModelScope.launch {
+            settingsRepository.setPrivilegedShellEnabled(enabled)
+            refreshPrivilegedStatus()
+        }
+    }
 
     // ─── Unified settings (shared with Jotter and Butler) ───────────────────
 
@@ -898,6 +938,16 @@ class SettingsViewModel @Inject constructor(
 
     fun setFilesRootUri(uri: String) = viewModelScope.launch {
         settingsRepository.setFilesRootUri(uri)
+    }
+
+    /** Evaluates device RAM preflight for the current model selection. */
+    fun evaluatePreflightForSelectedModel(settings: UserSettings): com.hermes.agent.data.llm.PreflightDecision {
+        return if (settings.localModelUri.isNotBlank()) {
+            localLlmManager.evaluateCustomModelPreflight(Uri.parse(settings.localModelUri))
+        } else {
+            val model = com.hermes.agent.data.llm.ModelCatalog.byId(settings.selectedModelId)
+            localLlmManager.evaluatePreflight(model)
+        }
     }
     // --- SPIKE: embedded Tailscale node ---
 

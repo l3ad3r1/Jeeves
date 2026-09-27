@@ -1,4 +1,6 @@
 package com.hermes.agent.data.repository
+import com.hermes.agent.domain.llm.*
+import com.hermes.agent.domain.settings.*
 
 import com.hermes.agent.data.local.dao.ConversationDao
 import com.hermes.agent.data.local.dao.MessageDao
@@ -26,20 +28,26 @@ class SessionRepository @Inject constructor(
 ) {
 
     /**
-     * Discovery shape: FTS5 search with ranking.
-     * Supports: AND (default), OR, quoted phrases, boolean, prefix wildcards.
+     * Discovery shape: full-text search over conversation titles and messages.
+     * Supports: AND (default), OR, NOT, quoted phrases, prefix wildcards (`foo*`).
      *
-     * @param query FTS5 query syntax (e.g., "auth refactor", "alpha OR beta", "\"docker networking\"")
+     * Backed by FTS4, since no Android release ships the fts5 module. Results
+     * come back most-recent-first rather than by relevance: FTS4 has no `rank`
+     * column, and its alternative — decoding `matchinfo()` blobs in Kotlin —
+     * would be a lot of machinery for a personal chat history, where recency is
+     * a reasonable proxy for what you were looking for.
+     *
+     * @param query FTS4 query syntax (e.g., "auth refactor", "alpha OR beta", "\"docker networking\"")
      * @param limit Max results (default 3, max 10 for discovery)
-     * @return Ranked list of matching conversations with snippets
+     * @return Matching conversations, newest first
      */
     suspend fun searchByQuery(query: String, limit: Int = 3): List<ConversationEntity> {
-        // FTS5 query on conversation_fts virtual table, joined with conversations
+        // FTS4 query on conversation_fts virtual table, joined with conversations
         val cursor = db.query("""
             SELECT c.* FROM conversation_fts f
             JOIN conversations c ON f.id = c.id
             WHERE conversation_fts MATCH ?
-            ORDER BY rank ASC
+            ORDER BY c.updated_at DESC
             LIMIT ?
         """, arrayOf(query, limit.toString()))
 
@@ -202,6 +210,32 @@ class SessionRepository @Inject constructor(
             }
             appendLine("  ]")
             appendLine("}")
+        }
+    }
+
+    /**
+     * Export session to clean Markdown format.
+     */
+    suspend fun exportToMarkdown(id: String): String {
+        val session = getSessionById(id) ?: throw IllegalArgumentException("Session not found: $id")
+        return buildString {
+            appendLine("# ${session.conversation.title.ifBlank { "Jeeves Chat Session" }}")
+            appendLine("*Exported from Jeeves on ${java.text.SimpleDateFormat("yyyy-MM-dd HH:mm", java.util.Locale.getDefault()).format(java.util.Date())}*")
+            appendLine()
+            appendLine("---")
+            appendLine()
+            session.messages.forEach { msg ->
+                val roleName = when (msg.role.lowercase()) {
+                    "user" -> "👤 User"
+                    "assistant" -> "🤖 Jeeves"
+                    "system" -> "⚙️ System"
+                    "tool" -> "🔧 Tool Output"
+                    else -> msg.role.replaceFirstChar { it.uppercase() }
+                }
+                appendLine("### $roleName")
+                appendLine(msg.content.trim())
+                appendLine()
+            }
         }
     }
 

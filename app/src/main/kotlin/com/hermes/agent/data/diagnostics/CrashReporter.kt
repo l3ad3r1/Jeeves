@@ -55,9 +55,9 @@ object CrashReporter {
     internal fun format(version: String, threadName: String, error: Throwable, nowMillis: Long): String {
         val time = SimpleDateFormat("yyyy-MM-dd HH:mm:ss Z", Locale.US).format(Date(nowMillis))
         return buildString {
-            appendLine("Hermes crash report")
+            appendLine("Jeeves crash report")
             appendLine("Time: $time")
-            appendLine("Hermes: $version")
+            appendLine("Jeeves: $version")
             appendLine("Android: ${Build.VERSION.RELEASE} (API ${Build.VERSION.SDK_INT})")
             appendLine("Device: ${Build.MANUFACTURER} ${Build.MODEL}")
             appendLine("Thread: $threadName")

@@ -117,7 +117,7 @@ class MainActivity : FragmentActivity() {
                                 Intent.createChooser(
                                     Intent(Intent.ACTION_SEND).apply {
                                         type = "text/plain"
-                                        putExtra(Intent.EXTRA_SUBJECT, "Hermes crash report")
+                                        putExtra(Intent.EXTRA_SUBJECT, "Jeeves crash report")
                                         putExtra(Intent.EXTRA_TEXT, report)
                                     },
                                     "Share crash report",

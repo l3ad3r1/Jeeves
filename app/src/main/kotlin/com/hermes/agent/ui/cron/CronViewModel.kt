@@ -1,5 +1,6 @@
 package com.hermes.agent.ui.cron
 
+import com.hermes.agent.domain.settings.SettingsRepository
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.hermes.agent.data.remote.BotProfileStore

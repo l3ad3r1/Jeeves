@@ -1,5 +1,37 @@
 # Jeeves — Progress
 
+## 2026-09-27 — v1.0.8: caught up with Hermes 1.0.5–1.0.8
+
+Ported every Hermes app change since v1.0.4 (32 commits, `-x` referenced):
+Post Office screen, remote-gateway thin client, `desktop_bots` tool, embedded
+Tailscale node (tsnet), Bots hub with Chief of Bots, chat/Bots/full encrypted
+backups with scheduled auto-backup, ChatGPT/Claude chat import, local crash
+report, Material seed-colour presets + Outfit, token counter, reasoning
+("Thought for") chip, edit/re-run branching, deferred-tool fix. Then converged
+the shared `:app` files that had gone stale: message copy/rewind/fork actions,
+slash-command palette, artifact preview, recovered-tool-call dedupe, bounded boot
+reconciliation, API server started off the main thread, onboarding calendar-write
+and gesture-bar fixes, and the app-automation grant removed from the
+conversational role (the alarm grant is kept — Jeeves has alarms).
+
+Also ported Hermes' Tasker plugin (token-gated per approved host) and the Shizuku
+privileged shell; both were previously listed as omitted. Shizuku remains
+unusable on Android 16 (K18). Jeeves keeps its own wording, spoken replies
+outside voice chat, bot-face customiser, retired self-evolution export and
+DeviceProfile from the shared domain.
+
+Full backup now carries the Notes database (`gist_notes_database`) and every
+DataStore except the two written through the settings/learning APIs — the Hermes
+version would have silently dropped notes and Notes settings. agent-core pinned
+to `823d468`.
+
+**VERIFIED:** `tools/preflight.sh` passed — all modules compiled, debug APK
+assembled, 560 unit tests green.
+
+**UNVERIFIED:** on-device runs of every ported feature, a real full-backup
+round trip including notes, Tasker and Shizuku on a device, tsnet sign-in, CI
+(the gomobile step was merged into Jeeves' workflow but has not run).
+
 ## 2026-09-14 — API-server CI follows the fail-closed auth contract
 
 The transport-level API-server tests now start protected endpoints with a

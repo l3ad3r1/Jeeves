@@ -1,40 +1,85 @@
 package com.hermes.agent.ui.chat.components
+import com.hermes.agent.domain.settings.*
 
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkVertically
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
-import androidx.compose.foundation.text.selection.SelectionContainer
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.selection.LocalTextSelectionColors
+import androidx.compose.foundation.text.selection.TextSelectionColors
+import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.Bolt
+import androidx.compose.material.icons.outlined.Check
+import androidx.compose.material.icons.outlined.ContentCopy
+import androidx.compose.material.icons.outlined.CallSplit
+import androidx.compose.material.icons.outlined.History
+import androidx.compose.material.icons.outlined.Edit
+import androidx.compose.material.icons.outlined.OpenInNew
+import androidx.compose.material.icons.outlined.Psychology
 import androidx.compose.material.icons.outlined.Visibility
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.AssistChip
+import androidx.compose.material3.AssistChipDefaults
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.PlainTooltip
+import androidx.compose.material3.TooltipBox
+import androidx.compose.material3.TooltipDefaults
+import androidx.compose.material3.rememberTooltipState
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.platform.LocalClipboardManager
+import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.geometry.Rect
+import androidx.compose.ui.platform.LocalTextToolbar
+import androidx.compose.ui.platform.TextToolbar
+import androidx.compose.ui.platform.TextToolbarStatus
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.unit.dp
 import com.hermes.agent.domain.model.Message
 import com.hermes.agent.domain.model.MessageRole
 import com.hermes.agent.ui.chat.ChatListItem
 
 /**
- * A single chat bubble. User messages are right-aligned with the brand
- * primary color; assistant messages are left-aligned with a neutral surface
- * and include the agent-role badge so the user can tell which agent produced
- * the reply.
+ * A single chat bubble with Evidence State badges, Artifact Preview actions,
+ * and Long-Press Turn Rewind / Branching ("Edit & Retry").
  */
+@OptIn(ExperimentalFoundationApi::class, ExperimentalLayoutApi::class)
 @Composable
 fun MessageBubble(
     message: Message,
@@ -47,6 +92,8 @@ fun MessageBubble(
     branch: com.hermes.agent.data.chat.BranchInfo? = null,
     onSwitchBranch: ((com.hermes.agent.data.chat.BranchInfo, Int) -> Unit)? = null,
 ) {
+    val clipboard = LocalClipboardManager.current
+    val haptics = LocalHapticFeedback.current
     val isUser = message.role == MessageRole.USER
     val alignment = if (isUser) Alignment.End else Alignment.Start
     val bubbleColor = if (isUser) {
@@ -60,6 +107,59 @@ fun MessageBubble(
         MaterialTheme.colorScheme.onSurfaceVariant
     }
 
+    var actionsVisible by remember { mutableStateOf(false) }
+    // Selecting part of a message should offer Copy and nothing else. "Select
+    // all" duplicated the action row's whole-message copy, and what the
+    // selection toolbar is actually for is lifting a snippet out.
+    val platformToolbar = LocalTextToolbar.current
+    val snippetToolbar = remember(platformToolbar) { SnippetTextToolbar(platformToolbar) }
+    // The default selection highlight is the theme primary, which is also the
+    // user bubble's background — so selecting text in your own message
+    // highlighted white on white and looked like nothing happened. Deriving it
+    // from the bubble's own text colour keeps it legible on either side.
+    val selectionColors = remember(textColor) {
+        TextSelectionColors(
+            handleColor = textColor,
+            backgroundColor = textColor.copy(alpha = 0.30f),
+        )
+    }
+    var confirmRewind by remember { mutableStateOf(false) }
+    var activeArtifact by remember { mutableStateOf<CodeArtifact?>(null) }
+    val artifacts = remember(message.content) {
+        ArtifactExtractor.extractArtifacts(message.content)
+    }
+
+    if (confirmRewind) {
+        // Rewind throws away messages, so it is the one action here that asks
+        // first. Fork is the non-destructive alternative, named in the copy.
+        AlertDialog(
+            onDismissRequest = { confirmRewind = false },
+            title = { Text("Rewind to here?") },
+            text = {
+                Text(
+                    "This deletes this message and everything after it. " +
+                        "To keep the original, use \"Fork from here\" instead.",
+                )
+            },
+            confirmButton = {
+                TextButton(onClick = {
+                    confirmRewind = false
+                    onRewindTo?.invoke(message)
+                }) { Text("Rewind") }
+            },
+            dismissButton = {
+                TextButton(onClick = { confirmRewind = false }) { Text("Cancel") }
+            },
+        )
+    }
+
+    activeArtifact?.let { art ->
+        ArtifactPreviewBottomSheet(
+            artifact = art,
+            onDismiss = { activeArtifact = null },
+        )
+    }
+
     Column(
         modifier = modifier
             .fillMaxWidth()
@@ -69,10 +169,10 @@ fun MessageBubble(
             },
         horizontalAlignment = alignment,
     ) {
-        val agentRole = message.agentRole
-        if (!isUser && agentRole != null) {
+        val role = message.agentRole
+        if (!isUser && role != null) {
             AgentRoleBadge(
-                role = agentRole,
+                role = role,
                 modifier = Modifier.padding(bottom = 4.dp),
             )
         }
@@ -105,6 +205,13 @@ fun MessageBubble(
                     )
                 )
                 .background(bubbleColor)
+                .clickable {
+                    // Tap reveals the actions for this message and hides them
+                    // again, so the transcript stays clean until you reach for
+                    // something. Long-press is left to text selection.
+                    haptics.performHapticFeedback(HapticFeedbackType.LongPress)
+                    actionsVisible = !actionsVisible
+                }
                 .padding(horizontal = 14.dp, vertical = 10.dp),
         ) {
             Column {
@@ -131,11 +238,100 @@ fun MessageBubble(
                         )
                     }
                 }
-                SelectionContainer {
-                    Text(
-                        text = message.content,
-                        color = textColor,
-                        style = MaterialTheme.typography.bodyMedium,
+                CompositionLocalProvider(
+                    LocalTextToolbar provides snippetToolbar,
+                    LocalTextSelectionColors provides selectionColors,
+                ) {
+                    SelectionContainer {
+                        Text(
+                            text = message.content,
+                            color = textColor,
+                            style = MaterialTheme.typography.bodyMedium,
+                        )
+                    }
+                }
+            }
+        }
+
+        // Actions live under the bubble rather than in a dropdown, so what is
+        // available is visible at a glance and reachable with one thumb. They
+        // stay hidden until the message is tapped to keep the transcript quiet.
+        AnimatedVisibility(
+            visible = actionsVisible,
+            enter = fadeIn() + expandVertically(),
+            exit = fadeOut() + shrinkVertically(),
+        ) {
+            Row(
+                // Sits right under the bubble: the row belongs to that message,
+                // and a gap made it read as floating between two of them.
+                modifier = Modifier.offset(y = (-6).dp),
+                horizontalArrangement = Arrangement.spacedBy(0.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                var copied by remember { mutableStateOf(false) }
+                LaunchedEffect(copied) {
+                    if (copied) {
+                        kotlinx.coroutines.delay(1200)
+                        copied = false
+                    }
+                }
+                MessageAction(
+                    // Confirming the copy on the icon itself avoids a snackbar
+                    // for something this small.
+                    icon = if (copied) Icons.Outlined.Check else Icons.Outlined.ContentCopy,
+                    label = if (copied) "Copied" else "Copy text",
+                ) {
+                    clipboard.setText(AnnotatedString(message.content))
+                    copied = true
+                }
+                MessageAction(Icons.Outlined.CallSplit, "Fork a new chat from here") {
+                    actionsVisible = false
+                    onForkFrom?.invoke(message)
+                }
+                MessageAction(Icons.Outlined.History, "Rewind to here") {
+                    confirmRewind = true
+                }
+                if (isUser) {
+                    MessageAction(Icons.Outlined.Edit, "Edit and retry") {
+                        actionsVisible = false
+                        onEditMessage?.invoke(message)
+                    }
+                    MessageAction(Icons.Outlined.Psychology, "Retry with Ultrabrain") {
+                        actionsVisible = false
+                        onRetryWithAlias?.invoke(message, "ultrabrain")
+                    }
+                    MessageAction(Icons.Outlined.Bolt, "Retry with Quick/Local") {
+                        actionsVisible = false
+                        onRetryWithAlias?.invoke(message, "quick")
+                    }
+                }
+            }
+        }
+
+        // Interactive Artifact Preview Chips
+        if (artifacts.isNotEmpty()) {
+            FlowRow(
+                modifier = Modifier
+                    .padding(top = 4.dp)
+                    .widthIn(max = 320.dp),
+                horizontalArrangement = if (isUser) Arrangement.End else Arrangement.Start,
+            ) {
+                artifacts.forEach { art ->
+                    AssistChip(
+                        onClick = { activeArtifact = art },
+                        label = { Text(art.title, style = MaterialTheme.typography.labelSmall) },
+                        leadingIcon = {
+                            Icon(
+                                imageVector = if (art.language in listOf("html", "svg")) Icons.Outlined.Visibility else Icons.Outlined.OpenInNew,
+                                contentDescription = null,
+                                modifier = Modifier.size(16.dp),
+                            )
+                        },
+                        colors = AssistChipDefaults.assistChipColors(
+                            containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+                            labelColor = MaterialTheme.colorScheme.primary,
+                        ),
+                        modifier = Modifier.padding(end = 4.dp, bottom = 2.dp),
                     )
                 }
             }
@@ -170,38 +366,88 @@ fun StreamingBubble(
             )
         }
 
-        // Render tool-call cards above the text bubble so the user sees
-        // what the agent did before reading its reply.
-        if (item.toolCalls.isNotEmpty()) {
-            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                item.toolCalls.forEach { ToolCallCard(summary = it) }
-                Spacer(modifier = Modifier.height(4.dp))
-            }
-        }
-
         Box(
             modifier = Modifier
                 .widthIn(max = 320.dp)
-                .clip(RoundedCornerShape(16.dp, 16.dp, 16.dp, 4.dp))
+                .clip(
+                    RoundedCornerShape(
+                        topStart = 16.dp,
+                        topEnd = 16.dp,
+                        bottomEnd = 16.dp,
+                        bottomStart = 4.dp,
+                    )
+                )
                 .background(MaterialTheme.colorScheme.surfaceVariant)
                 .padding(horizontal = 14.dp, vertical = 10.dp),
         ) {
+            // Before the first token lands there is nothing to show, and an
+            // empty bubble reads as a broken turn. The orb is the app's
+            // "Jeeves is working" language everywhere else, so it stands in
+            // until real text arrives.
             if (item.text.isBlank()) {
-                // Jeeves is thinking — the reply bubble is the orb.
-                ThinkingOrb(diameter = 36.dp)
+                ThinkingOrb(diameter = 28.dp)
             } else {
-                Column {
-                    SelectionContainer {
-                        Text(
-                            text = item.text,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            style = MaterialTheme.typography.bodyMedium,
-                        )
-                    }
-                    // Small orb below the text while more tokens stream in.
-                    ThinkingOrb(diameter = 22.dp, modifier = Modifier.padding(top = 4.dp))
+                SelectionContainer {
+                    Text(
+                        text = item.text,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        style = MaterialTheme.typography.bodyMedium,
+                    )
                 }
             }
         }
+    }
+}
+
+/**
+ * One message action: a small icon whose meaning is available on demand.
+ *
+ * The icon alone is ambiguous, so it carries both a tooltip (long-press, the
+ * platform gesture for "what is this?") and a contentDescription, which is the
+ * same string — screen-reader users and sighted users get the identical label
+ * instead of one being an afterthought.
+ */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun MessageAction(
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    label: String,
+    onClick: () -> Unit,
+) {
+    TooltipBox(
+        positionProvider = TooltipDefaults.rememberPlainTooltipPositionProvider(),
+        tooltip = { PlainTooltip { Text(label) } },
+        state = rememberTooltipState(),
+    ) {
+        IconButton(onClick = onClick, modifier = Modifier.size(32.dp)) {
+            Icon(
+                imageVector = icon,
+                contentDescription = label,
+                modifier = Modifier.size(18.dp),
+                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+    }
+}
+
+/**
+ * Delegates to the platform text toolbar, minus "Select all".
+ *
+ * Copy, cut and paste are passed through untouched so partial selection still
+ * behaves exactly as it does everywhere else on the phone.
+ */
+private class SnippetTextToolbar(private val delegate: TextToolbar) : TextToolbar {
+    override val status: TextToolbarStatus get() = delegate.status
+
+    override fun hide() = delegate.hide()
+
+    override fun showMenu(
+        rect: Rect,
+        onCopyRequested: (() -> Unit)?,
+        onPasteRequested: (() -> Unit)?,
+        onCutRequested: (() -> Unit)?,
+        onSelectAllRequested: (() -> Unit)?,
+    ) {
+        delegate.showMenu(rect, onCopyRequested, onPasteRequested, onCutRequested, null)
     }
 }

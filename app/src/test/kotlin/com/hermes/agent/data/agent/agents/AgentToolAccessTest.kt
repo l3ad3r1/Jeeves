@@ -129,7 +129,8 @@ class AgentToolAccessTest {
         val registry = sampleRegistry()
 
         val convTools = ConversationalAgent().availableTools(registry).map { it.name }.toSet()
-        assertEquals(33, convTools.size)
+        assertEquals(28, convTools.size)
+        assertFalse("ConversationalAgent must not drive other apps", convTools.any { it.startsWith("app_") })
         assertFalse("ConversationalAgent must not have calendar", convTools.contains("calendar"))
         assertFalse("ConversationalAgent must not have device_settings", convTools.contains("device_settings"))
 

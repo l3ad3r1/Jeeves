@@ -228,6 +228,9 @@ fun HermesNavGraph(
                         val newId = java.util.UUID.randomUUID().toString()
                         navController.navigate(TopLevelDestination.chatRoute(newId))
                     },
+                    onOpenConversation = { id ->
+                        navController.navigate(TopLevelDestination.chatRoute(id))
+                    },
                 )
             }
             composable(TopLevelDestination.DOCUMENTS.route) { DocumentsScreen(onBack = { navController.popBackStack() }) }
@@ -250,7 +253,7 @@ fun HermesNavGraph(
             composable(TopLevelDestination.CONNECT.route)  { ConnectScreen(onBack = { navController.popBackStack() }) }
             composable(TopLevelDestination.SCHEDULE.route) { CronScreen(onBack = { navController.popBackStack() }) }
             composable(TopLevelDestination.DELEGATE.route) { DelegateScreen() }
-            composable(TopLevelDestination.EXPERIMENT.route) { ExperimentScreen() }
+            composable(TopLevelDestination.EXPERIMENT.route) { ExperimentScreen(onBack = { navController.popBackStack() }) }
             
             // Settings parent and children
             composable(TopLevelDestination.SETTINGS.route) {

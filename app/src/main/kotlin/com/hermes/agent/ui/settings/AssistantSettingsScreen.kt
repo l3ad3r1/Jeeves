@@ -1,4 +1,6 @@
 package com.hermes.agent.ui.settings
+import com.hermes.agent.domain.llm.*
+import com.hermes.agent.domain.settings.*
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -65,7 +67,6 @@ fun AssistantSettingsScreen(
     val settings by viewModel.settings.collectAsStateWithLifecycle()
     val placeFeedback by viewModel.placeFeedback.collectAsStateWithLifecycle()
     val context = androidx.compose.ui.platform.LocalContext.current
-
 
     Scaffold(
         topBar = {
@@ -350,6 +351,28 @@ private fun OnDeviceAiCard(
                         )
                     }
                 }
+            }
+
+            // ── RAM Preflight status ─────────────────────────────────────────
+            val preflight = remember(settings.selectedModelId, settings.localModelUri) {
+                viewModel.evaluatePreflightForSelectedModel(settings)
+            }
+            when (preflight.level) {
+                com.hermes.agent.data.llm.PreflightLevel.BLOCKED -> {
+                    Text(
+                        text = "⚠️ Preflight: ${preflight.detail}",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.error,
+                    )
+                }
+                com.hermes.agent.data.llm.PreflightLevel.WARNING -> {
+                    Text(
+                        text = "ℹ️ Preflight: ${preflight.detail}",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.tertiary,
+                    )
+                }
+                com.hermes.agent.data.llm.PreflightLevel.OPTIMAL -> Unit
             }
 
             // ── Download folder ─────────────────────────────────────────────

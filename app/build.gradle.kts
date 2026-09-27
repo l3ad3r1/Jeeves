@@ -208,6 +208,7 @@ android {
     buildFeatures {
         compose = true
         buildConfig = true
+        aidl = true
     }
     packaging {
         resources {
@@ -281,6 +282,9 @@ dependencies {
     implementation("androidx.core:core-splashscreen:1.0.1")
     // Custom Tabs — hands the OAuth sign-in to the browser and back (ui/oauth).
     implementation(libs.androidx.browser)
+    // --- Shizuku (privileged shell) ---
+    implementation(libs.shizuku.api)
+    implementation(libs.shizuku.provider)
     implementation(libs.androidx.lifecycle.runtime.ktx)
     implementation(libs.androidx.lifecycle.viewmodel.ktx)
     implementation(libs.androidx.lifecycle.viewmodel.compose)

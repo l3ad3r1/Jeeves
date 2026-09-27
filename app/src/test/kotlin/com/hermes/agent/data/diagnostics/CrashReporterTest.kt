@@ -15,7 +15,7 @@ class CrashReporterTest {
     @Test
     fun `report holds version, device and the stack trace`() {
         val text = CrashReporter.format("1.0.9", "main", IllegalStateException("boom"), 0L)
-        assertTrue(text.contains("Hermes: 1.0.9"))
+        assertTrue(text.contains("Jeeves: 1.0.9"))
         assertTrue(text.contains("Thread: main"))
         assertTrue(text.contains("IllegalStateException: boom"))
         assertTrue(text.contains("Android:"))

@@ -67,7 +67,7 @@ fun ModulesSettingsScreen(
         ) {
             InfoNote(
                 "About modules",
-                "Modules add new tools to Hermes. They run in a sandbox and only get the " +
+                "Modules add new tools to Jeeves. They run in a sandbox and only get the " +
                     "permissions you approve.",
             )
 

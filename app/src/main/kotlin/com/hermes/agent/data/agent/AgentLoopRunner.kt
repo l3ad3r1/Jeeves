@@ -78,7 +78,7 @@ class AgentLoopRunner @Inject constructor(
             )
         } ?: AgentLoopOutcome.Failed(
             AgentLoopFailureReason.TIMED_OUT,
-            "Hermes stopped because this task took too long. Try again or split it into smaller steps.",
+            "Jeeves stopped because this task took too long. Try again or split it into smaller steps.",
             toolsInvoked.toList(),
         )
     }

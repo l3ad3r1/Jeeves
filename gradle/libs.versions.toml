@@ -34,6 +34,7 @@ securityCrypto = "1.1.0-alpha06"
 moshi = "1.15.2"
 rhino = "1.7.14.1"           # pure-JVM JS engine for the script sandbox; .1 patches GHSA-3w8q-xq97-5j7x
 browser = "1.8.0"              # Custom Tabs, for the OAuth sign-in hand-off
+shizuku = "13.1.5"              # privileged shell (ADB UID 2000)
 
 # Sassy Butler (:feature:butler) — View-based UI + on-device ONNX TTS
 appcompat = "1.7.0"          # AlarmActivity / MainAlarmSetupActivity are AppCompatActivity
@@ -68,6 +69,8 @@ robolectric = "4.13"
 archCoreTesting = "2.2.0"
 
 [libraries]
+shizuku-api = { group = "dev.rikka.shizuku", name = "api", version.ref = "shizuku" }
+shizuku-provider = { group = "dev.rikka.shizuku", name = "provider", version.ref = "shizuku" }
 material-color-utilities = { group = "com.materialkolor", name = "material-color-utilities", version.ref = "materialKolor" }
 # AndroidX core
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }

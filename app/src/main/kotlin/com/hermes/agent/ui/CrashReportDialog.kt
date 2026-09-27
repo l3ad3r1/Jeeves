@@ -22,7 +22,7 @@ import androidx.compose.ui.unit.dp
 fun CrashReportDialog(report: String, onShare: () -> Unit, onDismiss: () -> Unit) {
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Hermes crashed last time") },
+        title = { Text("Jeeves crashed last time") },
         text = {
             Column {
                 Text(

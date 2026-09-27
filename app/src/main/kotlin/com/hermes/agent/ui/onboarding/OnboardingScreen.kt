@@ -14,6 +14,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -28,6 +29,8 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.Restore
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
@@ -47,11 +50,9 @@ import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
 import com.hermes.agent.domain.model.DeviceProfile
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.Restore
+import com.hermes.agent.ui.home.HermesPersona.Mood
 import com.hermes.agent.ui.bloub.ExpressionId
 import com.hermes.agent.ui.bloub.HermesBot
-import com.hermes.agent.ui.home.HermesPersona.Mood
 import com.jeeves.core.theme.Geist
 import com.jeeves.core.theme.GeistMono
 
@@ -140,7 +141,7 @@ private fun WelcomeStep() {
             arrival = true,
             label = "Jeeves",
         )
-        Spacer(Modifier.height(22.dp))
+        Spacer(Modifier.height(24.dp))
         Text(
             "Let's set up\nyour assistant",
             fontFamily = Geist,
@@ -347,18 +348,26 @@ private fun SpecRow(label: String, value: String) {
 
 @Composable
 private fun PermissionRow(title: String, why: String, permission: String) {
+    PermissionGroupRow(title, why, listOf(permission))
+}
+
+@Composable
+private fun PermissionGroupRow(title: String, why: String, permissions: List<String>) {
     val scheme = MaterialTheme.colorScheme
     val context = androidx.compose.ui.platform.LocalContext.current
     var isGranted by androidx.compose.runtime.remember {
         androidx.compose.runtime.mutableStateOf(
-            androidx.core.content.ContextCompat.checkSelfPermission(context, permission) == android.content.pm.PackageManager.PERMISSION_GRANTED
+            permissions.all { permission ->
+                androidx.core.content.ContextCompat.checkSelfPermission(context, permission) ==
+                    android.content.pm.PackageManager.PERMISSION_GRANTED
+            }
         )
     }
     
     val launcher = rememberLauncherForActivityResult(
-        ActivityResultContracts.RequestPermission()
-    ) { granted ->
-        isGranted = granted
+        ActivityResultContracts.RequestMultiplePermissions()
+    ) { grants ->
+        isGranted = permissions.all { grants[it] == true }
     }
 
     Column(
@@ -377,7 +386,7 @@ private fun PermissionRow(title: String, why: String, permission: String) {
             if (isGranted) {
                 Text("Granted", color = scheme.primary, fontWeight = FontWeight.Medium, fontSize = 13.sp)
             } else {
-                TextButton(onClick = { launcher.launch(permission) }) {
+                TextButton(onClick = { launcher.launch(permissions.toTypedArray()) }) {
                     Text("Allow")
                 }
             }
@@ -403,7 +412,11 @@ private fun PermissionsStep() {
         }
         PermissionRow("Location", "Location-aware answers and reminders", Manifest.permission.ACCESS_FINE_LOCATION)
         PermissionRow("Contacts", "Look up and message people you name", Manifest.permission.READ_CONTACTS)
-        PermissionRow("Calendar", "Read and schedule events", Manifest.permission.READ_CALENDAR)
+        PermissionGroupRow(
+            "Calendar",
+            "Read and schedule events",
+            listOf(Manifest.permission.READ_CALENDAR, Manifest.permission.WRITE_CALENDAR),
+        )
         PermissionRow("Camera", "Capture and analyze images on request", Manifest.permission.CAMERA)
         PermissionRow("Termux Commands", "Let Jeeves run the full agent in Termux", "com.termux.permission.RUN_COMMAND")
         Spacer(Modifier.height(6.dp))
@@ -449,7 +462,15 @@ private fun NavBar(step: Int, viewModel: OnboardingViewModel) {
     val saving by viewModel.saving.collectAsStateWithLifecycle()
     val error by viewModel.error.collectAsStateWithLifecycle()
     
-    Column(modifier = Modifier.fillMaxWidth()) {
+    // K09: this row sits at the bottom of the screen, so on gesture navigation
+    // the system bar overlapped "Skip setup" and "Get started" and clipped their
+    // labels. The inset has to be consumed here rather than on the scrolling
+    // content above it, which is why it is not handled by the parent Scaffold.
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .navigationBarsPadding(),
+    ) {
         if (error != null) {
             Text(
                 text = error ?: "",

@@ -21,27 +21,34 @@ internal object AgentToolAccess {
     ) {
         fun allows(descriptor: ToolDescriptor): Boolean {
             val allToolCaps = descriptor.capabilities + descriptor.category + descriptor.name
-            if (excludedCapabilities.any { it in allToolCaps }) {
-                return false
-            }
-            return descriptor.category in categories ||
-                capabilities.any { it in allToolCaps }
+            if (excludedCapabilities.any { it in allToolCaps }) return false
+            return descriptor.category in categories || capabilities.any { it in allToolCaps }
         }
     }
 
     private val GRANTS: Map<AgentRole, RoleGrant> = mapOf(
         AgentRole.CONVERSATIONAL to RoleGrant(
+            // "device" is deliberately absent. It is a category, so granting it
+            // hands this role every current and future device-category tool —
+            // which silently included app_tap/app_type/app_swipe/app_launch/
+            // app_analyze_screen, tools that can drive any app on the phone.
+            // Every device tool this role legitimately needs is granted below by
+            // capability instead, so a new device tool has to be granted on
+            // purpose rather than arriving pre-approved.
             categories = setOf("information", "memory", "productivity", "communication", "creative", "vision", "files", "mcp"),
             capabilities = setOf(
                 "common", "time", "web", "conversation_search", "calculator", "notification",
                 "notes", "device_alarm", "notes_and_reminders", "navigation", "phone", "contacts",
                 "media", "device_control", "skills", "user_memory", "scheduler", "shell", "termux",
-                "todo", "voice", "clarify", "delegate", "media_generation", "app_automation", "documents", "kanban",
+                "todo", "voice", "clarify", "delegate", "media_generation", "documents", "kanban",
                 "bookmarks", "mood", "home_assistant", "vision", "files", "mcp", "tool_search",
                 "skills_hub", "usage_insights", "camera", "notifications_read", "notifications_post",
                 "standing_orders", "presence", "desktop_bots",
             ),
-            excludedCapabilities = setOf("calendar", "device_settings"),
+            // Belt and braces: excludedCapabilities is checked before anything
+            // else, so app automation stays out of a conversational turn even if
+            // a future tool re-introduces it through a category.
+            excludedCapabilities = setOf("calendar", "device_settings", "app_automation"),
         ),
         AgentRole.PRODUCTIVITY to RoleGrant(
             categories = setOf("files", "mcp"),
@@ -57,7 +64,7 @@ internal object AgentToolAccess {
         AgentRole.RESEARCH to RoleGrant(
             capabilities = setOf(
                 "common", "web", "conversation_search", "user_memory", "notes", "skills",
-                "calculator", "delegate", "bookmarks", "vision", "mcp", "tool_search",
+                "calculator", "delegate", "bookmarks", "todo", "vision", "mcp", "tool_search",
                 "skills_hub", "usage_insights",
             ),
             excludedCapabilities = setOf("camera", "standing_orders", "notifications_read", "notifications_post"),

@@ -1,16 +1,17 @@
 package com.hermes.agent.ui.chat.components
+import com.hermes.agent.domain.settings.*
 
-import androidx.compose.foundation.combinedClickable
-import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -26,7 +27,6 @@ import androidx.compose.material.icons.outlined.Add
 import androidx.compose.material.icons.outlined.GraphicEq
 import androidx.compose.material.icons.outlined.Mic
 import androidx.compose.material.icons.outlined.Stop
-import androidx.compose.material.icons.outlined.Tune
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
@@ -43,14 +43,16 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardCapitalization
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import com.hermes.agent.R
+import androidx.compose.ui.graphics.Color
 
 /** Reasoning-effort levels, ordered least → most, as the slider steps through them. */
 private val EFFORT_LEVELS = listOf("minimal", "low", "medium", "high")
@@ -62,16 +64,26 @@ private val EFFORT_LEVELS = listOf("minimal", "low", "medium", "high")
  * ponytail: cosmetic label — short tokens read as acronyms, the rest title-case;
  * good enough without a per-vendor lookup table.
  */
-internal fun shortModelName(raw: String): String =
-    raw.trim().substringAfterLast('/').removePrefix("claude-").removePrefix("anthropic-")
+internal fun shortModelName(raw: String): String {
+    val tokens = raw.trim().substringAfterLast('/')
+        .removePrefix("claude-").removePrefix("anthropic-")
         .split('-', ' ').filter { it.isNotBlank() }
+        .toMutableList()
+    // Drop a trailing instruction-tuned marker: "gemma-4-31b-it" reads fine as
+    // "Gemma 4 31B" in the composer.
+    if (tokens.size > 1 && tokens.last().lowercase() in setOf("it", "instruct")) {
+        tokens.removeAt(tokens.lastIndex)
+    }
+    return tokens
         .joinToString(" ") { if (it.length <= 3) it.uppercase() else it.replaceFirstChar(Char::uppercase) }
         .ifBlank { "Auto" }
+}
 
 /**
  * Rounded composer: a full-width text field on top, and a single action row
- * beneath it — attachments and microphone on the left, the shortened model name
- * and a reasoning-effort button (with a slider inside) on the right, then send.
+ * beneath it — attachments and microphone on the left, the shortened model name,
+ * a reasoning-effort button (with a slider inside), and send/stop/voice on the
+ * right.
  */
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
@@ -83,15 +95,15 @@ fun ChatInputBar(
     onMicToggle: () -> Unit,
     onVoiceChatToggle: () -> Unit,
     modifier: Modifier = Modifier,
-    voiceChatActive: Boolean = false,
     prefillText: String = "",
+    voiceChatActive: Boolean = false,
     onSendWithAttachment: ((String, String?, String?) -> Unit)? = null,
     reasoningEffort: String = "medium",
     onReasoningEffortChange: ((String) -> Unit)? = null,
     modelName: String = "",
     /** False hides "Attach image/document" where the receiver has nowhere to send them (a PC bot takes text only). */
     attachmentsEnabled: Boolean = true,
-    /** Overrides the "Ask Hermes" hint, for a chat that is with someone in particular. */
+    /** Overrides the "Ask Jeeves" hint, for a chat that is with someone in particular. */
     placeholder: String? = null,
 ) {
     val context = androidx.compose.ui.platform.LocalContext.current
@@ -99,6 +111,9 @@ fun ChatInputBar(
     var attachedImageUri by remember { mutableStateOf<android.net.Uri?>(null) }
     var quickActionsOpen by remember { mutableStateOf(false) }
     var effortMenuOpen by remember { mutableStateOf(false) }
+    val listeningDescription = stringResource(R.string.a11y_listening)
+    val endVoiceChatDescription = stringResource(R.string.a11y_end_voice_chat)
+    val startVoiceChatDescription = stringResource(R.string.a11y_start_voice_chat)
 
     val imagePickerLauncher = androidx.activity.compose.rememberLauncherForActivityResult(
         contract = androidx.activity.result.contract.ActivityResultContracts.GetContent(),
@@ -122,6 +137,13 @@ fun ChatInputBar(
     }
 
     Column(modifier = modifier.fillMaxWidth()) {
+        SlashCommandPalette(
+            currentQuery = text,
+            onSelectCommand = { cmd ->
+                text = cmd.template
+            },
+        )
+
         attachedImageUri?.let { uri ->
             Row(
                 modifier = Modifier
@@ -245,14 +267,18 @@ fun ChatInputBar(
                         }
                     }
 
-                    // Tap runs the hands-free session: Jeeves listens, answers
-                    // aloud, then listens again with nothing touched. Long-press
-                    // is plain dictation — one utterance typed into the field —
-                    // which is the only way to speak a message without also being
-                    // answered out loud.
+                    // Pulled in tight against the + so the two read as one
+                    // cluster rather than evenly-spaced toolbar buttons.
+                    // Tap starts (and ends) the hands-free session: Hermes
+                    // listens, answers aloud, then listens again with nothing
+                    // touched. Long-press is plain dictation — one utterance
+                    // typed into the field to edit and send — which was the old
+                    // tap behaviour, kept because it is the only way to speak a
+                    // message without also being answered out loud.
                     Box(
                         modifier = Modifier
                             .size(40.dp)
+                            .offset(x = (-10).dp)
                             .clip(CircleShape)
                             .combinedClickable(
                                 onClick = onVoiceChatToggle,
@@ -260,21 +286,40 @@ fun ChatInputBar(
                             ),
                         contentAlignment = Alignment.Center,
                     ) {
-                        Icon(
-                            imageVector = Icons.Outlined.Mic,
-                            contentDescription = if (voiceChatActive) {
-                                stringResource(R.string.a11y_end_voice_chat)
-                            } else {
-                                stringResource(R.string.a11y_start_voice_chat)
-                            },
-                            tint = if (isListening || voiceChatActive) {
-                                MaterialTheme.colorScheme.error
-                            } else MaterialTheme.colorScheme.onSurface,
-                        )
+                        // While the mic is hot the icon becomes the orb, so voice
+                        // capture reads as the same "Jeeves is busy" language as
+                        // the chat bubble. In voice chat it is tinted as the stop
+                        // affordance, since tapping again ends the session.
+                        if (voiceChatActive) {
+                            ThinkingOrb(
+                                diameter = 24.dp,
+                                color = MaterialTheme.colorScheme.error,
+                                listening = isListening,
+                                modifier = Modifier.semantics {
+                                    contentDescription = endVoiceChatDescription
+                                },
+                            )
+                        } else if (isListening) {
+                            ThinkingOrb(
+                                diameter = 24.dp,
+                                listening = true,
+                                modifier = Modifier.semantics {
+                                    contentDescription = listeningDescription
+                                },
+                            )
+                        } else {
+                            Icon(
+                                imageVector = Icons.Outlined.Mic,
+                                contentDescription = startVoiceChatDescription,
+                                tint = MaterialTheme.colorScheme.onSurface,
+                            )
+                        }
                     }
 
                     Spacer(Modifier.weight(1f))
 
+                    // Shortened model name — display only, mirrors the router's
+                    // active choice.
                     Text(
                         text = shortModelName(modelName),
                         style = MaterialTheme.typography.labelLarge,
@@ -282,18 +327,17 @@ fun ChatInputBar(
                         modifier = Modifier.padding(horizontal = 6.dp),
                     )
 
+                    // Effort — a button showing the current level, with a slider
+                    // inside the popup it opens.
                     if (onReasoningEffortChange != null) {
                         Box {
                             TextButton(
                                 onClick = { effortMenuOpen = true },
-                                contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp),
+                                contentPadding = androidx.compose.foundation.layout.PaddingValues(
+                                    horizontal = 8.dp,
+                                    vertical = 4.dp,
+                                ),
                             ) {
-                                Icon(
-                                    imageVector = Icons.Outlined.Tune,
-                                    contentDescription = null,
-                                    modifier = Modifier.size(16.dp),
-                                )
-                                Spacer(Modifier.size(4.dp))
                                 Text(
                                     text = reasoningEffort.replaceFirstChar { it.uppercase() },
                                     style = MaterialTheme.typography.labelLarge,

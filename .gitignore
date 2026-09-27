@@ -70,7 +70,6 @@ temp_release_notes.md
 # another, not project documentation. Superseded /ANTIGRAVITY-*.md,
 # /test-run/ and /test_artifacts/, which either never matched the actual
 # on-disk names or only matched at repo root.
-/local/
 
 # SPIKE: gomobile output, built by tsnet-bridge/build.sh
 app/libs/*.aar

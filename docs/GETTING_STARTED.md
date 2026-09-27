@@ -5,7 +5,7 @@
 > is accurate for Jeeves too — both products build the same `:core:*` modules
 > out of [`agent-core`](https://github.com/l3ad3r1/agent-core). The app half is
 > not: Jeeves adds `:feature:jotter` and `:feature:butler`, and deliberately
-> omits the privileged shell, Tasker and Telegram integrations. Where the two
+> omits the dedicated Telegram bot gateway (Telegram works through connectors). Where the two
 > disagree, `docs/SUPER_APP_ROADMAP.md` and `docs/ARCHITECTURE.md` in this repo
 > are the Jeeves-specific record.
 

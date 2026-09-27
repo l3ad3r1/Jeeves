@@ -58,13 +58,26 @@ object FullBackupFormat {
 
     /** Top-level entries of the private files directory that are not user data. */
     val FILES_SKIPPED = setOf(
-        "datastore", // written through the settings API instead, so secrets can be re-sealed
         "hermes.log", // a diagnostic log, not state
         "crash", // an unsent crash report, not state
         "profileInstalled", // a marker Android writes
         "models", // downloaded models: gigabytes, and downloaded again from the catalog
         PENDING_DIR, // a restore in progress
     )
+
+    /**
+     * DataStore files written through the settings and learning APIs instead, so secrets can be
+     * re-sealed. Every other DataStore — Notes' folders, repo and app lock — is carried as a file.
+     */
+    val API_DATASTORES = setOf(
+        "datastore/hermes_settings.preferences_pb",
+        "datastore/hermes_learning_state.preferences_pb",
+    )
+
+    /** Databases besides [HermesDatabase]: the Notes app keeps its own. */
+    val EXTRA_DATABASES = listOf("gist_notes_database")
+
+    fun extraDatabaseEntry(name: String) = "database/extra/$name"
 
     /** Preference files that belong to Android or a library rather than to Hermes. */
     private val PREFS_SKIPPED_PREFIXES = listOf("androidx.", "com.google", "WebView", "android.app", "full_backup", "auto_backup")
@@ -188,9 +201,21 @@ class FullBackupManager @Inject constructor(
 
                     entry(FullBackupFormat.DATABASE) { out2 -> databaseCopy.inputStream().use { it.copyTo(out2) } }
 
+                    for (name in FullBackupFormat.EXTRA_DATABASES) {
+                        val copy = File(context.cacheDir, "full-backup-$name.tmp")
+                        try {
+                            if (snapshotExtraDatabase(name, copy)) {
+                                entry(FullBackupFormat.extraDatabaseEntry(name)) { out2 -> copy.inputStream().use { it.copyTo(out2) } }
+                            }
+                        } finally {
+                            copy.delete()
+                        }
+                    }
+
                     fileCount += addTree(zip, entries, skipped, context.filesDir, FullBackupFormat.FILES_DIR) { relative ->
                         val top = relative.substringBefore('/')
-                        top in FullBackupFormat.FILES_SKIPPED || FullBackupFormat.isTailnetNoise(relative)
+                        top in FullBackupFormat.FILES_SKIPPED || relative in FullBackupFormat.API_DATASTORES ||
+                            FullBackupFormat.isTailnetNoise(relative)
                     }
                     val workspace = context.getExternalFilesDir(null)?.resolve("workspace")
                     if (workspace != null && workspace.isDirectory) {
@@ -262,17 +287,23 @@ class FullBackupManager @Inject constructor(
             val m = manifest ?: throw BackupStreamCipher.CorruptBackupException("This backup has no manifest.")
             val s = summary ?: throw BackupStreamCipher.CorruptBackupException("This backup is incomplete: it has no summary.")
             if (m.format > FullBackupFormat.FORMAT) {
-                throw IOException("This backup was made by a newer version of Hermes (format ${m.format}). Update Hermes and try again.")
+                throw IOException("This backup was made by a newer version of Jeeves (format ${m.format}). Update Jeeves and try again.")
             }
             val current = currentDatabaseVersion()
             if (m.dbVersion > current) {
-                throw IOException("This backup's data is newer than this version of Hermes understands. Update Hermes and try again.")
+                throw IOException("This backup's data is newer than this version of Jeeves understands. Update Jeeves and try again.")
             }
             val missing = s.entries.filterNot { File(staging, it).isFile }
             if (missing.isNotEmpty()) {
                 throw BackupStreamCipher.CorruptBackupException("This backup is incomplete: ${missing.first()} is missing.")
             }
             DatabaseFiles.requireIntact(File(staging, FullBackupFormat.DATABASE), current)
+            for (name in FullBackupFormat.EXTRA_DATABASES) {
+                val extra = File(staging, FullBackupFormat.extraDatabaseEntry(name))
+                if (extra.isFile && !DatabaseFiles.isIntact(extra)) {
+                    throw BackupStreamCipher.CorruptBackupException("The $name database in this backup is damaged.")
+                }
+            }
             // Decoded now so a bad file is reported here, not discovered halfway through applying it.
             json.decodeFromString(rawMap, File(staging, FullBackupFormat.SETTINGS).readText())
             json.decodeFromString(rawMap, File(staging, FullBackupFormat.LEARNING).readText())
@@ -317,6 +348,23 @@ class FullBackupManager @Inject constructor(
             if (DatabaseFiles.isIntact(target)) return
         }
         throw IOException("Could not take a consistent copy of the database. Try again.")
+    }
+
+    /**
+     * The same consistent copy for a database this class holds no Room handle to. A second
+     * connection is enough to fold the log in. Returns false when that database does not exist yet.
+     */
+    private fun snapshotExtraDatabase(name: String, target: File): Boolean {
+        val source = context.getDatabasePath(name)
+        if (!source.isFile) return false
+        repeat(3) {
+            SQLiteDatabase.openDatabase(source.path, null, SQLiteDatabase.OPEN_READWRITE).use { db ->
+                db.rawQuery("PRAGMA wal_checkpoint(TRUNCATE)", null).use { it.moveToFirst() }
+            }
+            source.copyTo(target, overwrite = true)
+            if (DatabaseFiles.isIntact(target)) return true
+        }
+        throw IOException("Could not take a consistent copy of $name. Try again.")
     }
 
     private fun prefsNames(): List<String> {
@@ -452,7 +500,7 @@ internal object DatabaseFiles {
         val ok = runCatching {
             withStandaloneCopy(file) { db ->
                 if (db.version > maxVersion) {
-                    throw IOException("This backup's database is newer than this version of Hermes understands.")
+                    throw IOException("This backup's database is newer than this version of Jeeves understands.")
                 }
                 db.rawQuery("PRAGMA integrity_check", null).use { it.moveToFirst() && it.getString(0) == "ok" }
             }
@@ -523,6 +571,12 @@ object PendingRestore {
 
         // 1. The database. Throws on failure, and nothing else has been touched yet.
         swapDatabase(context, File(dir, FullBackupFormat.DATABASE))
+        for (name in FullBackupFormat.EXTRA_DATABASES) {
+            val staged = File(dir, FullBackupFormat.extraDatabaseEntry(name))
+            if (!staged.isFile) continue
+            runCatching { swapDatabase(context, staged, name) }
+                .onFailure { problems += "$name: ${it.message}" }
+        }
 
         // 2. Settings (credentials are sealed again for this install) and learning state.
         runCatching {
@@ -574,8 +628,8 @@ object PendingRestore {
 
     private fun prefsCountText(n: Int) = "$n preference file(s)"
 
-    private fun swapDatabase(context: Context, staged: File) {
-        val target = context.getDatabasePath(HermesDatabase.DATABASE_NAME)
+    private fun swapDatabase(context: Context, staged: File, name: String = HermesDatabase.DATABASE_NAME) {
+        val target = context.getDatabasePath(name)
         target.parentFile?.mkdirs()
         val incoming = File(target.parentFile, target.name + ".restore-tmp")
         staged.copyTo(incoming, overwrite = true)

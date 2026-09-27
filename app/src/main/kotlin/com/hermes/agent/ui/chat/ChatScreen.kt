@@ -1,4 +1,5 @@
 package com.hermes.agent.ui.chat
+import com.hermes.agent.domain.settings.*
 
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.compose.foundation.background
@@ -27,8 +28,8 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Add
 import androidx.compose.material.icons.outlined.ChatBubbleOutline
 import androidx.compose.material.icons.outlined.Description
-import androidx.compose.material.icons.outlined.KeyboardArrowDown
 import androidx.compose.material.icons.outlined.Terminal
+import androidx.compose.material.icons.outlined.KeyboardArrowDown
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.layout.statusBarsPadding
 import com.hermes.agent.ui.chat.components.shortModelName
@@ -93,6 +94,8 @@ fun ChatScreen(
     conversationId: String,
     onBack: () -> Unit,
     onNewChat: () -> Unit,
+    /** Open another conversation, e.g. the one produced by a fork. */
+    onOpenConversation: (String) -> Unit = {},
     viewModel: ChatViewModel = hiltViewModel(),
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
@@ -135,6 +138,14 @@ fun ChatScreen(
         uiState.errorMessage?.let { msg ->
             snackbarHostState.showSnackbar(msg)
             viewModel.dismissError()
+        }
+    }
+
+    // Confirmations (a completed rewind) use the same channel but are not errors.
+    LaunchedEffect(uiState.notice) {
+        uiState.notice?.let { msg ->
+            snackbarHostState.showSnackbar(msg)
+            viewModel.dismissNotice()
         }
     }
 
@@ -190,8 +201,8 @@ fun ChatScreen(
                             onCancel = viewModel::cancel,
                             onMicToggle = viewModel::toggleVoiceInput,
                             onVoiceChatToggle = viewModel::toggleVoiceChat,
-                            voiceChatActive = uiState.voiceChatActive,
                             prefillText = uiState.inputPrefill,
+                            voiceChatActive = uiState.voiceChatActive,
                             onSendWithAttachment = { text, uri, mime ->
                                 viewModel.sendMessage(text, uri, mime)
                             },
@@ -249,8 +260,6 @@ fun ChatScreen(
                                     item { Spacer(modifier = Modifier.height(8.dp)) }
                                 }
                             }
-                            item { Spacer(modifier = Modifier.height(8.dp)) }
-                        }
                     }
                 }
             } // closes Column

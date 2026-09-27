@@ -18,6 +18,9 @@ import com.hermes.agent.domain.repository.ChatRepository
 import com.hermes.agent.domain.repository.ConversationRepository
 import com.hermes.agent.domain.repository.ExecutionPlanRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
+import com.hermes.agent.domain.model.Message
+import com.hermes.agent.domain.model.MessageRole
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -51,6 +54,7 @@ class ChatViewModel @Inject constructor(
     private val branchStore: com.hermes.agent.data.chat.BranchStore,
     private val toolConfirmationService: com.hermes.agent.domain.tool.ToolConfirmationService,
     private val executionPlanRepository: ExecutionPlanRepository,
+    private val ultraSkillInterceptor: com.hermes.agent.domain.agent.UltraSkillInterceptor,
 ) : ViewModel() {
 
     val conversationId: String = checkNotNull(savedStateHandle["conversationId"])
@@ -172,6 +176,7 @@ class ChatViewModel @Inject constructor(
                 streamingAgentRole = ephemeral.streamingAgentRole,
                 isSending = ephemeral.isSending,
                 errorMessage = ephemeral.errorMessage,
+                notice = ephemeral.notice,
                 title = conversation?.title ?: "New conversation",
                 currentPlan = ephemeral.plan,
                 toolCalls = ephemeral.toolCalls,
@@ -318,6 +323,11 @@ class ChatViewModel @Inject constructor(
                         runCatching { conversationRepository.renameConversation(conversationId, autoTitle) }
                     }
                 }
+                if (ultraSkillInterceptor.intercept(conversationId, trimmed)) {
+                    _ephemeral.value = ChatEphemeralState()
+                    return@launch
+                }
+
                 chatRepository.sendMessageOrchestrated(
                     conversationId = conversationId,
                     content = trimmed,
@@ -327,6 +337,12 @@ class ChatViewModel @Inject constructor(
                 ).collect { event ->
                     handleOrchestratorEvent(event)
                 }
+            } catch (cancelled: CancellationException) {
+                // Stopping a reply, or sending the next one while this is still
+                // streaming, cancels this job. Swallowing that here would
+                // overwrite the state [cancel] just cleared and show the user
+                // "StandaloneCoroutine was cancelled" as if the turn failed.
+                throw cancelled
             } catch (t: Throwable) {
                 Timber.tag("ChatVM").w(t, "sendMessageOrchestrated failed")
                 _ephemeral.value = _ephemeral.value.copy(
@@ -490,6 +506,10 @@ class ChatViewModel @Inject constructor(
         val trimmed = answer.trim()
         if (trimmed.isEmpty()) return
         clarificationBus.answer(trimmed)
+    }
+
+    fun dismissNotice() {
+        _ephemeral.value = _ephemeral.value.copy(notice = null)
     }
 
     fun dismissError() {
@@ -718,6 +738,7 @@ private data class ChatEphemeralState(
     val streamingAgentRole: com.hermes.agent.domain.model.AgentRole? = null,
     val isSending: Boolean = false,
     val errorMessage: String? = null,
+    val notice: String? = null,
     val plan: PlanSummary? = null,
     val toolCalls: List<ToolCallSummary> = emptyList(),
     val activeModel: String = "",
