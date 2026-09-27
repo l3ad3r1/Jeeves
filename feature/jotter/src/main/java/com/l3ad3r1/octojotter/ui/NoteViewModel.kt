@@ -94,7 +94,20 @@ data class NoteAuthenticationRequest(
     val action: NoteAuthenticationAction
 )
 
-class NoteViewModel(application: Application) : AndroidViewModel(application) {
+class NoteViewModel(application: Application) : AndroidViewModel(application), androidx.lifecycle.DefaultLifecycleObserver {
+    init {
+        androidx.lifecycle.ProcessLifecycleOwner.get().lifecycle.addObserver(this)
+    }
+
+    override fun onStop(owner: androidx.lifecycle.LifecycleOwner) {
+        super.onStop(owner)
+        lockApp()
+    }
+
+    override fun onCleared() {
+        super.onCleared()
+        androidx.lifecycle.ProcessLifecycleOwner.get().lifecycle.removeObserver(this)
+    }
     private val logTag = "OctoJotter"
 
     private val noteDao = AppDatabase.getDatabase(application).noteDao()

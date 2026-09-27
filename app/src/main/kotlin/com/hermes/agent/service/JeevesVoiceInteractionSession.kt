@@ -17,7 +17,11 @@ class JeevesVoiceInteractionSession(context: Context) : VoiceInteractionSession(
             action = "com.hermes.agent.action.START_VOICE_LISTEN"
             addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP)
         }
-        startVoiceActivity(intent)
+        try {
+            startVoiceActivity(intent)
+        } catch (e: SecurityException) {
+            context.startActivity(intent)
+        }
         finish() // Close the overlay session, let the app take over
     }
 }

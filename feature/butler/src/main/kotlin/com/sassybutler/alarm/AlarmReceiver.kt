@@ -38,6 +38,9 @@ class AlarmReceiver : BroadcastReceiver() {
 
         if (!isExpectedAlarmFire(alarm, alarmId, alarmHour, alarmMin, triggerAt, isSnooze = isSnooze)) {
             Log.w(TAG, "Ignoring invalid, disabled, or stale alarm occurrence id=$alarmId")
+            if (alarm != null && alarm.enabled && alarm.days.isNotEmpty() && !isSnooze) {
+                AlarmScheduler(context).schedule(alarm)
+            }
             return
         }
         val storedAlarm = alarm ?: return

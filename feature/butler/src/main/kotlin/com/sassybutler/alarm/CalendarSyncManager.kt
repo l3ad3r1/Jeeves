@@ -91,11 +91,11 @@ object CalendarSyncManager {
         val existingEventId = prefs.getLong("event_${alarm.id}", -1L)
 
         try {
-            // Only trust the remembered event id if the row is still there — if the
-            // user deleted it externally, updating a nonexistent row is a silent
-            // no-op and the alarm would never get a calendar entry again.
-            val updated = if (existingEventId != -1L) {
-                val updateUri = ContentUris.withAppendedId(CalendarContract.Events.CONTENT_URI, existingEventId)
+            // Only trust the remembered event id if the row is still there and belongs to us
+            val verifiedEventId = if (existingEventId != -1L && verifyEventOwnership(context, existingEventId)) existingEventId else -1L
+
+            val updated = if (verifiedEventId != -1L) {
+                val updateUri = ContentUris.withAppendedId(CalendarContract.Events.CONTENT_URI, verifiedEventId)
                 context.contentResolver.update(updateUri, values, null, null) > 0
             } else {
                 false
@@ -115,11 +115,13 @@ object CalendarSyncManager {
         val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
         val existingEventId = prefs.getLong("event_$alarmId", -1L)
         if (existingEventId != -1L) {
-            try {
-                val deleteUri = ContentUris.withAppendedId(CalendarContract.Events.CONTENT_URI, existingEventId)
-                context.contentResolver.delete(deleteUri, null, null)
-            } catch (e: SecurityException) {
-                // Permission not granted
+            if (verifyEventOwnership(context, existingEventId)) {
+                try {
+                    val deleteUri = ContentUris.withAppendedId(CalendarContract.Events.CONTENT_URI, existingEventId)
+                    context.contentResolver.delete(deleteUri, null, null)
+                } catch (e: SecurityException) {
+                    // Permission not granted
+                }
             }
             prefs.edit().remove("event_$alarmId").apply()
         }
@@ -156,5 +158,20 @@ object CalendarSyncManager {
             // Permission not granted
         }
         return 1L // Failsafe default
+    }
+
+    private fun verifyEventOwnership(context: Context, eventId: Long): Boolean {
+        try {
+            val uri = ContentUris.withAppendedId(CalendarContract.Events.CONTENT_URI, eventId)
+            context.contentResolver.query(uri, arrayOf(CalendarContract.Events.TITLE), null, null, null)?.use { cursor ->
+                if (cursor.moveToFirst()) {
+                    val title = cursor.getString(0) ?: ""
+                    return title.startsWith("Jeeves:") || title == "Jeeves Wake-up"
+                }
+            }
+        } catch (e: SecurityException) {
+            // Permission not granted
+        }
+        return false
     }
 }

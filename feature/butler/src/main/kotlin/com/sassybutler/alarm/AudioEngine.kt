@@ -130,9 +130,14 @@ class AudioEngine(private val context: Context) {
         val pcmSamples = ttsDeferred.await()
         if (pcmSamples != null && !isStopped.get()) {
             playPcmBuffer(pcmSamples)
+            if (!isStopped.get()) {
+                startFallbackRingtone()
+            }
         } else if (!isStopped.get()) {
             Log.w(TAG, "ONNX TTS returned no audio during alarm — using platform fallback")
             speakViaPlatformFallback(greeting)
+            // Keep ringing until dismissed; this path is only the alarm itself.
+            if (!isStopped.get()) startFallbackRingtone()
         }
     }
 
@@ -178,7 +183,10 @@ class AudioEngine(private val context: Context) {
     private fun startFallbackRingtone() {
         if (fallbackRingtone?.isPlaying == true) return
         runCatching {
-            val uri = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_ALARM)
+            var uri = RingtoneManager.getActualDefaultRingtoneUri(context, RingtoneManager.TYPE_ALARM)
+            if (uri == null) uri = RingtoneManager.getActualDefaultRingtoneUri(context, RingtoneManager.TYPE_NOTIFICATION)
+            if (uri == null) uri = RingtoneManager.getActualDefaultRingtoneUri(context, RingtoneManager.TYPE_RINGTONE)
+            if (uri == null) uri = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_ALARM)
             fallbackRingtone = RingtoneManager.getRingtone(context, uri)?.apply {
                 audioAttributes = AudioAttributes.Builder()
                     .setUsage(AudioAttributes.USAGE_ALARM)

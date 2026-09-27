@@ -606,7 +606,7 @@ class NoteRepository(
                 formattedToken, owner, repo, encodeRepoPath(path),
                 DeleteContentRequest(message = "Delete ${note.title} via Octo-Jotter", sha = sha)
             )
-            if (response.isSuccessful || response.code() == 404) {
+            if (response.isSuccessful || response.code() == 404 || response.code() == 409) {
                 Result.success(Unit)
             } else {
                 Result.failure(IOException("Failed to delete file from repo (${response.code()})"))

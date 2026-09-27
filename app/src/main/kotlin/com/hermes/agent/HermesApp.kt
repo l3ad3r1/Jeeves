@@ -107,7 +107,12 @@ class HermesApp : Application(), Configuration.Provider {
         // runs another copy of this class. It cannot be attachBaseContext: DataStore needs the
         // application context, which does not exist yet there.
         if (getProcessName() == packageName) {
-            com.hermes.agent.data.export.PendingRestore.applyIfPending(this)
+            val restored = com.hermes.agent.data.export.PendingRestore.applyIfPending(this)
+            if (restored) {
+                runCatching {
+                    com.sassybutler.alarm.AlarmScheduler(this).rescheduleAll()
+                }
+            }
         }
         super.onCreate()
         DebugScreenAwake.install(this)

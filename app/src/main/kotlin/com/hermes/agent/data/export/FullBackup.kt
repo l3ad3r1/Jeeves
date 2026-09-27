@@ -537,13 +537,13 @@ object PendingRestore {
     private const val STATE_PREFS = "full_backup_state"
     private const val KEY_RESULT = "last_result"
 
-    fun applyIfPending(context: Context) {
+    fun applyIfPending(context: Context): Boolean {
         val dir = File(context.filesDir, FullBackupFormat.PENDING_DIR)
-        if (!dir.exists()) return
+        if (!dir.exists()) return false
         if (!File(dir, FullBackupFormat.READY).isFile) {
             // Staging that never finished: nothing to apply, and keeping it wastes space.
             dir.deleteRecursively()
-            return
+            return false
         }
         val result = try {
             apply(context, dir)
@@ -554,6 +554,7 @@ object PendingRestore {
         dir.deleteRecursively()
         context.getSharedPreferences(STATE_PREFS, Context.MODE_PRIVATE).edit()
             .putString(KEY_RESULT, json.encodeToString(RestoreResult.serializer(), result)).commit()
+        return true
     }
 
     fun lastResult(context: Context): RestoreResult? =

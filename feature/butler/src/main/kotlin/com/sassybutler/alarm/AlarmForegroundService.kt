@@ -34,9 +34,12 @@ class AlarmForegroundService : LifecycleService() {
     private var vibrator: Vibrator? = null
     private var alarmRunning = false
     private var alarmJob: Job? = null
+    /** Dismiss or snooze commentary still playing; a new alarm cancels it. */
+    private var farewellJob: Job? = null
     private var currentAlarmId = -1
     private var currentHour = 7
     private var currentMinute = 0
+    private var lastStartId = -1
 
     // ─── Service lifecycle ──────────────────────────────────────────────
 
@@ -49,6 +52,7 @@ class AlarmForegroundService : LifecycleService() {
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         super.onStartCommand(intent, flags, startId)
+        lastStartId = startId
 
         when (intent?.action) {
             ACTION_START_ALARM   -> handleStartAlarm(intent)
@@ -89,6 +93,9 @@ class AlarmForegroundService : LifecycleService() {
             Log.w(TAG, "Alarm already running — ignoring duplicate start")
             return
         }
+        // A farewell still speaking would stop the service under this alarm.
+        farewellJob?.cancel()
+        farewellJob = null
         if (alarmRunning) {
             Log.i(TAG, "Replacing active alarm $currentAlarmId with overlapping alarm $alarmId")
             alarmJob?.cancel()
@@ -149,6 +156,8 @@ class AlarmForegroundService : LifecycleService() {
     }
 
     private fun handleDismiss() {
+        // This command's own id: stopSelf(id) is then a no-op once a newer alarm started.
+        val startId = lastStartId
         Log.i(TAG, "Dismiss received")
         alarmRunning = false
         alarmJob?.cancel()
@@ -156,10 +165,10 @@ class AlarmForegroundService : LifecycleService() {
         stopHaptics()
         if (!ButlerPrefs.voiceEnabled(this)) {
             audioEngine.stopAll()
-            stopSelf()
+            stopSelf(startId)
             return
         }
-        scope.launch {
+        farewellJob = scope.launch {
             val preGenBriefing = ButlerPrefs.preGeneratedBriefing(this@AlarmForegroundService)
             val preGenTimestamp = ButlerPrefs.preGeneratedBriefingTimestamp(this@AlarmForegroundService)
             val isValid = (System.currentTimeMillis() - preGenTimestamp) < 2 * 60 * 60 * 1000L // Valid for 2 hours
@@ -180,11 +189,13 @@ class AlarmForegroundService : LifecycleService() {
                     audioEngine.dismissWithReaction()
                 }
             }
-            stopSelf()
+            stopSelf(startId)
         }
     }
 
     private fun handleSnooze() {
+        // This command's own id: stopSelf(id) is then a no-op once a newer alarm started.
+        val startId = lastStartId
         val minutes = ButlerPrefs.snoozeMinutes(this)
         Log.i(TAG, "Snooze received — $minutes min")
         alarmRunning = false
@@ -196,14 +207,14 @@ class AlarmForegroundService : LifecycleService() {
         AlarmScheduler(this).snoozeIn(currentAlarmId, currentHour, currentMinute, minutes)
 
         if (ButlerPrefs.voiceEnabled(this) && ButlerPrefs.snoozeCommentary(this)) {
-            scope.launch {
+            farewellJob = scope.launch {
                 withTimeoutOrNull(20_000) {
                     audioEngine.speak(ButlerScript.snoozeLine(this@AlarmForegroundService))
                 }
-                stopSelf()
+                stopSelf(startId)
             }
         } else {
-            stopSelf()
+            stopSelf(startId)
         }
     }
 

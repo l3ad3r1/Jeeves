@@ -66,7 +66,7 @@ class SetAlarmTool @Inject constructor(
 
         return try {
             val alarm = Alarm(
-                id = AGENT_ALARM_ID_BASE + hour * 100 + minute,
+                id = AGENT_ALARM_ID_BASE + kotlin.random.Random.nextInt(1, 1_000_000_000),
                 hour = hour,
                 minute = minute,
                 label = label,
