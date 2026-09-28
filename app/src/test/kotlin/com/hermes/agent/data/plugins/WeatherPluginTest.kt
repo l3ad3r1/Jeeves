@@ -40,16 +40,6 @@ class WeatherPluginTest {
     }
 
     @Test
-    fun `weather_get tool returns deterministic mock data for same city`() = runTest {
-        val tool = plugin.tools().first()
-        val r1 = tool.execute(mapOf("city" to JsonPrimitive("Tokyo")))
-        val r2 = tool.execute(mapOf("city" to JsonPrimitive("Tokyo")))
-        assertTrue(r1.success)
-        assertEquals(r1.output, r2.output) // deterministic per city hashCode
-        assertTrue(r1.output.contains("Tokyo"))
-    }
-
-    @Test
     fun `weather_get tool errors on missing city`() = runTest {
         val tool = plugin.tools().first()
         val r = tool.execute(emptyMap())

@@ -50,6 +50,9 @@ class HermesApp : Application(), Configuration.Provider {
     lateinit var workerFactory: HiltWorkerFactory
 
     @Inject
+    lateinit var pluginRegistry: Provider<com.hermes.agent.domain.plugin.PluginRegistry>
+
+    @Inject
     lateinit var memoryPressureMonitor: MemoryPressureMonitor
 
     @Inject
@@ -127,6 +130,12 @@ class HermesApp : Application(), Configuration.Provider {
         // Constructing NoteIndexer also constructs Jotter's encrypted token store and
         // database. Keep that work off the application injection/startup path so an
         // unavailable optional integration cannot prevent the rest of Jeeves starting.
+        // Plugins the user switched on come back on; their tools were otherwise gone after a restart.
+        applicationScope.launch {
+            runCatching { (pluginRegistry.get() as? com.hermes.agent.data.plugin.PluginRegistryImpl)?.restoreActive() }
+                .onFailure { Timber.tag("PluginRegistry").w(it, "could not restore plugins") }
+        }
+
         applicationScope.launch {
             runCatching { noteIndexerProvider.get().start(applicationScope) }
                 .onFailure { Timber.tag("NoteIndexer").w(it, "note indexing unavailable") }

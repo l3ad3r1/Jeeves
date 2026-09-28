@@ -39,7 +39,7 @@ object PluginsModule {
         grpcSandbox: GrpcPluginSandbox,
         pluginContext: HostPluginContext,
         resourceMonitor: PluginResourceMonitor,
-        weatherPlugin: WeatherPlugin,
+        @dagger.hilt.android.qualifiers.ApplicationContext context: android.content.Context,
         fileManagerPlugin: FileManagerPlugin,
         contactsPlugin: ContactsPlugin,
     ): PluginRegistry {
@@ -48,9 +48,10 @@ object PluginsModule {
             grpcSandbox = grpcSandbox,
             pluginContext = pluginContext,
             resourceMonitor = resourceMonitor,
+            activeStore = com.hermes.agent.data.plugin.SharedPrefsActivePluginStore(context),
         )
         // Register first-party plugins so they appear in the Plugins UI.
-        listOf<Plugin>(weatherPlugin, fileManagerPlugin, contactsPlugin).forEach {
+        listOf<Plugin>(WeatherPlugin(com.hermes.agent.data.weather.DaybookDeviceWeather(context)), fileManagerPlugin, contactsPlugin).forEach {
             registry.registerFirstParty(it)
         }
         return registry
