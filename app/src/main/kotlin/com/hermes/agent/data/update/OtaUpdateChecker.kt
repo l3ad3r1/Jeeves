@@ -78,8 +78,8 @@ class OtaUpdateChecker @Inject constructor(
         return ""
     }
 
-    private fun isNewer(remote: String, current: String): Boolean {
-        fun semver(v: String) = v.split(".").map { it.toIntOrNull() ?: 0 }
+    internal fun isNewer(remote: String, current: String): Boolean {
+        fun semver(v: String) = v.substringBefore("-").split(".").map { it.toIntOrNull() ?: 0 }
         val r = semver(remote)
         val c = semver(current)
         for (i in 0 until maxOf(r.size, c.size)) {
