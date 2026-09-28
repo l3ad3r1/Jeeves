@@ -2039,6 +2039,9 @@ fun EditorScreen(
     }
 
     LaunchedEffect(editorContent) {
+        // The effect runs a frame after its key changed. While typing fast the view
+        // model has already moved on, and writing the stale key back dropped letters.
+        if (editorContent != viewModel.editorContent.value) return@LaunchedEffect
         if (textFieldValue.text != editorContent) {
             textFieldValue = textFieldValue.copy(
                 text = editorContent,

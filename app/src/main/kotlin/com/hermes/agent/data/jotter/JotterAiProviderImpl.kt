@@ -1,6 +1,5 @@
 package com.hermes.agent.data.jotter
 
-import com.hermes.agent.data.llm.CloudLlmProvider
 import com.hermes.agent.domain.llm.LlmMessage
 import com.hermes.agent.domain.llm.LlmStreamChunk
 import com.hermes.agent.data.llm.LocalLlmManager
@@ -14,7 +13,7 @@ import javax.inject.Singleton
 
 @Singleton
 class JotterAiProviderImpl @Inject constructor(
-    private val cloudLlmProvider: CloudLlmProvider,
+    private val cloudLlmProvider: com.hermes.agent.domain.llm.LlmProvider,
     private val localLlmManager: LocalLlmManager,
     private val voiceOutputManager: VoiceOutputManager
 ) : JotterAiProvider {
