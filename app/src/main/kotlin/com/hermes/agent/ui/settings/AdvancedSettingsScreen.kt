@@ -62,6 +62,8 @@ fun AdvancedSettingsScreen(
     val jsonBackupState by viewModel.jsonBackupState.collectAsStateWithLifecycle()
     val privilegedStatus by viewModel.privilegedStatus.collectAsStateWithLifecycle()
     val retryGateStatus by viewModel.privilegedRetryGateStatus.collectAsStateWithLifecycle()
+    val exportState by viewModel.exportState.collectAsStateWithLifecycle()
+    val context = LocalContext.current
 
     Scaffold(
         topBar = {
@@ -110,6 +112,26 @@ fun AdvancedSettingsScreen(
             FilesWorkspaceSection(
                 rootUri = settings.filesRootUri,
                 onUpdateRoot = viewModel::setFilesRootUri,
+            )
+
+            SectionHeader(text = "Self-Evolution")
+            ExportSection(
+                state = exportState,
+                onExport = viewModel::exportSessions,
+                onShare = { zip ->
+                    val uri = androidx.core.content.FileProvider.getUriForFile(
+                        context,
+                        "${context.packageName}.fileprovider",
+                        zip,
+                    )
+                    val share = android.content.Intent(android.content.Intent.ACTION_SEND).apply {
+                        type = "application/zip"
+                        putExtra(android.content.Intent.EXTRA_STREAM, uri)
+                        addFlags(android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                    }
+                    context.startActivity(android.content.Intent.createChooser(share, "Share session export"))
+                },
+                onDismiss = viewModel::dismissExportState,
             )
 
         }
@@ -292,6 +314,78 @@ private fun PrivilegedShellSection(
                     modifier = Modifier.fillMaxWidth(),
                 ) {
                     Text("Reset Execution Gate")
+                }
+            }
+        }
+    }
+}
+
+
+@Composable
+private fun ExportSection(
+    state: ExportUiState,
+    onExport: () -> Unit,
+    onShare: (java.io.File) -> Unit,
+    onDismiss: () -> Unit,
+) {
+    Card(modifier = Modifier.fillMaxWidth()) {
+        Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Icon(
+                    imageVector = Icons.Outlined.Science,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.size(20.dp),
+                )
+                Text("Export sessions for evolution", style = MaterialTheme.typography.bodyLarge)
+            }
+            InfoNote(
+                "How the export is used",
+                "Exports your conversations as a JSON archive for the offline " +
+                    "hermes-agent-self-evolution tool. Unzip into ~/.hermes/sessions/ " +
+                    "on your computer, then run the evolver with --eval-source sessiondb. " +
+                    "The archive contains raw chat text — treat it as sensitive.",
+            )
+
+            when (state) {
+                is ExportUiState.InProgress -> {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    ) {
+                        CircularProgressIndicator(modifier = Modifier.size(18.dp), strokeWidth = 2.dp)
+                        Text("Exporting…", style = MaterialTheme.typography.bodySmall)
+                    }
+                }
+                is ExportUiState.Ready -> {
+                    Text(
+                        "Exported ${state.sessionCount} sessions (${state.messageCount} messages).",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.primary,
+                    )
+                    Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                        Button(onClick = { onShare(state.zipFile) }, modifier = Modifier.weight(1f), contentPadding = SettingsButtonPadding) {
+                            ButtonLabel("Share archive")
+                        }
+                        OutlinedButton(onClick = onDismiss, modifier = Modifier.weight(1f), contentPadding = SettingsButtonPadding) {
+                            ButtonLabel("Done")
+                        }
+                    }
+                }
+                is ExportUiState.Error -> {
+                    Text(
+                        state.message,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.error,
+                    )
+                    FilledTonalButton(onClick = onExport, modifier = Modifier.fillMaxWidth()) {
+                        Text("Retry export")
+                    }
+                }
+                is ExportUiState.Idle -> {
+                    FilledTonalButton(onClick = onExport, modifier = Modifier.fillMaxWidth()) {
+                        Text("Export sessions")
+                    }
                 }
             }
         }

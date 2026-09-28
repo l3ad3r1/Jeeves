@@ -119,7 +119,7 @@ fun SettingsScreen(
                     NavItem(Icons.Outlined.Accessibility, "App control", "Accessibility Service — lets the agent drive other apps") {
                         context.startActivity(android.content.Intent(android.provider.Settings.ACTION_ACCESSIBILITY_SETTINGS))
                     },
-                    NavItem(Icons.Outlined.Build, "Advanced", "Backup and updates", nav("settings_advanced")),
+                    NavItem(Icons.Outlined.Build, "Advanced", "Backup, updates, self-evolution", nav("settings_advanced")),
                     NavItem(Icons.Outlined.Info, "About, permissions & security", "Version, app permissions, companion apps, security audit", nav("settings_about")),
                 ),
             )
