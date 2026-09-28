@@ -56,6 +56,9 @@ class MainActivity : FragmentActivity() {
     @Inject
     lateinit var features: Set<@JvmSuppressWildcards com.hermes.agent.domain.agent.AgentFeature>
 
+    @Inject
+    lateinit var repairReporter: com.hermes.agent.data.diagnostics.RepairReporter
+
     /** Set by [handleIntent] on cold start (onCreate) or a re-delivered intent (onNewIntent). */
     private var pendingChatIntentTrigger by mutableStateOf(false)
 
@@ -132,6 +135,30 @@ class MainActivity : FragmentActivity() {
                         onDismiss = {
                             com.hermes.agent.data.diagnostics.CrashReporter.discard(this)
                             crashReport = null
+                        },
+                        onSendForRepair = if (repairReporter.isConfigured) {
+                            {
+                                val redacted = com.hermes.agent.data.diagnostics.ReportRedactor.redact(report)
+                                val firstLine = redacted.lineSequence()
+                                    .firstOrNull { it.contains("Exception") || it.contains("Error") } ?: "Crash"
+                                lifecycleScope.launch {
+                                    val result = repairReporter.file(
+                                        title = "Crash: ${firstLine.trim().take(100)}",
+                                        body = com.hermes.agent.data.diagnostics.RepairReporter.body(
+                                            "Jeeves", "Jeeves crashed.", redacted, BuildConfig.VERSION_NAME,
+                                        ),
+                                    )
+                                    android.widget.Toast.makeText(
+                                        this@MainActivity,
+                                        result.fold({ "Report sent for repair." }, { "Could not send: ${it.message}" }),
+                                        android.widget.Toast.LENGTH_LONG,
+                                    ).show()
+                                    if (result.isSuccess) com.hermes.agent.data.diagnostics.CrashReporter.discard(this@MainActivity)
+                                }
+                                crashReport = null
+                            }
+                        } else {
+                            null
                         },
                     )
                 }

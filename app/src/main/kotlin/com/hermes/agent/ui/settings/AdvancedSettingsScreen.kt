@@ -134,6 +134,9 @@ fun AdvancedSettingsScreen(
                 onDismiss = viewModel::dismissExportState,
             )
 
+            SectionHeader(text = "Self-repair")
+            SelfRepairSection()
+
         }
     }
 }
