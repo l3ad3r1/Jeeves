@@ -36,7 +36,7 @@ fun TypingIndicator(
     dotColor: Color = MaterialTheme.colorScheme.primary,
 ) {
     val context = LocalContext.current
-    val animatorScale = Settings.Global.getFloat(context.contentResolver, Settings.Global.ANIMATOR_DURATION_SCALE, 1f)
+    val animatorScale = remember { Settings.Global.getFloat(context.contentResolver, Settings.Global.ANIMATOR_DURATION_SCALE, 1f) }
     val reducedMotion = animatorScale == 0f
 
     Row(
