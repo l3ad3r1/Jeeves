@@ -64,7 +64,7 @@ class RepairReporter @Inject constructor(
         runCatching {
             val token = token().ifBlank { error("No GitHub token set for problem reports.") }
             val labels = buildList {
-                add("from-jeeves")
+                add("from-${APP.lowercase()}")
                 if (autoRepair) add("repair")
             }
             val payload = buildJsonObject {
@@ -88,12 +88,16 @@ class RepairReporter @Inject constructor(
 
     companion object {
         const val REPO = "l3ad3r1/jeeves-reports"
+
+        /** Which app filed the report; the repair pipeline picks the code repo from it. */
+        const val APP = "Jeeves"
         private const val ALIAS = "jeeves.repair_reports_token"
         private const val KEY_TOKEN = "token"
         private const val KEY_AUTO_REPAIR = "auto_repair"
 
         /** The issue body in the shape of the repo's bug-report form. */
         fun body(component: String, what: String, logs: String, version: String): String = buildString {
+            append("### App\n\n").append(APP).append("\n\n")
             append("### Component\n\n").append(component).append("\n\n")
             append("### What happened\n\n").append(what.trim()).append("\n\n")
             append("### Logs (redacted)\n\n```text\n").append(logs.trim().ifEmpty { "(none)" }).append("\n```\n\n")
