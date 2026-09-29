@@ -164,8 +164,20 @@ class OrchestratorImpl @Inject constructor(
                 send(OrchestratorEvent.ToolCallRequested(deterministic.call, mustConfirm))
                 when {
                     decision is ToolExecutionDecision.Deny -> ToolResult.error(decision.reason)
-                    mustConfirm && !toolConfirmationService.awaitConfirmation(deterministic.call) ->
-                        ToolResult.error("Action cancelled")
+                    mustConfirm -> {
+                        val approved = try {
+                            toolConfirmationService.awaitConfirmation(deterministic.call)
+                        } catch (e: com.hermes.agent.domain.tool.ConfirmationTimeoutException) {
+                            null
+                        }
+                        if (approved == null) {
+                            ToolResult.error("timeout (no answer was given)")
+                        } else if (!approved) {
+                            ToolResult.error("Action cancelled")
+                        } else {
+                            toolCallExecutor.execute(deterministic.call, confirmationGate = null)
+                        }
+                    }
                     else -> toolCallExecutor.execute(deterministic.call, confirmationGate = null)
                 }
             }
