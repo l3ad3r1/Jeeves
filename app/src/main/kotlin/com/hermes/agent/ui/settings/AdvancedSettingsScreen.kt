@@ -104,6 +104,7 @@ fun AdvancedSettingsScreen(
                 onJsonDismiss = viewModel::dismissJsonBackupState,
             )
             AutoBackupSection()
+            CloudBackupSection()
 
             SectionHeader(text = "Import chats")
             ChatImportSection()
