@@ -53,6 +53,9 @@ class HermesApp : Application(), Configuration.Provider {
     lateinit var pluginRegistry: Provider<com.hermes.agent.domain.plugin.PluginRegistry>
 
     @Inject
+    lateinit var proactiveScheduler: Provider<com.hermes.agent.data.proactive.ProactiveScheduler>
+
+    @Inject
     lateinit var memoryPressureMonitor: MemoryPressureMonitor
 
     @Inject
@@ -130,6 +133,12 @@ class HermesApp : Application(), Configuration.Provider {
         // Constructing NoteIndexer also constructs Jotter's encrypted token store and
         // database. Keep that work off the application injection/startup path so an
         // unavailable optional integration cannot prevent the rest of Jeeves starting.
+        // A restored backup brings proactive consent back without its WorkManager jobs.
+        applicationScope.launch {
+            runCatching { proactiveScheduler.get().syncFromConsent() }
+                .onFailure { Timber.tag("Proactive").w(it, "could not sync proactive jobs") }
+        }
+
         // Plugins the user switched on come back on; their tools were otherwise gone after a restart.
         applicationScope.launch {
             runCatching { (pluginRegistry.get() as? com.hermes.agent.data.plugin.PluginRegistryImpl)?.restoreActive() }
