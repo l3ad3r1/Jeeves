@@ -461,6 +461,7 @@ private fun Field(
 private fun NavBar(step: Int, viewModel: OnboardingViewModel) {
     val saving by viewModel.saving.collectAsStateWithLifecycle()
     val error by viewModel.error.collectAsStateWithLifecycle()
+    val notice by viewModel.notice.collectAsStateWithLifecycle()
     
     // K09: this row sits at the bottom of the screen, so on gesture navigation
     // the system bar overlapped "Skip setup" and "Get started" and clipped their
@@ -471,6 +472,14 @@ private fun NavBar(step: Int, viewModel: OnboardingViewModel) {
             .fillMaxWidth()
             .navigationBarsPadding(),
     ) {
+        notice?.let {
+            Text(
+                text = it,
+                color = MaterialTheme.colorScheme.primary,
+                style = MaterialTheme.typography.bodyMedium,
+                modifier = Modifier.padding(bottom = 8.dp),
+            )
+        }
         if (error != null) {
             Text(
                 text = error ?: "",
