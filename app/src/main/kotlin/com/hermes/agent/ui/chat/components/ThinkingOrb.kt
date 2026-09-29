@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
@@ -198,12 +199,13 @@ fun ThinkingOrb(
     listening: Boolean = false,
 ) {
     val context = LocalContext.current
-    val animatorScale = Settings.Global.getFloat(
-        context.contentResolver,
-        Settings.Global.ANIMATOR_DURATION_SCALE,
-        1f,
-    )
-    val reducedMotion = animatorScale == 0f
+    val reducedMotion = remember {
+        Settings.Global.getFloat(
+            context.contentResolver,
+            Settings.Global.ANIMATOR_DURATION_SCALE,
+            1f,
+        ) == 0f
+    }
     val style = if (listening) BREATHING else PUZZLE
 
     val transition = rememberInfiniteTransition(label = "thinking-orb")
@@ -243,15 +245,15 @@ fun ThinkingOrb(
         label = "breath",
     )
 
-    // An off-axis angle still reads as a sphere; 0 would line the bands up.
-    val rotation = if (reducedMotion) 0.15f else spin
-    // Mid-turn, so a still frame shows the puzzle caught in the act.
-    val twist = if (reducedMotion) 0.06f else twistCycle
-    // Half-inflated when animations are off, so the still orb is not the
-    // smallest it ever gets.
-    val breath = if (reducedMotion) 0.5f else breathCycle
-
     Canvas(modifier = modifier.size(diameter)) {
+        // An off-axis angle still reads as a sphere; 0 would line the bands up.
+        val rotation = if (reducedMotion) 0.15f else spin
+        // Mid-turn, so a still frame shows the puzzle caught in the act.
+        val twist = if (reducedMotion) 0.06f else twistCycle
+        // Half-inflated when animations are off, so the still orb is not the
+        // smallest it ever gets.
+        val breath = if (reducedMotion) 0.5f else breathCycle
+
         drawOrb(rotation, color, style, twist, breath)
     }
 }
